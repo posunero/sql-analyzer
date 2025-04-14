@@ -188,5 +188,56 @@ def test_parse_truncate():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing TRUNCATE TABLE SQL should return a Tree."
 
+# --- Tests for Specific Syntax Edge Cases --- 
+
+def test_parse_autoincrement_columns():
+    """Test parsing CREATE TABLE with AUTOINCREMENT/IDENTITY columns."""
+    sql_variants = [
+        "CREATE TABLE test_autoinc (id INT AUTOINCREMENT);",
+        "CREATE TABLE test_autoinc (id INT AUTOINCREMENT START 100 INCREMENT 5);",
+        "CREATE TABLE test_identity (id INT IDENTITY);",
+        "CREATE TABLE test_identity_params (id INT IDENTITY START 1 INCREMENT 1, name STRING);"
+    ]
+    for sql in sql_variants:
+        tree = parse_sql(sql)
+        assert isinstance(tree, Tree), f"Parsing AUTOINCREMENT/IDENTITY SQL failed for: {sql}"
+
+def test_parse_add_column_with_default():
+    """Test parsing ALTER TABLE ADD COLUMN with a DEFAULT clause."""
+    sql_variants = [
+        "ALTER TABLE my_table ADD COLUMN new_col VARCHAR DEFAULT 'N/A';",
+        "ALTER TABLE db.schema.events ADD COLUMN processed_flag BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE users ADD COLUMN created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP();"
+    ]
+    for sql in sql_variants:
+        tree = parse_sql(sql)
+        assert isinstance(tree, Tree), f"Parsing ADD COLUMN WITH DEFAULT failed for: {sql}"
+
+def test_parse_alter_table_rename():
+    """Test parsing ALTER TABLE RENAME COLUMN and RENAME TO statements."""
+    sql_variants = [
+        "ALTER TABLE my_table RENAME COLUMN old_name TO new_name;",
+        "ALTER TABLE db1.sch1.old_table_name RENAME TO new_table_name;"
+    ]
+    for sql in sql_variants:
+        tree = parse_sql(sql)
+        assert isinstance(tree, Tree), f"Parsing ALTER TABLE RENAME failed for: {sql}"
+
+def test_parse_create_function():
+    """Test parsing various CREATE FUNCTION statements."""
+    sql_variants = [
+        "CREATE FUNCTION simple_udf() RETURNS FLOAT AS '3.14::FLOAT';",
+        "CREATE OR REPLACE FUNCTION add_ints(a INT, b INT DEFAULT 5) RETURNS INT LANGUAGE SQL AS 'a + b';",
+        "CREATE SECURE FUNCTION my_js_udf(d double) RETURNS double LANGUAGE JAVASCRIPT STRICT AS \'return D * 2;\';",
+        "CREATE FUNCTION my_python_udf(x int) RETURNS int LANGUAGE PYTHON RUNTIME_VERSION = '3.8' HANDLER = 'handler_module.process' AS \'...\';",
+        "CREATE FUNCTION my_java_udf(x VARCHAR) RETURNS VARCHAR LANGUAGE JAVA HANDLER = 'MyClass.method' IMPORTS = ('@stage/myjar.jar');",
+        "CREATE FUNCTION my_scala_udf() RETURNS TABLE (col_a INT, col_b STRING) LANGUAGE SCALA HANDLER = 'MyObject.tableMethod';",
+        "CREATE FUNCTION udf_with_comment(x INT) RETURNS INT COMMENT = 'A sample comment' AS 'x+1';",
+        "CREATE TEMP FUNCTION temporary_func(i int) RETURNS int LANGUAGE SQL AS 'i*i';"
+    ]
+    for sql in sql_variants:
+        tree = parse_sql(sql)
+        assert isinstance(tree, Tree), f"Parsing CREATE FUNCTION failed for: {sql}"
+
 if __name__ == '__main__':
     pytest.main() 

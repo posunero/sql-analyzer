@@ -8,9 +8,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 def parse_arguments() -> argparse.Namespace:
-    """Parses command-line arguments for the SQL analyzer."""
+    """Parses and validates command-line arguments for the SQL analyzer.
+
+    Returns:
+        An argparse.Namespace object containing the parsed arguments.
+    """
     parser = argparse.ArgumentParser(
-        description="Analyzes Snowflake SQL files to extract metadata and statistics."
+        description="Analyzes Snowflake SQL files to extract metadata, statistics, and object references.",
     )
 
     parser.add_argument(
@@ -18,15 +22,15 @@ def parse_arguments() -> argparse.Namespace:
         metavar='PATH',
         type=str,
         nargs='+',
-        help='One or more paths to SQL files or directories containing SQL files.'
+        help='One or more paths to SQL files or directories containing SQL files. Paths are processed recursively.'
     )
 
     parser.add_argument(
         '--format',
         type=str,
-        choices=['text', 'json', 'csv'],
+        choices=['text', 'json'],
         default='text',
-        help='Output format for the analysis results (default: text).'
+        help='Output format for the analysis results. (default: text)'
     )
 
     parser.add_argument(
@@ -35,7 +39,13 @@ def parse_arguments() -> argparse.Namespace:
         action='store',
         default='INFO',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-        help='Set the logging level (default: INFO).'
+        help='Set the detail level for logging messages. (default: INFO)'
+    )
+
+    parser.add_argument(
+        '--verbose-report',
+        action='store_true',
+        help='Generate a more detailed report. For text format, this includes object locations (line/column).'
     )
 
     parser.add_argument(
@@ -50,7 +60,7 @@ def parse_arguments() -> argparse.Namespace:
     #     '--out',
     #     type=str,
     #     default=None,
-    #     help='Optional path to write the output report file.'
+    #     help='Optional path to write the output report file instead of printing to stdout.'
     # )
 
     args = parser.parse_args()

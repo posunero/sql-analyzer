@@ -51,9 +51,10 @@ python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
 
 **Options:**
 
-*   `--format {text,json,csv}`: Specify the output format for the analysis results. (Default: `text`)
-*   `--verbose {DEBUG,INFO,WARNING,ERROR,CRITICAL}` or `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set the logging level for console output. (Default: `INFO`)
-*   `--fail-fast`: Stop processing immediately if an error is encountered in any file. By default, the tool tries to process all files even if some have errors.
+*   `--format {text,json}`: Specify the output format for the analysis results. (Default: `text`) (*Note: CSV format is planned but not yet implemented.*)
+*   `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}` or `--verbose {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set the detail level for logging messages. (Default: `INFO`)
+*   `--verbose-report`: Generate a more detailed report. For the `text` format, this includes the line and column number for each object found.
+*   `--fail-fast`: Stop processing immediately if an error (like a parsing error) is encountered in any file. By default, the tool tries to process all specified files.
 
 **Examples:**
 
@@ -85,6 +86,11 @@ python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
 6.  **Stop immediately if any file fails to parse:**
     ```bash
     python -m sql_analyzer.main --fail-fast path/to/your/sql/directory/
+    ```
+
+7.  **Generate a verbose text report showing object locations:**
+    ```bash
+    python -m sql_analyzer.main --verbose-report path/to/your/sql/directory/
     ```
 
 ## Contributing

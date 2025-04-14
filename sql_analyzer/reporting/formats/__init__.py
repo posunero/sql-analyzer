@@ -1,1 +1,1 @@
- 
+"""Makes the sql_analyzer/reporting/formats directory a Python package.""" 

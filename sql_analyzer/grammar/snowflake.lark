@@ -5,6 +5,7 @@
 %import common.ESCAPED_STRING
 %import common.WS
 %ignore WS
+%ignore /--[^\n]*/
 
 // Define all terminals (keywords) as uppercase
 SELECT: "SELECT"i
@@ -38,6 +39,20 @@ USING: "USING"i
 USE: "USE"i
 IF: "IF"i
 EXISTS: "EXISTS"i
+BETWEEN: "BETWEEN"i
+MERGE: "MERGE"i
+WHEN: "WHEN"i
+MATCHED: "MATCHED"i
+THEN: "THEN"i
+TYPE: "TYPE"i
+ON_ERROR: "ON_ERROR"i
+GRANT: "GRANT"i
+REVOKE: "REVOKE"i
+ALL: "ALL"i
+PRIVILEGES: "PRIVILEGES"i
+USAGE: "USAGE"i
+ROLE: "ROLE"i
+FUTURE: "FUTURE"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -75,6 +90,15 @@ COLUMN: "COLUMN"i
 ADD: "ADD"i
 MODIFY: "MODIFY"i
 
+RENAME: "RENAME"i
+TO: "TO"i
+
+// Autoincrement/Identity keywords
+AUTOINCREMENT: "AUTOINCREMENT"i
+IDENTITY: "IDENTITY"i
+START: "START"i
+INCREMENT: "INCREMENT"i
+
 // Snowflake specific
 WAREHOUSE_SIZE: "WAREHOUSE_SIZE"i
 AUTO_SUSPEND: "AUTO_SUSPEND"i
@@ -90,14 +114,90 @@ URL: "URL"i
 RETURNS: "RETURNS"i
 LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
+INPUT: "INPUT"i
+CAST: "CAST"i
+INNER: "INNER"i
+LEFT: "LEFT"i
+RIGHT: "RIGHT"i
+FULL: "FULL"i
+CROSS: "CROSS"i
+ASC: "ASC"i
+TABLES: "TABLES"i
+VIEWS: "VIEWS"i
+WAREHOUSES: "WAREHOUSES"i
+TASKS: "TASKS"i
+STREAMS: "STREAMS"i
+STAGES: "STAGES"i
+DATABASES: "DATABASES"i
+SCHEMAS: "SCHEMAS"i
+ELSE: "ELSE"i
+END: "END"i
+ANY: "ANY"i
+SOME: "SOME"i
+DISTINCT: "DISTINCT"i
+CASE: "CASE"i
+COPY: "COPY"i
 
-SEMICOLON: ";" // Define semicolon as a terminal
+// CREATE FUNCTION specific
+TEMP: "TEMP"i
+TEMPORARY: "TEMPORARY"i
+SECURE: "SECURE"i
+AGGREGATE: "AGGREGATE"i
+// RETURNS already exists
+// TABLE already exists
+CALLED: "CALLED"i
+STRICT: "STRICT"i
+VOLATILE: "VOLATILE"i
+IMMUTABLE: "IMMUTABLE"i
+RUNTIME_VERSION: "RUNTIME_VERSION"i
+PACKAGES: "PACKAGES"i
+IMPORTS: "IMPORTS"i
+HANDLER: "HANDLER"i
+EXTERNAL_ACCESS_INTEGRATIONS: "EXTERNAL_ACCESS_INTEGRATIONS"i
+SECRETS: "SECRETS"i
+TARGET_PATH: "TARGET_PATH"i
+GRANTS: "GRANTS"i
+
+// Languages
+JAVA: "JAVA"i
+JAVASCRIPT: "JAVASCRIPT"i
+PYTHON: "PYTHON"i
+SCALA: "SCALA"i
+// SQL already exists (as keyword, need to ensure it's handled)
+SQL: "SQL"i
+
+SEMICOLON: ";"
+DOT: "."
+COMMA: ","
+LPAREN: "("
+RPAREN: ")"
+EQ: "="
+NE: "!=" | "<>"
+LT: "<"
+GT: ">"
+LE: "<="
+GE: ">="
+PLUS: "+"
+MINUS: "-"
+STAR: "*"
+SLASH: "/"
+COLON: ":"
+DOUBLE_COLON: "::"
+LBRACKET: "["
+RBRACKET: "]"
 
 // Define a terminal for single-quoted strings, handling escaped single quotes
-SINGLE_QUOTED_STRING: /'([^\'\\]|\\.)*'/
+SINGLE_QUOTED_STRING: /'([^']|'')*'/
+DOLLAR_QUOTED_STRING: /\$\$.*?\$\$/s
+STAGE_PATH: /@[a-zA-Z0-9_\.\-\/]+/
 
 // Common Rules
-qualified_name: IDENTIFIER ( "." IDENTIFIER )*
+qualified_name: IDENTIFIER ( DOT IDENTIFIER )*
+
+// Define simple literal types early
+string: SINGLE_QUOTED_STRING 
+number: SIGNED_NUMBER
+boolean: TRUE | FALSE
 
 // Start rule - Use the SEMICOLON terminal
 start: (_statement SEMICOLON? )*
@@ -107,11 +207,15 @@ statement: select_stmt
          | dml_stmt
          | ddl_stmt
          | use_stmt
+         | copy_into_stmt
+         | grant_stmt
+         | revoke_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
         | update_stmt
         | delete_stmt
+        | merge_stmt
 
 // DDL Statements
 ddl_stmt: create_stmt
@@ -122,30 +226,47 @@ ddl_stmt: create_stmt
         | describe_stmt
 
 // SELECT statement
-select_stmt: SELECT select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
-select_list: "*" | select_item ("," select_item)*
+select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
+select_list: STAR | select_item ( COMMA select_item)*
 select_item: expr (AS? IDENTIFIER)?
-from_clause: FROM table_ref ("," table_ref)*
-table_ref: qualified_name (AS? IDENTIFIER)?
-         | "(" select_stmt ")" (AS? IDENTIFIER)?
-         | table_ref join_type? JOIN table_ref (ON expr | USING "(" qualified_name ("," qualified_name)* ")")?
-join_type: "INNER"i | "LEFT"i | "RIGHT"i | "FULL"i | "CROSS"i
+from_clause: FROM base_table_ref join_clause* // Explicit base table + joins
+
+// Removed old recursive table_ref rule
+
+base_table_ref: qualified_name (AS? IDENTIFIER)?
+               | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
+
+join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
+
+join_type: INNER | LEFT | RIGHT | FULL | CROSS
 where_clause: WHERE expr
-group_clause: GROUP BY expr ("," expr)*
+group_clause: GROUP BY expr ( COMMA expr)*
 having_clause: HAVING expr
-order_clause: ORDER BY order_item ("," order_item)*
-order_item: expr ("ASC"i | "DESC"i)?
-limit_clause: LIMIT UNSIGNED_INTEGER
+order_clause: ORDER BY order_item ( COMMA order_item)*
+order_item: expr (ASC | DESC)?
+limit_clause: LIMIT number
 
 // INSERT statement
-insert_stmt: INSERT INTO qualified_name ("(" qualified_name ("," qualified_name)* ")")? VALUES "(" expr ("," expr)* ")"
-           | INSERT INTO qualified_name ("(" qualified_name ("," qualified_name)* ")")? select_stmt
+insert_stmt: INSERT INTO qualified_name (LPAREN qualified_name ( COMMA qualified_name)* RPAREN)? VALUES value_tuple ( COMMA value_tuple)*
+           | INSERT INTO qualified_name (LPAREN qualified_name ( COMMA qualified_name)* RPAREN)? select_stmt
+
+value_tuple: LPAREN expr ( COMMA expr)* RPAREN
 
 // UPDATE statement
-update_stmt: UPDATE qualified_name SET qualified_name "=" expr ("," qualified_name "=" expr)* where_clause?
+update_stmt: UPDATE qualified_name SET qualified_name EQ expr ( COMMA qualified_name EQ expr)* where_clause?
 
 // DELETE statement
 delete_stmt: DELETE FROM qualified_name where_clause?
+
+// MERGE statement (Basic structure)
+merge_stmt: MERGE INTO qualified_name (AS? IDENTIFIER)? USING base_table_ref (AS? IDENTIFIER)? ON expr (when_matched_clause | when_not_matched_clause)* // Target ... Source ... Join condition ... Clauses
+
+when_matched_clause: WHEN MATCHED (AND expr)? THEN (merge_update_clause | merge_delete_clause)
+when_not_matched_clause: WHEN NOT MATCHED (AND expr)? THEN merge_insert_clause
+
+merge_update_clause: UPDATE SET qualified_name EQ expr ( COMMA qualified_name EQ expr)*
+merge_delete_clause: DELETE
+merge_insert_clause: INSERT (LPAREN qualified_name ( COMMA qualified_name)* RPAREN)? VALUES value_tuple
 
 // CREATE statements
 create_stmt: create_table_stmt
@@ -156,39 +277,88 @@ create_stmt: create_table_stmt
            | create_stage_stmt
            | create_database_stmt
            | create_schema_stmt
+           | create_function_stmt
+           | create_procedure_stmt
 
-create_table_stmt: CREATE (OR REPLACE)? TABLE qualified_name ("(" column_def ("," column_def)* ")")?
-column_def: qualified_name data_type (column_constraint)*
-data_type: IDENTIFIER ("(" UNSIGNED_INTEGER ("," UNSIGNED_INTEGER)? ")")?
-column_constraint: NOT NULL | NULL | PRIMARY KEY | UNIQUE | DEFAULT expr | REFERENCES qualified_name
+create_table_stmt: CREATE (OR REPLACE)? TABLE qualified_name (LPAREN column_def ( COMMA column_def)* RPAREN)?
+column_def: qualified_name data_type autoincrement_clause? (column_constraint)*
+data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)?
+
+// Revert to the simplest constraint definition without extra grouping
+column_constraint: NOT NULL 
+                 | NULL 
+                 | PRIMARY KEY 
+                 | UNIQUE 
+                 | DEFAULT expr 
+                 | REFERENCES qualified_name
+
+// Rule for AUTOINCREMENT/IDENTITY
+autoincrement_clause: (AUTOINCREMENT | IDENTITY) (START number INCREMENT number)?
 
 create_view_stmt: CREATE (OR REPLACE)? VIEW qualified_name AS select_stmt
 
 create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE (IF NOT EXISTS)? qualified_name warehouse_param*
-warehouse_param: WAREHOUSE_SIZE "=" (IDENTIFIER | string)
-               | AUTO_SUSPEND "=" UNSIGNED_INTEGER
-               | AUTO_RESUME "=" boolean
-               | INITIALLY_SUSPENDED "=" boolean
+warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
+               | AUTO_SUSPEND EQ number
+               | AUTO_RESUME EQ boolean
+               | INITIALLY_SUSPENDED EQ boolean
 
 create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS _statement
-task_param: WAREHOUSE "=" qualified_name
-          | SCHEDULE "=" string
-          | AFTER "=" qualified_name
+task_param: WAREHOUSE EQ qualified_name
+          | SCHEDULE EQ SINGLE_QUOTED_STRING
+          | AFTER EQ qualified_name
 
 create_stream_stmt: CREATE (OR REPLACE)? STREAM qualified_name ON (TABLE | STAGE) qualified_name stream_param*
-stream_param: APPEND_ONLY "=" boolean
-            | SHOW_INITIAL_ROWS "=" boolean
+stream_param: APPEND_ONLY EQ boolean
+            | SHOW_INITIAL_ROWS EQ boolean
 
 create_stage_stmt: CREATE (OR REPLACE)? STAGE qualified_name stage_param*
-stage_param: URL "=" string
-           | FILE_FORMAT "=" (qualified_name | "(" file_format_option+ ")")
+stage_param: URL EQ SINGLE_QUOTED_STRING
+           | FILE_FORMAT EQ (qualified_name | LPAREN file_format_option+ RPAREN)
 
 // Helper rule for file format options within parentheses
-file_format_option: IDENTIFIER "=" (string | IDENTIFIER | boolean | number)
+file_format_option: IDENTIFIER EQ (SINGLE_QUOTED_STRING | IDENTIFIER | boolean | number)
 
 create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name
 
-create_schema_stmt: CREATE (OR REPLACE)? SCHEMA qualified_name
+create_schema_stmt: CREATE (OR REPLACE)? SCHEMA (IF NOT EXISTS)? qualified_name
+
+// Dedicated rules for the RETURNS clause structure
+returns_clause: RETURNS (data_type | returns_table)
+returns_table: TABLE LPAREN column_def ( COMMA column_def)* RPAREN
+
+null_handling: CALLED ON NULL INPUT | (RETURNS NULL ON NULL INPUT | STRICT)
+volatility: VOLATILE | IMMUTABLE
+
+// Helper rule for COPY GRANTS option
+copy_grants_option: COPY GRANTS
+
+// --- CREATE PROCEDURE ---
+create_procedure_stmt: CREATE (OR REPLACE)? PROCEDURE qualified_name LPAREN [argument_def (COMMA argument_def)*] RPAREN RETURNS data_type LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) AS procedure_body // TODO: Add other procedure options like EXECUTE AS, COMMENT, NULL handling etc.
+
+procedure_body: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING
+
+// --- CREATE FUNCTION (Re-refactored with helper rules) ---
+create_function_stmt: CREATE create_function_mods qualified_name function_args function_returns function_body
+
+create_function_mods: (OR REPLACE)? (TEMP | TEMPORARY)? SECURE? (FUNCTION | AGGREGATE FUNCTION) (IF NOT EXISTS)?
+
+function_args: LPAREN [argument_def ( COMMA argument_def)*] RPAREN
+
+function_returns: RETURNS (data_type | table_return_type)
+
+table_return_type: TABLE LPAREN column_def ( COMMA column_def)* RPAREN
+
+function_body: LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) function_properties AS function_impl
+
+function_properties: [CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT] [VOLATILE | IMMUTABLE] function_options
+
+function_options: [RUNTIME_VERSION EQ SINGLE_QUOTED_STRING] [PACKAGES EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [IMPORTS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [HANDLER EQ IDENTIFIER] [EXTERNAL_ACCESS_INTEGRATIONS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [SECRETS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [TARGET_PATH EQ SINGLE_QUOTED_STRING] [copy_grants_option]
+
+function_impl: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING
+
+// Argument definition with optional default
+argument_def: IDENTIFIER data_type [DEFAULT expr]
 
 // ALTER statements
 alter_stmt: alter_table_stmt
@@ -197,9 +367,11 @@ alter_stmt: alter_table_stmt
           | alter_stream_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
-alter_table_action: ADD COLUMN qualified_name data_type
+alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
                   | DROP COLUMN qualified_name
                   | MODIFY COLUMN qualified_name data_type
+                  | RENAME COLUMN qualified_name TO qualified_name
+                  | RENAME TO qualified_name
 
 alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
@@ -207,19 +379,19 @@ alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
                       | RESUME
 
 // Helper rule for SET items in ALTER WAREHOUSE
-warehouse_set_item: warehouse_param_key "=" warehouse_param_value
+warehouse_set_item: warehouse_param_key EQ warehouse_param_value
 
 // Define keys and value types allowed in SET
 warehouse_param_key: WAREHOUSE_SIZE | AUTO_SUSPEND | AUTO_RESUME | INITIALLY_SUSPENDED
-warehouse_param_value: IDENTIFIER | string | UNSIGNED_INTEGER | boolean
+warehouse_param_value: IDENTIFIER | SINGLE_QUOTED_STRING | number | boolean
 
 alter_task_stmt: ALTER TASK qualified_name alter_task_action
-alter_task_action: SET WAREHOUSE "=" qualified_name
-                 | SET SCHEDULE "=" string
+alter_task_action: SET WAREHOUSE EQ qualified_name
+                 | SET SCHEDULE EQ SINGLE_QUOTED_STRING
                  | SUSPEND
                  | RESUME
 
-alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY "=" boolean
+alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY EQ boolean
 
 // DROP statements
 drop_stmt: DROP object_type qualified_name
@@ -230,7 +402,7 @@ truncate_stmt: TRUNCATE TABLE qualified_name
 
 // SHOW statement
 show_stmt: SHOW object_types
-object_types: "TABLES"i | "VIEWS"i | "WAREHOUSES"i | "TASKS"i | "STREAMS"i | "STAGES"i | "DATABASES"i | "SCHEMAS"i
+object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
 
 // DESCRIBE statement
 describe_stmt: (DESCRIBE | DESC) object_type qualified_name
@@ -238,32 +410,74 @@ describe_stmt: (DESCRIBE | DESC) object_type qualified_name
 // USE statement (Example for WAREHOUSE)
 use_stmt: USE object_type qualified_name
 
-// Expressions
-expr: literal
-    | qualified_name
-    | function_call
-    | "(" expr ")"
-    | expr binary_op expr
-    | unary_op expr
-    | expr LIKE string
-    | expr IN "(" expr ("," expr)* ")"
-    | expr IS NULL
-    | expr IS NOT NULL
+// COPY INTO statement
+copy_into_stmt: COPY INTO qualified_name FROM STAGE_PATH copy_option*
 
-// Function calls
-function_call: qualified_name "(" (expr ("," expr)*)? ")"
+copy_option: file_format_clause | on_error_clause
 
-// Operators
-binary_op: "+" | "-" | "*" | "/" | "=" | "!=" | "<>" | "<" | ">" | "<=" | ">=" | AND | OR
-unary_op: NOT | "+" | "-"
+file_format_clause: FILE_FORMAT EQ LPAREN file_format_option+ RPAREN // Reuses existing option rule
+
+on_error_clause: ON_ERROR EQ SINGLE_QUOTED_STRING
+
+// GRANT/REVOKE statements (Basic)
+grant_stmt: GRANT privilege_list ON object_specification TO grantee_type qualified_name
+revoke_stmt: REVOKE privilege_list ON object_specification FROM grantee_type qualified_name
+
+privilege_list: ALL PRIVILEGES? | privilege ( COMMA privilege )*
+
+privilege: SELECT | INSERT | UPDATE | DELETE | USAGE | CREATE | ALTER | DROP // Add more as needed
+
+object_specification: object_type qualified_name | DATABASE qualified_name | SCHEMA qualified_name | FUTURE object_type IN (DATABASE | SCHEMA) qualified_name
+
+grantee_type: ROLE // Add USER, SHARE etc. if needed
+
+// --- Expressions (Revised with Explicit Precedence) ---
+expr: disjunction
+
+disjunction: disjunction OR conjunction | conjunction
+
+conjunction: conjunction AND comparison | comparison
+
+comparison: add_sub (comparison_op add_sub)?
+
+add_sub: add_sub (PLUS | MINUS) mul_div | mul_div
+
+mul_div: mul_div (STAR | SLASH) unary | unary
+
+unary: (NOT | PLUS | MINUS) unary | primary_expr
+
+primary_expr: primary_expr LBRACKET expr RBRACKET      // Array access: a[i]
+            | primary_expr COLON IDENTIFIER            // Path access: a:b
+            | primary_expr DOT IDENTIFIER              // Path access: a.b (Snowflake allows this after first :) 
+            | primary_expr DOUBLE_COLON data_type    // Cast: a::type
+            | atom                                     // Base case
+
+atom: literal
+     | qualified_name
+     | function_call
+     | cast_expr
+     | case_expr
+     | LPAREN expr RPAREN
+     | exists_expr
+     | quantified_comparison
+
+// Operators split by type
+comparison_op: EQ | NE | LT | GT | LE | GE | LIKE | IN | IS | BETWEEN
+// binary_op rule removed as operators are handled at specific precedence levels
+// unary_op rule removed as operators are handled in the 'unary' rule
+
+cast_expr: CAST LPAREN expr AS data_type RPAREN
+case_expr: CASE (expr)? (WHEN expr THEN expr)+ (ELSE expr)? END
+exists_expr: EXISTS LPAREN select_stmt RPAREN
+quantified_comparison: expr comparison_op (ANY | ALL | SOME) LPAREN select_stmt RPAREN
+
+// Function calls (Refactored)
+function_call: qualified_name LPAREN func_args? RPAREN
+func_args: DISTINCT expr_list | expr_list
+expr_list: expr ( COMMA expr )*
 
 // Literals
 literal: string
-       | number 
+       | number
        | boolean
        | NULL
-
-// Redefine 'string' rule to use our single-quoted terminal
-string: SINGLE_QUOTED_STRING 
-number: SIGNED_NUMBER
-boolean: TRUE | FALSE

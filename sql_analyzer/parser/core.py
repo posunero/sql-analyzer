@@ -18,7 +18,7 @@ try:
     # parser='lalr' is a good balance of speed and power
     sql_parser = Lark.open(
         grammar_path,
-        parser='lalr',
+        parser='earley',
         propagate_positions=True,
         maybe_placeholders=False,
         start='start' # Corrected: Use the 'start' rule from snowflake.lark
