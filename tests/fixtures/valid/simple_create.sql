@@ -1,0 +1,1 @@
+CREATE TABLE db1.schema1.new_table (col1 INT); 

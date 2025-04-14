@@ -35,6 +35,7 @@ IS: "IS"i
 JOIN: "JOIN"i
 ON: "ON"i
 USING: "USING"i
+USE: "USE"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -88,12 +89,19 @@ RETURNS: "RETURNS"i
 LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
 
-// Start rule
-start: statement ";"?
+SEMICOLON: ";" // Define semicolon as a terminal
+
+// Common Rules
+qualified_name: IDENTIFIER ( "." IDENTIFIER )*
+
+// Start rule - Use the SEMICOLON terminal
+start: (_statement SEMICOLON? )*
+_statement: statement // Alias to avoid left-recursion issues if statement calls start indirectly
 
 statement: select_stmt
          | dml_stmt
          | ddl_stmt
+         | use_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
@@ -111,11 +119,11 @@ ddl_stmt: create_stmt
 // SELECT statement
 select_stmt: SELECT select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
 select_list: "*" | select_item ("," select_item)*
-select_item: expr (AS IDENTIFIER)?
+select_item: expr (AS? IDENTIFIER)?
 from_clause: FROM table_ref ("," table_ref)*
-table_ref: IDENTIFIER (AS IDENTIFIER)?
-         | "(" select_stmt ")" (AS IDENTIFIER)?
-         | table_ref join_type? JOIN table_ref (ON expr | USING "(" IDENTIFIER ("," IDENTIFIER)* ")")?
+table_ref: qualified_name (AS? IDENTIFIER)?
+         | "(" select_stmt ")" (AS? IDENTIFIER)?
+         | table_ref join_type? JOIN table_ref (ON expr | USING "(" qualified_name ("," qualified_name)* ")")?
 join_type: "INNER"i | "LEFT"i | "RIGHT"i | "FULL"i | "CROSS"i
 where_clause: WHERE expr
 group_clause: GROUP BY expr ("," expr)*
@@ -125,14 +133,14 @@ order_item: expr ("ASC"i | "DESC"i)?
 limit_clause: LIMIT UNSIGNED_INTEGER
 
 // INSERT statement
-insert_stmt: INSERT INTO IDENTIFIER ("(" IDENTIFIER ("," IDENTIFIER)* ")")? VALUES "(" expr ("," expr)* ")"
-           | INSERT INTO IDENTIFIER ("(" IDENTIFIER ("," IDENTIFIER)* ")")? select_stmt
+insert_stmt: INSERT INTO qualified_name ("(" qualified_name ("," qualified_name)* ")")? VALUES "(" expr ("," expr)* ")"
+           | INSERT INTO qualified_name ("(" qualified_name ("," qualified_name)* ")")? select_stmt
 
 // UPDATE statement
-update_stmt: UPDATE IDENTIFIER SET IDENTIFIER "=" expr ("," IDENTIFIER "=" expr)* where_clause?
+update_stmt: UPDATE qualified_name SET qualified_name "=" expr ("," qualified_name "=" expr)* where_clause?
 
 // DELETE statement
-delete_stmt: DELETE FROM IDENTIFIER where_clause?
+delete_stmt: DELETE FROM qualified_name where_clause?
 
 // CREATE statements
 create_stmt: create_table_stmt
@@ -144,35 +152,35 @@ create_stmt: create_table_stmt
            | create_database_stmt
            | create_schema_stmt
 
-create_table_stmt: CREATE (OR REPLACE)? TABLE IDENTIFIER "(" column_def ("," column_def)* ")"?
-column_def: IDENTIFIER data_type (column_constraint)*
+create_table_stmt: CREATE (OR REPLACE)? TABLE qualified_name ("(" column_def ("," column_def)* ")")?
+column_def: qualified_name data_type (column_constraint)*
 data_type: IDENTIFIER ("(" UNSIGNED_INTEGER ("," UNSIGNED_INTEGER)? ")")?
-column_constraint: NOT NULL | NULL | PRIMARY KEY | UNIQUE | DEFAULT expr | REFERENCES IDENTIFIER
+column_constraint: NOT NULL | NULL | PRIMARY KEY | UNIQUE | DEFAULT expr | REFERENCES qualified_name
 
-create_view_stmt: CREATE (OR REPLACE)? VIEW IDENTIFIER AS select_stmt
+create_view_stmt: CREATE (OR REPLACE)? VIEW qualified_name AS select_stmt
 
-create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE IDENTIFIER warehouse_param*
+create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE qualified_name warehouse_param*
 warehouse_param: WAREHOUSE_SIZE "=" (IDENTIFIER | string)
                | AUTO_SUSPEND "=" UNSIGNED_INTEGER
                | AUTO_RESUME "=" boolean
                | INITIALLY_SUSPENDED "=" boolean
 
-create_task_stmt: CREATE (OR REPLACE)? TASK IDENTIFIER task_param* AS statement
-task_param: WAREHOUSE "=" IDENTIFIER
+create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS _statement
+task_param: WAREHOUSE "=" qualified_name
           | SCHEDULE "=" string
-          | AFTER "=" IDENTIFIER
+          | AFTER "=" qualified_name
 
-create_stream_stmt: CREATE (OR REPLACE)? STREAM IDENTIFIER ON (TABLE | STAGE) IDENTIFIER stream_param*
+create_stream_stmt: CREATE (OR REPLACE)? STREAM qualified_name ON (TABLE | STAGE) qualified_name stream_param*
 stream_param: APPEND_ONLY "=" boolean
             | SHOW_INITIAL_ROWS "=" boolean
 
-create_stage_stmt: CREATE (OR REPLACE)? STAGE IDENTIFIER stage_param*
+create_stage_stmt: CREATE (OR REPLACE)? STAGE qualified_name stage_param*
 stage_param: URL "=" string
-           | FILE_FORMAT "=" (IDENTIFIER | "(" IDENTIFIER "=" (string | IDENTIFIER | boolean) ")")
+           | FILE_FORMAT "=" (qualified_name | "(" qualified_name "=" (string | IDENTIFIER | boolean) ")")
 
-create_database_stmt: CREATE (OR REPLACE)? DATABASE IDENTIFIER
+create_database_stmt: CREATE (OR REPLACE)? DATABASE qualified_name
 
-create_schema_stmt: CREATE (OR REPLACE)? SCHEMA IDENTIFIER
+create_schema_stmt: CREATE (OR REPLACE)? SCHEMA qualified_name
 
 // ALTER statements
 alter_stmt: alter_table_stmt
@@ -180,43 +188,46 @@ alter_stmt: alter_table_stmt
           | alter_task_stmt
           | alter_stream_stmt
 
-alter_table_stmt: ALTER TABLE IDENTIFIER alter_table_action
-alter_table_action: ADD COLUMN IDENTIFIER data_type
-                  | DROP COLUMN IDENTIFIER
-                  | MODIFY COLUMN IDENTIFIER data_type
+alter_table_stmt: ALTER TABLE qualified_name alter_table_action
+alter_table_action: ADD COLUMN qualified_name data_type
+                  | DROP COLUMN qualified_name
+                  | MODIFY COLUMN qualified_name data_type
 
-alter_warehouse_stmt: ALTER WAREHOUSE IDENTIFIER alter_warehouse_action
+alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET WAREHOUSE_SIZE "=" IDENTIFIER
                       | SET AUTO_SUSPEND "=" UNSIGNED_INTEGER
                       | SET AUTO_RESUME "=" boolean
                       | SUSPEND
                       | RESUME
 
-alter_task_stmt: ALTER TASK IDENTIFIER alter_task_action
-alter_task_action: SET WAREHOUSE "=" IDENTIFIER
+alter_task_stmt: ALTER TASK qualified_name alter_task_action
+alter_task_action: SET WAREHOUSE "=" qualified_name
                  | SET SCHEDULE "=" string
                  | SUSPEND
                  | RESUME
 
-alter_stream_stmt: ALTER STREAM IDENTIFIER SET APPEND_ONLY "=" boolean
+alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY "=" boolean
 
 // DROP statements
-drop_stmt: DROP object_type IDENTIFIER
+drop_stmt: DROP object_type qualified_name
 object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
 
 // TRUNCATE statement
-truncate_stmt: TRUNCATE TABLE IDENTIFIER
+truncate_stmt: TRUNCATE TABLE qualified_name
 
 // SHOW statement
 show_stmt: SHOW object_types
 object_types: "TABLES"i | "VIEWS"i | "WAREHOUSES"i | "TASKS"i | "STREAMS"i | "STAGES"i | "DATABASES"i | "SCHEMAS"i
 
 // DESCRIBE statement
-describe_stmt: (DESCRIBE | DESC) object_type IDENTIFIER
+describe_stmt: (DESCRIBE | DESC) object_type qualified_name
+
+// USE statement (Example for WAREHOUSE)
+use_stmt: USE object_type qualified_name
 
 // Expressions
 expr: literal
-    | IDENTIFIER
+    | qualified_name
     | function_call
     | "(" expr ")"
     | expr binary_op expr
@@ -227,7 +238,7 @@ expr: literal
     | expr IS NOT NULL
 
 // Function calls
-function_call: IDENTIFIER "(" (expr ("," expr)*)? ")"
+function_call: qualified_name "(" (expr ("," expr)*)? ")"
 
 // Operators
 binary_op: "+" | "-" | "*" | "/" | "=" | "!=" | "<>" | "<" | ">" | "<=" | ">=" | AND | OR

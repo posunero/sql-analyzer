@@ -3,14 +3,15 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sql-analyzer"
-version = "0.0.1"
+name = "sql_analyzer"
+version = "0.1.0"
 authors = [
-  { name="Your Name", email="you@example.com" },
+  { name="Your Name", email="your.email@example.com" },
 ]
-description = "A short description of the project."
+description = "A tool to analyze Snowflake SQL files."
 readme = "README.md"
 requires-python = ">=3.8"
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -18,5 +19,19 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/sql-analyzer"
-"Bug Tracker" = "https://github.com/yourusername/sql-analyzer/issues"
+"Homepage" = "https://example.com"
+"Bug Tracker" = "https://example.com/issues"
+
+[project.scripts]
+sql-analyzer = "sql_analyzer.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+# Add this section to explicitly find packages
+[tool.setuptools.packages.find]
+where = ["."]  # Search for packages in the root directory
+include = ["sql_analyzer*"]  # Include only the sql_analyzer package and its submodules
+exclude = ["tests*", "memory_bank*"] # Exclude tests and memory_bank

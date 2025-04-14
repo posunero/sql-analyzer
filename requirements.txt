@@ -1,0 +1,3 @@
+lark>=1.0.0
+sqlglot
+pytest>=7.0.0
