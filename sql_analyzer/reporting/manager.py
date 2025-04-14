@@ -2,44 +2,50 @@
 Manages the generation of reports in different formats.
 """
 
-import importlib
-from sql_analyzer.analysis.models import AnalysisResult
+from ..analysis.models import AnalysisResult
+from .formats import text, json # Assuming text.py and json.py exist
 
-SUPPORTED_FORMATS = ["text", "json"] # Add "csv" here if implemented
+# Map format strings to formatter functions
+_FORMATTERS = {
+    'text': text.format_text,
+    'json': json.format_json,
+    # Add other formats like 'csv' here if implemented
+}
+
 
 def generate_report(result: AnalysisResult, format_name: str, verbose: bool = False) -> str:
     """
-    Generates a report string in the specified format using dynamically imported formatters.
+    Generates a report for the given analysis result using the specified format.
 
-    Looks for a `format_report(result: AnalysisResult, verbose: bool)` function
+    Selects the appropriate formatting function based on `format_name` and calls it.
+    The `verbose` flag is passed to the formatter if it's known to support it
+    (currently, only the 'text' formatter uses it).
 
     Args:
-        result: The AnalysisResult object containing analysis data.
+        result: The AnalysisResult object containing the analysis data.
         format_name: The desired output format (e.g., 'text', 'json').
-        verbose: Verbosity flag passed to the formatter (mainly for text).
+        verbose: Flag for generating a more detailed report (used by some formatters).
 
     Returns:
         A string containing the formatted report.
 
     Raises:
-        ValueError: If the requested format is not supported.
-        ImportError: If the formatter module for the given `format_name` cannot be imported.
-        AttributeError: If the formatter module does not have a `format_report` function.
+        ValueError: If the requested format_name is not supported.
     """
-    format_name = format_name.lower()
+    formatter = _FORMATTERS.get(format_name.lower())
 
-    if format_name not in SUPPORTED_FORMATS:
-        raise ValueError(f"Unsupported report format: '{format_name}'. Supported formats: {SUPPORTED_FORMATS}")
+    if formatter:
+        # Pass verbose flag only if the formatter accepts it (currently only text)
+        if format_name.lower() == 'text':
+            return formatter(result, verbose=verbose)
+        else:
+            # Other formatters currently don't use verbose
+            return formatter(result)
+    else:
+        supported_formats = ", ".join(_FORMATTERS.keys())
+        raise ValueError(f"Unsupported report format: '{format_name}'. Supported formats are: {supported_formats}")
 
-    try:
-        # Dynamically import the formatter module
-        formatter_module = importlib.import_module(f".formats.{format_name}", package="sql_analyzer.reporting")
-    except ImportError as e:
-        raise ImportError(f"Could not import formatter for '{format_name}': {e}")
-
-    if not hasattr(formatter_module, "format_report"):
-        raise AttributeError(f"Formatter module '{format_name}' does not have a 'format_report' function.")
-
-    # Call the format_report function from the imported module
-    report_content = formatter_module.format_report(result, verbose=verbose)
-    return report_content 
+# Ensure the directory exists if running this directly (unlikely needed)
+# if __name__ == '__main__':
+#     from pathlib import Path
+#     Path(__file__).parent.mkdir(parents=True, exist_ok=True) 

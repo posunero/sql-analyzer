@@ -3,28 +3,29 @@ Formats analysis results into JSON.
 """
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from sql_analyzer.analysis.models import AnalysisResult
 
-def format_report(result: AnalysisResult, verbose: bool = False) -> str:
-    """Generates a JSON report string from the AnalysisResult.
+class DataclassJSONEncoder(json.JSONEncoder):
+    """A JSON encoder that can handle dataclasses."""
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        # Handle defaultdict specifically if present in AnalysisResult
+        if isinstance(o, dict) and hasattr(o, 'default_factory') and o.default_factory is not None:
+            return dict(o) # Convert defaultdict to regular dict for serialization
+        return super().default(o)
 
-    Args:
-        result: The AnalysisResult object.
-        verbose: Not used in JSON format, but included for consistency.
+def format_json(result: AnalysisResult) -> str:
+    """Formats the analysis result into a JSON string.
 
-    Returns:
-        A string containing the formatted JSON report (indented by 4 spaces).
+    Uses a custom encoder (`DataclassJSONEncoder`) to handle the serialization
+    of the `AnalysisResult` dataclass and its nested `ObjectInfo` dataclasses,
+    as well as converting the `defaultdict` for statement counts.
     """
-    # Convert the dataclass instance (and nested dataclasses) to a dictionary
-    # Handle the defaultdict specifically if needed, or convert it to a regular dict first
-    result_dict = asdict(result)
+    return json.dumps(result, cls=DataclassJSONEncoder, indent=2)
 
-    # Convert defaultdict to dict for clean JSON output
-    if isinstance(result_dict.get('statement_counts'), dict):
-         # Assuming statement_counts is already dict-like or easily convertible
-         pass # It should be handled by asdict if it's a field
-
-    # Convert the dictionary to a JSON string
-    # Use indent for readability
-    return json.dumps(result_dict, indent=4) 
+# Ensure the directory exists if running this directly for testing (unlikely needed)
+# if __name__ == '__main__':
+#     from pathlib import Path
+#     Path(__file__).parent.mkdir(parents=True, exist_ok=True) 

@@ -2,70 +2,88 @@
 Formats analysis results into a human-readable text summary.
 """
 
+import io
 from collections import Counter
-from sql_analyzer.analysis.models import AnalysisResult
+from sql_analyzer.analysis.models import AnalysisResult, ObjectInfo
 
-def format_report(result: AnalysisResult, verbose: bool = False) -> str:
-    """Generates a multi-section, human-readable text report string.
+def format_text(result: AnalysisResult, verbose: bool = False) -> str:
+    """Formats the analysis result into a plain text string.
 
-    Includes sections for Statement Summary, Object Summary, and Error Summary.
+    Includes sections for Statement Summary, Object Summary, and Errors.
 
     Args:
         result: The AnalysisResult object.
-        verbose: If True, includes more detailed information like object locations.
+        verbose: If True, includes a detailed list of objects found with their
+                 file paths and line numbers in the Object Summary section.
 
     Returns:
-        A string containing the formatted multi-line text report.
+        A string containing the formatted text report.
     """
-    report_lines = [] # List to hold lines of the report
+    output = io.StringIO()
 
-    report_lines.append("SQL Analysis Report")
-    report_lines.append("=================")
+    output.write("--- SQL Analysis Report ---\n\n")
 
-    # --- Statement Counts --- 
-    report_lines.append("\n--- Statement Summary ---")
+    # --- Statement Summary ---
+    output.write("== Statement Summary ==\n")
     if result.statement_counts:
         total_statements = sum(result.statement_counts.values())
-        report_lines.append(f"Total Statements Analyzed: {total_statements}")
-        # Sort for consistent output
-        for stmt_type, count in sorted(result.statement_counts.items()):
-            report_lines.append(f"  {stmt_type}: {count}")
+        output.write(f"Total statements analyzed: {total_statements}\n")
+        # Sort by count descending, then by type ascending
+        sorted_counts = sorted(result.statement_counts.items(), key=lambda item: (-item[1], item[0]))
+        for stmt_type, count in sorted_counts:
+            output.write(f"  - {stmt_type}: {count}\n")
     else:
-        report_lines.append("No statements found.")
+        output.write("No statements found.\n")
+    output.write("\n")
 
-    # --- Object Summary --- 
-    report_lines.append("\n--- Object Summary ---")
+    # --- Object Summary ---
+    output.write("== Object Summary ==\n")
     if result.objects_found:
-        report_lines.append(f"Total Objects Found: {len(result.objects_found)}")
-        # Group by type and action for a summarized view
-        object_summary = Counter((obj.object_type, obj.action) for obj in result.objects_found)
-        if object_summary:
-            report_lines.append("\nCounts by Type and Action:")
-            # Sort for consistent output
-            for (obj_type, action), count in sorted(object_summary.items()):
-                report_lines.append(f"  {obj_type} - {action}: {count}")
+        output.write(f"Total objects found: {len(result.objects_found)}\n")
+        # Group by type and action
+        objects_by_type_action = Counter((obj.object_type, obj.action) for obj in result.objects_found)
+        sorted_obj_summary = sorted(objects_by_type_action.items())
 
-        # Detailed object listing (optional based on verbosity)
+        output.write("Summary by Type and Action:\n")
+        for (obj_type, action), count in sorted_obj_summary:
+             output.write(f"  - {action} {obj_type}: {count}\n")
+
+        # Optional: Add detailed list later if needed via verbosity flag
         if verbose:
-            report_lines.append("\nDetailed Object List:")
-            # Sort objects for consistent output, e.g., by type then name
-            sorted_objects = sorted(result.objects_found, key=lambda x: (x.object_type, x.name))
+            output.write("\nDetailed Object List:\n")
+            sorted_objects = sorted(result.objects_found, key=lambda o: (o.file_path, o.line, o.object_type, o.action, o.name))
+            last_file = None
             for obj in sorted_objects:
-                location = f" (Line: {obj.line}, Col: {obj.column})" if obj.line else ""
-                report_lines.append(f"  - {obj.action} {obj.object_type} {obj.name}{location}")
-
+                if obj.file_path != last_file:
+                    output.write(f"  File: {obj.file_path}\n")
+                    last_file = obj.file_path
+                location = f" (Line: {obj.line})" if obj.line > 0 else ""
+                # Indent object details under the file path
+                output.write(f"    - {obj.action} {obj.object_type}: {obj.name}{location}\n")
     else:
-        report_lines.append("No database objects found.")
+        output.write("No database objects found.\n")
+    output.write("\n")
 
-    # --- Error Summary --- 
-    report_lines.append("\n--- Error Summary ---")
+    # --- Error Summary ---
+    output.write("== Errors ==\n")
     if result.errors:
-        report_lines.append(f"Total Errors: {len(result.errors)}")
-        for error in result.errors:
-            report_lines.append(f"  - File: {error.get('file', 'N/A')}, Line: {error.get('line', 'N/A')}: {error.get('message', 'Unknown error')}")
+        output.write(f"Total errors encountered: {len(result.errors)}\n")
+        # Sort errors by file, then by line
+        sorted_errors = sorted(result.errors, key=lambda e: (e.get('file', ''), e.get('line', 0)))
+        for error in sorted_errors:
+            file_info = f"File: {error.get('file', 'N/A')}"
+            line_info = f"Line: {error.get('line', 'N/A')}"
+            message = error.get('message', 'Unknown error')
+            output.write(f"  - [{file_info}, {line_info}]: {message}\n")
     else:
-        report_lines.append("No errors reported.")
+        output.write("No errors encountered.\n")
+    output.write("\n")
 
-    report_lines.append("\n=================")
+    output.write("--- End Report ---\n")
 
-    return "\n".join(report_lines) 
+    return output.getvalue()
+
+# Ensure the directory exists if running this directly for testing (unlikely needed)
+# if __name__ == '__main__':
+#     from pathlib import Path
+#     Path(__file__).parent.mkdir(parents=True, exist_ok=True) 

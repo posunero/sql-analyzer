@@ -1,16 +1,32 @@
 """
-Core parser logic. Loads the grammar and provides parsing functions.
+Core SQL parsing functionality.
+
+This module is responsible for loading the Lark grammar for Snowflake SQL
+and providing a function to parse SQL text into an Abstract Syntax Tree (AST).
+It handles grammar loading errors and basic validation of input text.
 """
 
 import os
+import logging
 from pathlib import Path
 from lark import Lark, Tree, LarkError
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # Determine the absolute path to the grammar file
 # Assumes grammar/ is in the parent directory of this file's directory (parser/)
 grammar_path = Path(__file__).parent.parent / "grammar" / "snowflake.lark"
 
+# --- Lark Parser Configuration ---
+# parser='earley': Chosen for its ability to handle ambiguities, which can be common
+#                    in complex SQL grammars. LALR is faster but less flexible.
+# propagate_positions=True: Essential for obtaining line/column numbers for AST nodes,
+#                           used in error reporting and object location tracking.
+# maybe_placeholders=False: Generally safer for SQL to avoid potential misinterpretations
+#                            of placeholders if they are not explicitly part of the grammar.
+# start='start': Specifies the entry point rule in the snowflake.lark grammar.
+# -------------------------------
 try:
     # Attempt to load the grammar file relative to this script's location
     # Using propagate_positions=True to get line/column info for errors/analysis
@@ -44,9 +60,13 @@ def parse_sql(sql_text: str) -> Optional[Tree]:
 
     Raises:
         LarkError: If parsing fails, containing details about the error.
-                   (This is handled internally and converted to returning None,
-                    but callers might want to know it *can* be raised).
+                   The error is logged, and then the exception is re-raised.
     """
+    # Add check for empty/whitespace input
+    if not sql_text or sql_text.isspace():
+        print("Skipping empty or whitespace-only input.")
+        return None # Return None for empty input, don't raise error
+
     if not sql_parser:
         print("Error: SQL parser not initialized.")
         return None
@@ -56,8 +76,7 @@ def parse_sql(sql_text: str) -> Optional[Tree]:
         return tree
     except LarkError as e:
         # Log the error or handle it as needed
-        # For now, just print it and return None
-        print(f"Error parsing SQL: {e}")
-        # Optionally re-raise or raise a custom exception
-        # raise e
-        return None 
+        # For now, re-raise it so the caller (main loop or test) knows about it.
+        print(f"Error parsing SQL: {e}") # Keep logging for visibility
+        raise e # Re-raise the exception
+        # return None # Don't return None anymore 

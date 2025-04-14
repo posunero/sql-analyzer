@@ -66,26 +66,26 @@ This document outlines the steps to implement the SQL Analyzer project based on 
 
 ## Phase 3: Reporting and Finalization
 
-11. **Implement Report Formatters (`reporting/formats/`):**
+11. [x] **Implement Report Formatters (`reporting/formats/`):**
     *   Implement `text.py`: Format the `AnalysisResult` object into a human-readable summary.
     *   Implement `json.py`: Serialize the `AnalysisResult` object into JSON.
     *   (Optional) Implement `csv.py`.
 
-12. **Implement Report Manager (`reporting/manager.py`):**
+12. [x] **Implement Report Manager (`reporting/manager.py`):**
     *   Create a function `generate_report(result: AnalysisResult, format: str)` that selects the correct formatter based on the `format` string and calls it.
 
-13. **Complete `main.py` Integration:**
+13. [x] **Complete `main.py` Integration:**
     *   Call `reporting.generate_report` at the end of the main loop to print the final results to standard output.
 
-14. **Refine Error Handling and Verbosity:**
-    *   Improve error messages.
-    *   Implement different levels of output detail based on the verbosity flag.
+14. [x] **Refine Error Handling and Verbosity:**
+    *   Improve error messages. (Addressed via logging context)
+    *   Implement different levels of output detail based on the verbosity flag. (Implemented `--verbose-report` for text format object details).
 
-15. **Documentation (`README.md`, Docstrings):**
+15. [x] **Documentation (`README.md`, Docstrings):**
     *   Update `README.md` with detailed usage instructions, options, and examples.
     *   Add comprehensive docstrings to all modules, classes, and functions.
 
-16. **Comprehensive Testing (`tests/`):**
+16. [x] **Comprehensive Testing (`tests/`):**
     *   Add more complex test fixtures (SQL files).
     *   Expand test coverage for parsing edge cases, analysis logic, and reporting formats.
 

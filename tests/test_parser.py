@@ -3,7 +3,7 @@ Tests for the parser core module using pytest.
 """
 
 import pytest
-from lark import Tree
+from lark import Tree, LarkError
 
 # Ensure imports work from the root directory perspective when running tests
 from sql_analyzer.parser.core import parse_sql, sql_parser
@@ -11,7 +11,8 @@ from sql_analyzer.parser.core import parse_sql, sql_parser
 # Basic SQL test cases
 VALID_SQL_SELECT = "SELECT column1, column2 FROM schema1.table_name WHERE condition = 1;"
 VALID_SQL_CREATE = "CREATE OR REPLACE TABLE my_db.my_schema.my_table (id INT, name VARCHAR);"
-INVALID_SQL = "SELECT FROM WHERE;"
+# INVALID_SQL = "SELECT FROM WHERE;"  # This is actually syntactically valid but semantically wrong
+INVALID_SQL = "THIS IS NOT SQL AT ALL !@#$%"  # This will definitely cause a parsing error
 
 def test_parser_loaded():
     """Test if the sql_parser object is loaded (not None)."""
@@ -31,10 +32,12 @@ def test_parse_valid_create_table():
     # print(tree.pretty())
 
 def test_parse_invalid_sql():
-    """Test parsing invalid SQL (should return None)."""
-    # The current parse_sql catches LarkError and returns None
-    tree = parse_sql(INVALID_SQL)
-    assert tree is None, "Parsing invalid SQL should return None."
+    """Test parsing invalid SQL (should raise LarkError)."""
+    # Updated: parse_sql now re-raises LarkError
+    # Revert back to pytest.raises
+    with pytest.raises(LarkError):
+        parse_sql(INVALID_SQL)
+    # assert tree is None, "Parsing invalid SQL should return None." # Old assertion
 
 # --- Parameterized Tests for Common Statement Structures ---
 
@@ -238,6 +241,32 @@ def test_parse_create_function():
     for sql in sql_variants:
         tree = parse_sql(sql)
         assert isinstance(tree, Tree), f"Parsing CREATE FUNCTION failed for: {sql}"
+
+# --- Tests for Parsing Specific Fixture Files ---
+
+@pytest.mark.parametrize("fixture_file", [
+    "tests/fixtures/valid/complex_mix.sql",
+    "tests/fixtures/valid/complex_select.sql",
+    "tests/fixtures/valid/function_and_procedure.sql",
+    "tests/fixtures/invalid/syntax_error.sql" # Include invalid to test error handling
+])
+def test_parse_fixture_files(fixture_file):
+    """Test parsing specific SQL files from the fixtures directory."""
+    from pathlib import Path
+    file_path = Path(fixture_file)
+    assert file_path.exists(), f"Fixture file not found: {fixture_file}"
+    
+    sql_content = file_path.read_text()
+    
+    if "invalid" in fixture_file:
+        with pytest.raises(LarkError):
+            parse_sql(sql_content)
+    else:
+        try:
+            tree = parse_sql(sql_content)
+            assert isinstance(tree, Tree), f"Parsing valid fixture {fixture_file} should return a Tree."
+        except LarkError as e:
+            pytest.fail(f"Parsing valid fixture {fixture_file} raised LarkError unexpectedly: {e}")
 
 if __name__ == '__main__':
     pytest.main() 

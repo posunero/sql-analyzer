@@ -149,7 +149,7 @@ def main():
         report_output = reporting_manager.generate_report(
             result=overall_result,
             format_name=args.format,
-            verbose=args.verbose_report # Use the new flag here
+            verbose=args.verbose_report
         )
         print(report_output) # Print to standard output
         # TODO: Add logic to write to file if args.output is set

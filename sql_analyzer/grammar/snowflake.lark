@@ -7,6 +7,12 @@
 %ignore WS
 %ignore /--[^\n]*/
 
+// Comments and Whitespace
+%ignore WS
+%ignore /--[^\n]*/    // Ignore single-line comments
+C_COMMENT: /\/\*[^*]*\*+(?:[^\/][^*]*\*+)*\//s // Define C-style comments - fixed syntax
+%ignore C_COMMENT  // Ignore C-style comments
+
 // Define all terminals (keywords) as uppercase
 SELECT: "SELECT"i
 FROM: "FROM"i
@@ -190,6 +196,7 @@ RBRACKET: "]"
 SINGLE_QUOTED_STRING: /'([^']|'')*'/
 DOLLAR_QUOTED_STRING: /\$\$.*?\$\$/s
 STAGE_PATH: /@[a-zA-Z0-9_\.\-\/]+/
+SINGLE_QUOTED_STAGE_PATH: /'@[a-zA-Z0-9_\.\-\/]+'/
 
 // Common Rules
 qualified_name: IDENTIFIER ( DOT IDENTIFIER )*
@@ -200,7 +207,15 @@ number: SIGNED_NUMBER
 boolean: TRUE | FALSE
 
 // Start rule - Use the SEMICOLON terminal
-start: (_statement SEMICOLON? )*
+start: (_statement_wrapper SEMICOLON?)*
+_statement_wrapper: with_clause? _statement // Allow optional WITH before a statement
+
+// A CTE definition
+cte: IDENTIFIER AS LPAREN select_stmt RPAREN
+
+// The WITH clause containing one or more CTEs
+with_clause: WITH cte ( COMMA cte )*
+
 _statement: statement // Alias to avoid left-recursion issues if statement calls start indirectly
 
 statement: select_stmt
@@ -338,8 +353,8 @@ create_procedure_stmt: CREATE (OR REPLACE)? PROCEDURE qualified_name LPAREN [arg
 
 procedure_body: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING
 
-// --- CREATE FUNCTION (Re-refactored with helper rules) ---
-create_function_stmt: CREATE create_function_mods qualified_name function_args function_returns function_body
+// --- CREATE FUNCTION (Revised Structure) ---
+create_function_stmt: CREATE create_function_mods qualified_name function_args function_returns (function_properties (AS function_impl)? | AS function_impl)
 
 create_function_mods: (OR REPLACE)? (TEMP | TEMPORARY)? SECURE? (FUNCTION | AGGREGATE FUNCTION) (IF NOT EXISTS)?
 
@@ -349,13 +364,29 @@ function_returns: RETURNS (data_type | table_return_type)
 
 table_return_type: TABLE LPAREN column_def ( COMMA column_def)* RPAREN
 
-function_body: LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) function_properties AS function_impl
+// Properties that can appear between RETURNS and AS (zero or more)
+function_properties: function_property+
 
-function_properties: [CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT] [VOLATILE | IMMUTABLE] function_options
-
-function_options: [RUNTIME_VERSION EQ SINGLE_QUOTED_STRING] [PACKAGES EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [IMPORTS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [HANDLER EQ IDENTIFIER] [EXTERNAL_ACCESS_INTEGRATIONS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [SECRETS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN] [TARGET_PATH EQ SINGLE_QUOTED_STRING] [copy_grants_option]
+function_property: LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) // Language is now just another property
+                 | CALLED ON NULL INPUT
+                 | RETURNS NULL ON NULL INPUT
+                 | STRICT
+                 | VOLATILE
+                 | IMMUTABLE
+                 | RUNTIME_VERSION EQ SINGLE_QUOTED_STRING
+                 | PACKAGES EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | IMPORTS EQ LPAREN import_location ( COMMA import_location)* RPAREN
+                 | HANDLER EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
+                 | EXTERNAL_ACCESS_INTEGRATIONS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | SECRETS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | TARGET_PATH EQ SINGLE_QUOTED_STRING
+                 | copy_grants_option
+                 | COMMENT EQ SINGLE_QUOTED_STRING // Add COMMENT property here
 
 function_impl: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING
+
+// Helper for import locations
+import_location: SINGLE_QUOTED_STRING | SINGLE_QUOTED_STAGE_PATH
 
 // Argument definition with optional default
 argument_def: IDENTIFIER data_type [DEFAULT expr]
@@ -394,7 +425,7 @@ alter_task_action: SET WAREHOUSE EQ qualified_name
 alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY EQ boolean
 
 // DROP statements
-drop_stmt: DROP object_type qualified_name
+drop_stmt: DROP object_type (IF EXISTS)? qualified_name
 object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
 
 // TRUNCATE statement
