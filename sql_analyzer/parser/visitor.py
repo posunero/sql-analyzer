@@ -100,6 +100,50 @@ class SQLVisitor(Visitor):
                  # Action is ALTER
                 self.engine.record_object(table_name, "TABLE", "ALTER", qual_name)
 
+    def create_view_stmt(self, tree):
+        """Extract the view being created and referenced tables."""
+        self._debug_tree(tree, "Create View Statement")
+
+        # Find the view name (first qualified_name)
+        view_qual_name = self._find_first_by_name(tree, 'qualified_name')
+        if view_qual_name:
+            view_name = self._extract_qualified_name(view_qual_name)
+            if view_name:
+                self._debug(f"Found view creation: {view_name}")
+                self.engine.record_object(view_name, "VIEW", "CREATE", view_qual_name)
+
+    def create_database_stmt(self, tree):
+        """Extract the database being created."""
+        self._debug_tree(tree, "Create Database Statement")
+        qual_name = self._find_first_by_name(tree, 'qualified_name')
+        if qual_name:
+            db_name = self._extract_qualified_name(qual_name)
+            if db_name:
+                self._debug(f"Found database creation: {db_name}")
+                self.engine.record_object(db_name, "DATABASE", "CREATE", qual_name)
+
+    def alter_warehouse_stmt(self, tree):
+        """Extract the warehouse being altered."""
+        self._debug_tree(tree, "Alter Warehouse Statement")
+        qual_name = self._find_first_by_name(tree, 'qualified_name')
+        if qual_name:
+            wh_name = self._extract_qualified_name(qual_name)
+            if wh_name:
+                self._debug(f"Found warehouse alteration: {wh_name}")
+                self.engine.record_object(wh_name, "WAREHOUSE", "ALTER", qual_name)
+                
+    def update_stmt(self, tree):
+        """Extract the table being updated."""
+        self._debug_tree(tree, "Update Statement")
+        # The first qualified_name is the table being updated
+        qual_name = self._find_first_by_name(tree, 'qualified_name')
+        if qual_name:
+            table_name = self._extract_qualified_name(qual_name)
+            if table_name:
+                self._debug(f"Found table update: {table_name}")
+                # Record as UPDATE action (can refine later if needed)
+                self.engine.record_object(table_name, "TABLE", "UPDATE", qual_name)
+
     def drop_stmt(self, tree):
         """Extract object being dropped from a DROP statement."""
         self._debug_tree(tree, "Drop Statement")

@@ -19,6 +19,15 @@ USE WAREHOUSE my_wh;
 ALTER TABLE t1 ADD COLUMN c2 STRING;
 DROP VIEW v1;
 """
+# --- Add new SQL snippets ---
+SQL_ALTER_WAREHOUSE = "ALTER WAREHOUSE my_test_wh SET WAREHOUSE_SIZE = 'LARGE';"
+SQL_UPDATE = "UPDATE db1.sch1.table_to_update SET col1 = 'new value' WHERE id = 10;"
+SQL_CREATE_REPLACE_VIEW = "CREATE OR REPLACE VIEW my_schema.v_replace AS SELECT colA FROM source_table WHERE id > 100;"
+SQL_DATABASE_OPS = """
+CREATE DATABASE IF NOT EXISTS new_db;
+USE DATABASE new_db;
+DROP DATABASE new_db;
+"""
 
 def analyze_sql(sql: str) -> AnalysisResult:
     """Helper function to parse and analyze SQL."""
@@ -108,6 +117,72 @@ def test_analyze_mixed_statements():
     t1_objects = [o for o in result.objects_found if o.name == 't1']
     assert len(t1_objects) == 2 # Once for SELECT (REFERENCE), once for ALTER
     assert {o.action for o in t1_objects} == {'REFERENCE', 'ALTER'}
+
+# --- Add new test functions ---
+
+def test_analyze_alter_warehouse():
+    """Test analysis of ALTER WAREHOUSE statement."""
+    result = analyze_sql(SQL_ALTER_WAREHOUSE)
+    
+    assert result.statement_counts['ALTER_WAREHOUSE'] == 1
+    assert len(result.statement_counts) == 1
+
+    found_objects = [o for o in result.objects_found if o.object_type == 'WAREHOUSE']
+    assert len(found_objects) == 1
+    assert found_objects[0].name == 'my_test_wh'
+    assert found_objects[0].action == 'ALTER'
+
+def test_analyze_update():
+    """Test analysis of UPDATE statement."""
+    result = analyze_sql(SQL_UPDATE)
+    
+    assert result.statement_counts['UPDATE'] == 1
+    assert len(result.statement_counts) == 1
+
+    found_objects = [o for o in result.objects_found if o.object_type == 'TABLE']
+    assert len(found_objects) == 1
+    assert found_objects[0].name == 'db1.sch1.table_to_update'
+    assert found_objects[0].action == 'UPDATE'
+
+def test_analyze_create_replace_view():
+    """Test analysis of CREATE OR REPLACE VIEW statement."""
+    result = analyze_sql(SQL_CREATE_REPLACE_VIEW)
+    
+    # Engine should record this as CREATE_VIEW
+    assert result.statement_counts['CREATE_VIEW'] == 1 
+    assert len(result.statement_counts) == 1
+
+    # Check created view
+    view_objects = [o for o in result.objects_found if o.object_type == 'VIEW']
+    assert len(view_objects) == 1
+    assert view_objects[0].name == 'my_schema.v_replace'
+    assert view_objects[0].action == 'CREATE'
+
+    # Check referenced table in the view definition
+    table_objects = [o for o in result.objects_found if o.object_type == 'TABLE']
+    assert len(table_objects) == 1
+    assert table_objects[0].name == 'source_table'
+    assert table_objects[0].action == 'REFERENCE'
+
+    assert len(result.objects_found) == 2 # View created, Table referenced
+
+def test_analyze_database_ops():
+    """Test analysis of CREATE, USE, DROP DATABASE statements."""
+    result = analyze_sql(SQL_DATABASE_OPS)
+    
+    assert result.statement_counts['CREATE_DATABASE'] == 1
+    assert result.statement_counts['USE_DATABASE'] == 1
+    assert result.statement_counts['DROP_DATABASE'] == 1
+    assert len(result.statement_counts) == 3
+
+    # Check database objects and actions
+    db_objects = [o for o in result.objects_found if o.object_type == 'DATABASE']
+    assert len(db_objects) == 3
+    
+    actions_on_db = {o.action for o in db_objects if o.name == 'new_db'}
+    assert actions_on_db == {'CREATE', 'USE', 'DROP'}
+
+# --- End new test functions ---
 
 # TODO: Add tests for merging results from multiple analyses
 # TODO: Add tests specifically targeting the visitor's ability to extract

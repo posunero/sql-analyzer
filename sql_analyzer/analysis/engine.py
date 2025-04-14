@@ -84,6 +84,16 @@ class AnalysisEngine:
                 # Add other DDL statement types here if needed (e.g., TRUNCATE)
                 # If no specific DDL type handled, fall through to general handling
 
+            # Correctly Indented: Handle DML statements (UPDATE, INSERT, DELETE)
+            elif statement_type == 'dml_stmt' and statement_node.children and isinstance(statement_node.children[0], Tree):
+                inner_dml_node = statement_node.children[0] # e.g., update_stmt, insert_stmt
+                specific_dml_type = str(inner_dml_node.data)
+                
+                # Clean up the specific DML type name
+                clean_type = specific_dml_type.upper().replace('_STMT', '')
+                self.result.add_statement(clean_type)
+                return # Recorded specific DML type (UPDATE, INSERT, DELETE)
+
             # Handle USE statements (USE WAREHOUSE, USE DATABASE, etc.)
             elif statement_type == 'use_stmt':
                 # Find the 'object_type' child node within use_stmt

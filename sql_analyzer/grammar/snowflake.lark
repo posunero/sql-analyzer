@@ -36,6 +36,8 @@ JOIN: "JOIN"i
 ON: "ON"i
 USING: "USING"i
 USE: "USE"i
+IF: "IF"i
+EXISTS: "EXISTS"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -90,6 +92,9 @@ LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
 
 SEMICOLON: ";" // Define semicolon as a terminal
+
+// Define a terminal for single-quoted strings, handling escaped single quotes
+SINGLE_QUOTED_STRING: /'([^\'\\]|\\.)*'/
 
 // Common Rules
 qualified_name: IDENTIFIER ( "." IDENTIFIER )*
@@ -159,7 +164,7 @@ column_constraint: NOT NULL | NULL | PRIMARY KEY | UNIQUE | DEFAULT expr | REFER
 
 create_view_stmt: CREATE (OR REPLACE)? VIEW qualified_name AS select_stmt
 
-create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE qualified_name warehouse_param*
+create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE (IF NOT EXISTS)? qualified_name warehouse_param*
 warehouse_param: WAREHOUSE_SIZE "=" (IDENTIFIER | string)
                | AUTO_SUSPEND "=" UNSIGNED_INTEGER
                | AUTO_RESUME "=" boolean
@@ -176,9 +181,12 @@ stream_param: APPEND_ONLY "=" boolean
 
 create_stage_stmt: CREATE (OR REPLACE)? STAGE qualified_name stage_param*
 stage_param: URL "=" string
-           | FILE_FORMAT "=" (qualified_name | "(" qualified_name "=" (string | IDENTIFIER | boolean) ")")
+           | FILE_FORMAT "=" (qualified_name | "(" file_format_option+ ")")
 
-create_database_stmt: CREATE (OR REPLACE)? DATABASE qualified_name
+// Helper rule for file format options within parentheses
+file_format_option: IDENTIFIER "=" (string | IDENTIFIER | boolean | number)
+
+create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name
 
 create_schema_stmt: CREATE (OR REPLACE)? SCHEMA qualified_name
 
@@ -194,11 +202,16 @@ alter_table_action: ADD COLUMN qualified_name data_type
                   | MODIFY COLUMN qualified_name data_type
 
 alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
-alter_warehouse_action: SET WAREHOUSE_SIZE "=" IDENTIFIER
-                      | SET AUTO_SUSPEND "=" UNSIGNED_INTEGER
-                      | SET AUTO_RESUME "=" boolean
+alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
                       | SUSPEND
                       | RESUME
+
+// Helper rule for SET items in ALTER WAREHOUSE
+warehouse_set_item: warehouse_param_key "=" warehouse_param_value
+
+// Define keys and value types allowed in SET
+warehouse_param_key: WAREHOUSE_SIZE | AUTO_SUSPEND | AUTO_RESUME | INITIALLY_SUSPENDED
+warehouse_param_value: IDENTIFIER | string | UNSIGNED_INTEGER | boolean
 
 alter_task_stmt: ALTER TASK qualified_name alter_task_action
 alter_task_action: SET WAREHOUSE "=" qualified_name
@@ -250,6 +263,7 @@ literal: string
        | boolean
        | NULL
 
-string: ESCAPED_STRING
+// Redefine 'string' rule to use our single-quoted terminal
+string: SINGLE_QUOTED_STRING 
 number: SIGNED_NUMBER
 boolean: TRUE | FALSE
