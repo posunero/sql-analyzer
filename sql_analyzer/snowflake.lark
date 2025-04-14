@@ -1,0 +1,244 @@
+// Lark grammar for Snowflake SQL
+%import common.CNAME -> IDENTIFIER
+%import common.SIGNED_NUMBER
+%import common.INT -> UNSIGNED_INTEGER
+%import common.ESCAPED_STRING
+%import common.WS
+%ignore WS
+
+// Define all terminals (keywords) as uppercase
+SELECT: "SELECT"i
+FROM: "FROM"i
+WHERE: "WHERE"i
+GROUP: "GROUP"i
+BY: "BY"i
+HAVING: "HAVING"i
+ORDER: "ORDER"i
+LIMIT: "LIMIT"i
+WITH: "WITH"i
+AS: "AS"i
+AND: "AND"i
+OR: "OR"i
+NOT: "NOT"i
+NULL: "NULL"i
+TRUE: "TRUE"i
+FALSE: "FALSE"i
+INSERT: "INSERT"i
+INTO: "INTO"i
+VALUES: "VALUES"i
+UPDATE: "UPDATE"i
+SET: "SET"i
+DELETE: "DELETE"i
+LIKE: "LIKE"i
+IN: "IN"i
+IS: "IS"i
+JOIN: "JOIN"i
+ON: "ON"i
+USING: "USING"i
+
+// DDL Commands
+CREATE: "CREATE"i
+ALTER: "ALTER"i
+DROP: "DROP"i
+TRUNCATE: "TRUNCATE"i
+SHOW: "SHOW"i
+DESC: "DESC"i
+DESCRIBE: "DESCRIBE"i
+COMMENT: "COMMENT"i
+REPLACE: "REPLACE"i
+
+// Object types
+TABLE: "TABLE"i
+VIEW: "VIEW"i
+DATABASE: "DATABASE"i
+SCHEMA: "SCHEMA"i
+WAREHOUSE: "WAREHOUSE"i
+TASK: "TASK"i 
+STREAM: "STREAM"i
+STAGE: "STAGE"i
+PROCEDURE: "PROCEDURE"i
+FUNCTION: "FUNCTION"i
+SEQUENCE: "SEQUENCE"i
+MATERIALIZED: "MATERIALIZED"i
+
+// Column constraints
+PRIMARY: "PRIMARY"i
+KEY: "KEY"i
+FOREIGN: "FOREIGN"i
+REFERENCES: "REFERENCES"i
+UNIQUE: "UNIQUE"i
+DEFAULT: "DEFAULT"i
+COLUMN: "COLUMN"i
+ADD: "ADD"i
+MODIFY: "MODIFY"i
+
+// Snowflake specific
+WAREHOUSE_SIZE: "WAREHOUSE_SIZE"i
+AUTO_SUSPEND: "AUTO_SUSPEND"i
+AUTO_RESUME: "AUTO_RESUME"i
+INITIALLY_SUSPENDED: "INITIALLY_SUSPENDED"i
+SCHEDULE: "SCHEDULE"i
+SUSPEND: "SUSPEND"i
+RESUME: "RESUME"i
+APPEND_ONLY: "APPEND_ONLY"i
+SHOW_INITIAL_ROWS: "SHOW_INITIAL_ROWS"i
+FILE_FORMAT: "FILE_FORMAT"i
+URL: "URL"i
+RETURNS: "RETURNS"i
+LANGUAGE: "LANGUAGE"i
+AFTER: "AFTER"i
+
+// Start rule
+start: statement ";"?
+
+statement: select_stmt
+         | dml_stmt
+         | ddl_stmt
+
+// DML Statements
+dml_stmt: insert_stmt
+        | update_stmt
+        | delete_stmt
+
+// DDL Statements
+ddl_stmt: create_stmt
+        | alter_stmt
+        | drop_stmt
+        | truncate_stmt 
+        | show_stmt
+        | describe_stmt
+
+// SELECT statement
+select_stmt: SELECT select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
+select_list: "*" | select_item ("," select_item)*
+select_item: expr (AS IDENTIFIER)?
+from_clause: FROM table_ref ("," table_ref)*
+table_ref: IDENTIFIER (AS IDENTIFIER)?
+         | "(" select_stmt ")" (AS IDENTIFIER)?
+         | table_ref join_type? JOIN table_ref (ON expr | USING "(" IDENTIFIER ("," IDENTIFIER)* ")")?
+join_type: "INNER"i | "LEFT"i | "RIGHT"i | "FULL"i | "CROSS"i
+where_clause: WHERE expr
+group_clause: GROUP BY expr ("," expr)*
+having_clause: HAVING expr
+order_clause: ORDER BY order_item ("," order_item)*
+order_item: expr ("ASC"i | "DESC"i)?
+limit_clause: LIMIT UNSIGNED_INTEGER
+
+// INSERT statement
+insert_stmt: INSERT INTO IDENTIFIER ("(" IDENTIFIER ("," IDENTIFIER)* ")")? VALUES "(" expr ("," expr)* ")"
+           | INSERT INTO IDENTIFIER ("(" IDENTIFIER ("," IDENTIFIER)* ")")? select_stmt
+
+// UPDATE statement
+update_stmt: UPDATE IDENTIFIER SET IDENTIFIER "=" expr ("," IDENTIFIER "=" expr)* where_clause?
+
+// DELETE statement
+delete_stmt: DELETE FROM IDENTIFIER where_clause?
+
+// CREATE statements
+create_stmt: create_table_stmt
+           | create_view_stmt
+           | create_warehouse_stmt
+           | create_task_stmt
+           | create_stream_stmt
+           | create_stage_stmt
+           | create_database_stmt
+           | create_schema_stmt
+
+create_table_stmt: CREATE (OR REPLACE)? TABLE IDENTIFIER "(" column_def ("," column_def)* ")"?
+column_def: IDENTIFIER data_type (column_constraint)*
+data_type: IDENTIFIER ("(" UNSIGNED_INTEGER ("," UNSIGNED_INTEGER)? ")")?
+column_constraint: NOT NULL | NULL | PRIMARY KEY | UNIQUE | DEFAULT expr | REFERENCES IDENTIFIER
+
+create_view_stmt: CREATE (OR REPLACE)? VIEW IDENTIFIER AS select_stmt
+
+create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE IDENTIFIER warehouse_param*
+warehouse_param: WAREHOUSE_SIZE "=" (IDENTIFIER | string)
+               | AUTO_SUSPEND "=" UNSIGNED_INTEGER
+               | AUTO_RESUME "=" boolean
+               | INITIALLY_SUSPENDED "=" boolean
+
+create_task_stmt: CREATE (OR REPLACE)? TASK IDENTIFIER task_param* AS statement
+task_param: WAREHOUSE "=" IDENTIFIER
+          | SCHEDULE "=" string
+          | AFTER "=" IDENTIFIER
+
+create_stream_stmt: CREATE (OR REPLACE)? STREAM IDENTIFIER ON (TABLE | STAGE) IDENTIFIER stream_param*
+stream_param: APPEND_ONLY "=" boolean
+            | SHOW_INITIAL_ROWS "=" boolean
+
+create_stage_stmt: CREATE (OR REPLACE)? STAGE IDENTIFIER stage_param*
+stage_param: URL "=" string
+           | FILE_FORMAT "=" (IDENTIFIER | "(" IDENTIFIER "=" (string | IDENTIFIER | boolean) ")")
+
+create_database_stmt: CREATE (OR REPLACE)? DATABASE IDENTIFIER
+
+create_schema_stmt: CREATE (OR REPLACE)? SCHEMA IDENTIFIER
+
+// ALTER statements
+alter_stmt: alter_table_stmt
+          | alter_warehouse_stmt
+          | alter_task_stmt
+          | alter_stream_stmt
+
+alter_table_stmt: ALTER TABLE IDENTIFIER alter_table_action
+alter_table_action: ADD COLUMN IDENTIFIER data_type
+                  | DROP COLUMN IDENTIFIER
+                  | MODIFY COLUMN IDENTIFIER data_type
+
+alter_warehouse_stmt: ALTER WAREHOUSE IDENTIFIER alter_warehouse_action
+alter_warehouse_action: SET WAREHOUSE_SIZE "=" IDENTIFIER
+                      | SET AUTO_SUSPEND "=" UNSIGNED_INTEGER
+                      | SET AUTO_RESUME "=" boolean
+                      | SUSPEND
+                      | RESUME
+
+alter_task_stmt: ALTER TASK IDENTIFIER alter_task_action
+alter_task_action: SET WAREHOUSE "=" IDENTIFIER
+                 | SET SCHEDULE "=" string
+                 | SUSPEND
+                 | RESUME
+
+alter_stream_stmt: ALTER STREAM IDENTIFIER SET APPEND_ONLY "=" boolean
+
+// DROP statements
+drop_stmt: DROP object_type IDENTIFIER
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
+
+// TRUNCATE statement
+truncate_stmt: TRUNCATE TABLE IDENTIFIER
+
+// SHOW statement
+show_stmt: SHOW object_types
+object_types: "TABLES"i | "VIEWS"i | "WAREHOUSES"i | "TASKS"i | "STREAMS"i | "STAGES"i | "DATABASES"i | "SCHEMAS"i
+
+// DESCRIBE statement
+describe_stmt: (DESCRIBE | DESC) object_type IDENTIFIER
+
+// Expressions
+expr: literal
+    | IDENTIFIER
+    | function_call
+    | "(" expr ")"
+    | expr binary_op expr
+    | unary_op expr
+    | expr LIKE string
+    | expr IN "(" expr ("," expr)* ")"
+    | expr IS NULL
+    | expr IS NOT NULL
+
+// Function calls
+function_call: IDENTIFIER "(" (expr ("," expr)*)? ")"
+
+// Operators
+binary_op: "+" | "-" | "*" | "/" | "=" | "!=" | "<>" | "<" | ">" | "<=" | ">=" | AND | OR
+unary_op: NOT | "+" | "-"
+
+// Literals
+literal: string
+       | number 
+       | boolean
+       | NULL
+
+string: ESCAPED_STRING
+number: SIGNED_NUMBER
+boolean: TRUE | FALSE
