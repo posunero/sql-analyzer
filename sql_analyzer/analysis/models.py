@@ -6,7 +6,7 @@ from SQL files, such as statement counts, object details, and errors.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, DefaultDict, Optional
+from typing import Dict, List, Set, DefaultDict, Optional, Tuple
 from collections import defaultdict
 
 @dataclass
@@ -40,27 +40,40 @@ class AnalysisResult:
         statement_counts: A dictionary mapping statement types (uppercase strings like
             'CREATE_TABLE', 'SELECT') to their occurrence count.
         objects_found: A list of `ObjectInfo` instances detailing each database object
-            found across all analyzed files.
+            found across all analyzed files. (Note: `object_interactions` provides more detail).
         errors: A list of dictionaries, where each dictionary represents an error
             encountered during parsing or analysis. Each dictionary should have keys:
             `'file'` (str), `'line'` (int|str), and `'message'` (str).
+        destructive_counts: A dictionary mapping destructive statement types (uppercase
+            strings like 'DROP_TABLE', 'DELETE') to their occurrence count.
+        object_interactions: A dictionary mapping (object_type, object_name) tuples
+            to a set of actions (uppercase strings like 'CREATE', 'DELETE', 'SELECT')
+            performed on that object.
         current_file: The path of the current file being processed.
     """
     statement_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
     objects_found: List[ObjectInfo] = field(default_factory=list)
     errors: List[Dict[str, object]] = field(default_factory=list) # Keys: 'file', 'line', 'message'
+    destructive_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
+    object_interactions: DefaultDict[Tuple[str, str], Set[str]] = field(default_factory=lambda: defaultdict(set))
     current_file: str = ""
 
     def merge(self, other_result: 'AnalysisResult') -> None:
         """Merges results from another AnalysisResult object into this one.
 
-        Combines statement counts, object lists, and error lists.
+        Combines statement counts, object lists, error lists, destructive counts,
+        and object interactions.
 
         Args:
             other_result: The `AnalysisResult` object to merge from.
         """
         for stmt_type, count in other_result.statement_counts.items():
             self.statement_counts[stmt_type] += count
+        for stmt_type, count in other_result.destructive_counts.items():
+            self.destructive_counts[stmt_type] += count
+        for obj_key, actions in other_result.object_interactions.items():
+            self.object_interactions[obj_key].update(actions)
+        # Keep objects_found merge for now, though its utility might decrease
         self.objects_found.extend(other_result.objects_found)
         self.errors.extend(other_result.errors)
 
@@ -93,6 +106,8 @@ class AnalysisResult:
         Object type and action are stored in uppercase. Prevents adding duplicate objects
         with the same name, type, action, and file_path.
 
+        Also calls `add_object_interaction`.
+
         Args:
             name: The name of the object.
             object_type: The type of the object (e.g., 'TABLE', 'VIEW').
@@ -101,20 +116,27 @@ class AnalysisResult:
             line: The line number where the object reference starts.
             column: The column number where the object reference starts.
         """
-        # Convert to uppercase for consistent comparison
+        # Convert to uppercase for consistent storage
         object_type = object_type.upper()
         action = action.upper()
         file_path = str(file_path)
 
-        # Check if this object already exists
-        for obj in self.objects_found:
-            if (obj.name == name and 
-                obj.object_type == object_type and 
-                obj.action == action and 
-                obj.file_path == file_path):
-                return  # Skip adding if it's a duplicate
+        # Add to the detailed interaction list
+        self.add_object_interaction(name, object_type, action, line, column)
 
-        # Add the object if it's not a duplicate
+        # Check if this specific object info instance already exists in objects_found
+        # This list might become less primary compared to object_interactions
+        obj_key = (name, object_type, action, file_path)
+        if any(
+            (obj.name == name and
+             obj.object_type == object_type and
+             obj.action == action and
+             obj.file_path == file_path)
+            for obj in self.objects_found
+        ):
+            return # Skip adding duplicate to objects_found
+
+        # Add the object info if it's not a duplicate for this specific action/file combo
         self.objects_found.append(
             ObjectInfo(
                 name=name,
@@ -124,4 +146,36 @@ class AnalysisResult:
                 line=line,
                 column=column
             )
-        ) 
+        )
+
+    def add_destructive_statement(self, statement_type: str) -> None:
+        """Increments the count for a given destructive statement type.
+
+        The statement type is converted to uppercase before counting.
+
+        Args:
+            statement_type: The type of destructive SQL statement (e.g., 'DROP_TABLE').
+        """
+        statement_type = statement_type.upper()
+        self.destructive_counts[statement_type] += 1
+
+    def add_object_interaction(self, name: str, object_type: str, action: str, line: int = 0, column: int = 0) -> None:
+        """Records an interaction (action) with a specific database object.
+
+        Object type and action are stored in uppercase.
+
+        Args:
+            name: The name of the object.
+            object_type: The type of the object (e.g., 'TABLE', 'VIEW').
+            action: The action performed on the object (e.g., 'CREATE', 'DELETE', 'SELECT').
+            line: The line number where the interaction occurs (optional, for potential future use).
+            column: The column number where the interaction occurs (optional, for potential future use).
+        """
+        # Convert to uppercase for consistent storage and grouping
+        object_type = object_type.upper()
+        action = action.upper()
+        obj_key = (object_type, name) # Group by type and name
+
+        self.object_interactions[obj_key].add(action)
+        # Note: line/column are not stored directly in object_interactions yet,
+        # but are available if needed later. The primary interaction record is the action set. 

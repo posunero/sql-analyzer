@@ -10,6 +10,7 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
     """Formats the analysis result into a plain text string.
 
     Includes sections for Statement Summary, Object Summary, and Errors.
+    Also includes new sections for Destructive Operations Summary and Object Interaction Summary.
 
     Args:
         result: The AnalysisResult object.
@@ -34,6 +35,19 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
             output.write(f"  - {stmt_type}: {count}\n")
     else:
         output.write("No statements found.\n")
+    output.write("\n")
+
+    # --- Destructive Operations Summary ---
+    output.write("== Destructive Operations Summary ==\n")
+    if result.destructive_counts:
+        total_destructive = sum(result.destructive_counts.values())
+        output.write(f"Total destructive operations: {total_destructive}\n")
+        # Sort by count descending, then by type ascending
+        sorted_destructive = sorted(result.destructive_counts.items(), key=lambda item: (-item[1], item[0]))
+        for stmt_type, count in sorted_destructive:
+            output.write(f"  - {stmt_type}: {count}\n")
+    else:
+        output.write("No destructive operations found.\n")
     output.write("\n")
 
     # --- Object Summary ---
@@ -62,6 +76,32 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
                 output.write(f"    - {obj.action} {obj.object_type}: {obj.name}{location}\n")
     else:
         output.write("No database objects found.\n")
+    output.write("\n")
+
+    # --- Object Interaction Summary ---
+    output.write("== Object Interaction Summary ==\n")
+    if result.object_interactions:
+        output.write(f"Total objects with interactions: {len(result.object_interactions)}\n")
+        
+        # Sort by object type, then by name
+        sorted_interactions = sorted(result.object_interactions.items(), key=lambda item: (item[0][0], item[0][1]))
+        
+        for (obj_type, obj_name), actions in sorted_interactions:
+            # Sort actions alphabetically, but place destructive actions first
+            destructive_actions = sorted(a for a in actions if a in ('DELETE', 'DROP', 'TRUNCATE', 'REPLACE', 'DROP_COLUMN'))
+            other_actions = sorted(a for a in actions if a not in ('DELETE', 'DROP', 'TRUNCATE', 'REPLACE', 'DROP_COLUMN'))
+            
+            # Create a formatted list of actions
+            action_list = ", ".join(destructive_actions + other_actions)
+            
+            # Mark destructive actions with an asterisk if present
+            has_destructive = any(a in ('DELETE', 'DROP', 'TRUNCATE', 'REPLACE', 'DROP_COLUMN') for a in actions)
+            risk_marker = " [!]" if has_destructive else ""
+            
+            output.write(f"  - {obj_type}: {obj_name}{risk_marker}\n")
+            output.write(f"    Actions: {action_list}\n")
+    else:
+        output.write("No object interactions recorded.\n")
     output.write("\n")
 
     # --- Error Summary ---

@@ -194,3 +194,19 @@ class AnalysisEngine:
                 if child.children and isinstance(child.children[0], Token):
                     return child.children[0].value
         return None 
+
+    def record_destructive_statement(self, stmt_type: str, node: Tree | Token, file_path: str) -> None:
+        """Records a destructive SQL statement.
+
+        Destructive statements include DELETE, DROP, TRUNCATE, CREATE OR REPLACE, and others
+        that modify or destroy data/objects. These are tracked separately for risk assessment.
+
+        Args:
+            stmt_type: The type of destructive statement (e.g., 'DELETE', 'DROP_TABLE').
+            node: The AST node representing the statement.
+            file_path: The path of the file where the statement was found.
+        """
+        logger.debug(f"ENGINE: record_destructive_statement called with stmt_type={stmt_type}, file_path={file_path}")
+        
+        # Record the destructive statement in the separate tracking dictionary
+        self.result.add_destructive_statement(stmt_type) 
