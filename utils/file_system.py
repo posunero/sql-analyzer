@@ -1,7 +1,3 @@
-"""
-Utilities for finding and reading SQL files.
-"""
-
 import os
 from pathlib import Path
 import logging
@@ -51,6 +47,4 @@ def read_file_content(file_path: Path) -> str | None:
     except UnicodeDecodeError as e:
         logger.error(f"Error decoding file {file_path} as UTF-8: {e}")
         # Consider trying other encodings or reporting more specifically
-        return None
-
-# TODO: Implement file finding/reading functions 
+        return None 

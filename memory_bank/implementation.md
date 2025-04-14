@@ -4,40 +4,40 @@ This document outlines the steps to implement the SQL Analyzer project based on 
 
 ## Phase 1: Core Parsing and Analysis Logic
 
-1.  **Load Grammar & Basic Parsing (`parser/core.py`):**
+1.  [x] **Load Grammar & Basic Parsing (`parser/core.py`):**
     *   Implement robust loading of the `snowflake.lark` grammar file.
     *   Create a function `parse_sql(sql_text: str)` that takes SQL text and returns a Lark parse tree or raises a specific parsing error.
     *   Handle potential `LarkError` exceptions gracefully.
 
-2.  **Define Analysis Data Structures (`analysis/models.py`):**
+2.  [x] **Define Analysis Data Structures (`analysis/models.py`):**
     *   Define Python classes or dataclasses to represent the analysis results. Examples:
         *   `AnalysisResult` (overall container)
         *   `StatementStats` (counts per statement type)
         *   `ObjectInfo` (details about a DB object: name, type, action - create/alter/drop/reference)
     *   Ensure these structures can aggregate results from multiple files.
 
-3.  **Implement AST Visitor (`parser/visitor.py`):**
+3.  [x] **Implement AST Visitor (`parser/visitor.py`):**
     *   Create a Lark `Visitor` or `Transformer` subclass.
     *   Implement methods for relevant Lark rules (e.g., `visit_create_table_statement`, `visit_select_statement`, `visit_table_name`, etc.).
     *   The visitor's role is primarily to *identify* nodes of interest and pass them to the analysis engine.
 
-4.  **Develop Analysis Engine (`analysis/engine.py`):**
+4.  [x] **Develop Analysis Engine (`analysis/engine.py`):**
     *   Create an `AnalysisEngine` class that takes an `AnalysisResult` object (from `models.py`).
     *   The engine will use the `Visitor` (from `visitor.py`). When the visitor encounters relevant nodes (like a statement type or an object name), it calls methods on the `AnalysisEngine`.
     *   The `AnalysisEngine` methods update the `AnalysisResult` object (e.g., increment statement counts, add object details to lists).
 
-5.  **Initial Testing (`tests/test_parser.py`, `tests/test_analysis.py`):**
+5.  [x] **Initial Testing (`tests/test_parser.py`, `tests/test_analysis.py`):**
     *   Add basic test fixtures (simple valid/invalid SQL strings).
     *   Write unit tests for `parse_sql` to ensure it parses correctly or raises errors as expected.
     *   Write unit tests for the `AnalysisEngine` and `Visitor` combination to verify that simple statements are correctly identified and counted.
 
 ## Phase 2: File Handling and Command Line Interface
 
-6.  **Implement File System Utilities (`utils/file_system.py`):**
+6.  [x] **Implement File System Utilities (`utils/file_system.py`):**
     *   Create function `find_sql_files(path: str)` that yields file paths (handles single files and recursive directory searching for `.sql` files).
     *   Create function `read_file_content(file_path: str)` that reads a file and handles potential `IOError`.
 
-7.  **Implement CLI Argument Parsing (`cli.py`):**
+7.  [x] **Implement CLI Argument Parsing (`cli.py`):**
     *   Use `argparse` (or similar) to define command-line arguments:
         *   Input paths (required, one or more).
         *   Output format (`--format`, default 'text', choices: 'text', 'json', 'csv').
@@ -45,10 +45,10 @@ This document outlines the steps to implement the SQL Analyzer project based on 
         *   Error handling options (e.g., `--fail-fast`).
     *   Create a function `parse_arguments()` that returns a configuration object or dictionary.
 
-8.  **Basic Error Handling (`utils/error_handling.py`):**
+8.  [x] **Basic Error Handling (`utils/error_handling.py`):**
     *   Define simple functions for reporting errors (e.g., `report_parsing_error(file_path, line, message)`, `report_file_error(file_path, message)`).
 
-9.  **Initial Integration (`main.py`):**
+9.  [x] **Initial Integration (`main.py`):**
     *   Modify `main.py` to:
         *   Call `cli.parse_arguments()`.
         *   Use `utils.find_sql_files` to iterate through input paths.
@@ -61,7 +61,7 @@ This document outlines the steps to implement the SQL Analyzer project based on 
         *   Catch and report errors using `utils.error_handling`.
     *   Add a placeholder for calling the reporting module.
 
-10. **CLI Testing (`tests/test_cli.py`):**
+10. [x] **CLI Testing (`tests/test_cli.py`):**
     *   Write tests to verify argument parsing logic.
 
 ## Phase 3: Reporting and Finalization
