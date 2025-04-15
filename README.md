@@ -9,8 +9,11 @@ A command-line tool to analyze Snowflake SQL files, extracting metadata, statist
 ## Features
 
 *   Parses Snowflake SQL syntax using a Lark grammar.
-*   Identifies and counts statement types (e.g., `CREATE_TABLE`, `SELECT`, `INSERT`, `USE_WAREHOUSE`, `USE_DATABASE`, `ALTER_TABLE`, `DROP_VIEW`).
-*   Extracts database objects (tables, views, functions, databases, warehouses, etc.) and tracks their actions (e.g., `CREATE`, `ALTER`, `DROP`, `USE`, `REFERENCE`).
+*   Identifies and counts statement types (e.g., `SELECT`, `CREATE_TABLE`, `INSERT`, `USE_WAREHOUSE`, `USE_DATABASE`, `ALTER_TABLE`).
+*   Tracks destructive operations (e.g., `CREATE OR REPLACE`, `DROP`, `DELETE`, `TRUNCATE`, `ALTER TABLE DROP COLUMN`).
+*   Extracts database objects (tables, views, functions, databases, warehouses, etc.) and tracks their actions (e.g., `CREATE`, `ALTER`, `DROP`, `USE`, `REFERENCE`, `SELECT`).
+*   Generates object interaction summaries showing all actions performed on each object.
+*   Flags objects with potentially conflicting actions (marked with `[!]` in reports).
 *   Aggregates statistics across multiple files.
 *   Supports different output formats (Text, JSON - more planned).
 *   Handles file and directory inputs.
@@ -150,26 +153,74 @@ Below are examples of the `text` output format.
 --- SQL Analysis Report ---
 
 == Statement Summary ==
-Total statements analyzed: 5
-  - create_table: 2
-  - select: 2
-  - insert: 1
+Total statements analyzed: 24
+  - USE_SCHEMA: 3
+  - ALTER_TABLE: 2
+  - CREATE_OR_REPLACE_TABLE: 2
+  - CREATE_SCHEMA_STMT: 2
+  - SELECT: 2
+  - USE_DATABASE: 2
+  - COPY_INTO_STMT: 1
+  - CREATE_FUNCTION: 1
+  - CREATE_OR_REPLACE_DATABASE: 1
+  - CREATE_OR_REPLACE_PROCEDURE: 1
+  - CREATE_OR_REPLACE_STAGE: 1
+  - CREATE_OR_REPLACE_VIEW: 1
+  - DELETE: 1
+  - GRANT_STMT: 1
+  - INSERT: 1
+  - MERGE: 1
+  - UPDATE: 1
+
+== Destructive Operations Summary ==
+Total destructive operations: 9
+  - CREATE_OR_REPLACE_TABLE: 4
+  - CREATE_OR_REPLACE_VIEW: 2
+  - UPDATE: 2
+  - DELETE: 1
 
 == Object Summary ==
-Total objects found: 6
+Total objects found: 23
 Summary by Type and Action:
-  - CREATE TABLE: 2
-  - REFERENCE FUNCTION: 1
-  - REFERENCE TABLE: 3
+  - CREATE DATABASE: 1
+  - USE DATABASE: 2
+  - CREATE FUNCTION: 1
+  - REFERENCE FUNCTION: 2
+  - USE SCHEMA: 3
+  - ALTER TABLE: 1
+  - INSERT TABLE: 1
+  - REFERENCE TABLE: 4
+  - REPLACE TABLE: 2
+  - SELECT TABLE: 4
+  - UPDATE TABLE: 1
+  - REPLACE VIEW: 1
+
+== Object Interaction Summary ==
+Total objects with interactions: 10
+  - DATABASE: my_sample_db
+    Actions: CREATE, USE
+  - FUNCTION: CURRENT_DATE
+    Actions: REFERENCE
+  - FUNCTION: PARSE_JSON
+    Actions: REFERENCE
+  - FUNCTION: get_user_email
+    Actions: CREATE
+  - SCHEMA: production
+    Actions: USE
+  - SCHEMA: staging
+    Actions: USE
+  - TABLE: dim_users [!]
+    Actions: REPLACE, REFERENCE, SELECT
+  - TABLE: raw_events [!]
+    Actions: REPLACE, ALTER, INSERT, REFERENCE, SELECT, UPDATE
+  - TABLE: staging.raw_events
+    Actions: REFERENCE, SELECT
+  - VIEW: recent_events_v [!]
+    Actions: REPLACE
 
 == Errors ==
 Total errors encountered: 1
-  - [File: sample_sql/invalid/bad_syntax.sql, Line: 3]: Lark parsing error at line 3, column 1: Unexpected token Token('FROM', 'FROM') at line 3, column 1.
-Expected one of: 
-	* RPAR
-	* AS
-	* COMMA
-	* DOT
+  - [File: create_objects.sql, Line: 3]: Lark parsing error at line 3, column 39: No terminal matches 'C' in the current parser context, at line 3 col 39
 
 --- End Report ---
 ```
@@ -180,35 +231,91 @@ Expected one of:
 --- SQL Analysis Report ---
 
 == Statement Summary ==
-Total statements analyzed: 5
-  - create_table: 2
-  - select: 2
-  - insert: 1
+Total statements analyzed: 24
+  - USE_SCHEMA: 3
+  - ALTER_TABLE: 2
+  - CREATE_OR_REPLACE_TABLE: 2
+  - CREATE_SCHEMA_STMT: 2
+  - SELECT: 2
+  - USE_DATABASE: 2
+  - COPY_INTO_STMT: 1
+  - CREATE_FUNCTION: 1
+  - CREATE_OR_REPLACE_DATABASE: 1
+  - CREATE_OR_REPLACE_PROCEDURE: 1
+  - CREATE_OR_REPLACE_STAGE: 1
+  - CREATE_OR_REPLACE_VIEW: 1
+  - DELETE: 1
+  - GRANT_STMT: 1
+  - INSERT: 1
+  - MERGE: 1
+  - UPDATE: 1
+
+== Destructive Operations Summary ==
+Total destructive operations: 9
+  - CREATE_OR_REPLACE_TABLE: 4
+  - CREATE_OR_REPLACE_VIEW: 2
+  - UPDATE: 2
+  - DELETE: 1
 
 == Object Summary ==
-Total objects found: 6
+Total objects found: 23
 Summary by Type and Action:
-  - CREATE TABLE: 2
-  - REFERENCE FUNCTION: 1
-  - REFERENCE TABLE: 3
+  - CREATE DATABASE: 1
+  - USE DATABASE: 2
+  - CREATE FUNCTION: 1
+  - REFERENCE FUNCTION: 2
+  - USE SCHEMA: 3
+  - ALTER TABLE: 1
+  - INSERT TABLE: 1
+  - REFERENCE TABLE: 4
+  - REPLACE TABLE: 2
+  - SELECT TABLE: 4
+  - UPDATE TABLE: 1
+  - REPLACE VIEW: 1
 
 Detailed Object List:
-  File: sample_sql/complex_script.sql
-    - CREATE TABLE: MY_SCHEMA.NEW_TABLE (Line: 2)
-    - REFERENCE TABLE: SOURCE_TABLE1 (Line: 7)
-    - REFERENCE TABLE: SOURCE_TABLE2 (Line: 8)
-    - REFERENCE FUNCTION: BUILTIN_FUNC (Line: 8)
-    - CREATE TABLE: ANOTHER_TABLE (Line: 12)
-    - REFERENCE TABLE: MY_SCHEMA.NEW_TABLE (Line: 15)
+  File: sample_sql/simple_select.sql
+    - SELECT TABLE: raw_events (Line: 4)
+    - REFERENCE FUNCTION: CURRENT_DATE (Line: 5)
+    - USE DATABASE: my_sample_db (Line: 12)
+    - USE SCHEMA: production (Line: 13)
+    - REPLACE TABLE: dim_users (Line: 15)
+    - REFERENCE TABLE: staging.raw_events (Line: 18)
+    - SELECT TABLE: raw_events (Line: 24)
+    - ALTER TABLE: raw_events (Line: 29)
+    - UPDATE TABLE: raw_events (Line: 33)
+    - REPLACE VIEW: recent_events_v (Line: 38)
+    - SELECT TABLE: raw_events (Line: 39)
+    - REFERENCE FUNCTION: PARSE_JSON (Line: 40)
+    - INSERT TABLE: raw_events (Line: 46)
+    - SELECT TABLE: staging.raw_events (Line: 48)
+
+== Object Interaction Summary ==
+Total objects with interactions: 10
+  - DATABASE: my_sample_db
+    Actions: CREATE, USE
+  - FUNCTION: CURRENT_DATE
+    Actions: REFERENCE
+  - FUNCTION: PARSE_JSON
+    Actions: REFERENCE
+  - FUNCTION: get_user_email
+    Actions: CREATE
+  - SCHEMA: production
+    Actions: USE
+  - SCHEMA: staging
+    Actions: USE
+  - TABLE: dim_users [!]
+    Actions: REPLACE, REFERENCE, SELECT
+  - TABLE: raw_events [!]
+    Actions: REPLACE, ALTER, INSERT, REFERENCE, SELECT, UPDATE
+  - TABLE: staging.raw_events
+    Actions: REFERENCE, SELECT
+  - VIEW: recent_events_v [!]
+    Actions: REPLACE
 
 == Errors ==
 Total errors encountered: 1
-  - [File: sample_sql/invalid/bad_syntax.sql, Line: 3]: Lark parsing error at line 3, column 1: Unexpected token Token('FROM', 'FROM') at line 3, column 1.
-Expected one of: 
-	* RPAR
-	* AS
-	* COMMA
-	* DOT
+  - [File: create_objects.sql, Line: 3]: Lark parsing error at line 3, column 39: No terminal matches 'C' in the current parser context, at line 3 col 39
 
 --- End Report ---
 ```

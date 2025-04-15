@@ -59,6 +59,13 @@ PRIVILEGES: "PRIVILEGES"i
 USAGE: "USAGE"i
 ROLE: "ROLE"i
 FUTURE: "FUTURE"i
+TAG: "TAG"i
+ACCESS: "ACCESS"i
+ROW: "ROW"i
+BOOLEAN: "BOOLEAN"i
+TRANSIENT: "TRANSIENT"i
+CLUSTER: "CLUSTER"i
+DATA_RETENTION_TIME_IN_DAYS: "DATA_RETENTION_TIME_IN_DAYS"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -84,6 +91,8 @@ PROCEDURE: "PROCEDURE"i
 FUNCTION: "FUNCTION"i
 SEQUENCE: "SEQUENCE"i
 MATERIALIZED: "MATERIALIZED"i
+RESOURCE: "RESOURCE"i
+MONITOR: "MONITOR"i
 
 // Column constraints
 PRIMARY: "PRIMARY"i
@@ -163,6 +172,7 @@ EXTERNAL_ACCESS_INTEGRATIONS: "EXTERNAL_ACCESS_INTEGRATIONS"i
 SECRETS: "SECRETS"i
 TARGET_PATH: "TARGET_PATH"i
 GRANTS: "GRANTS"i
+ALLOWED_VALUES: "ALLOWED_VALUES"i
 
 // Languages
 JAVA: "JAVA"i
@@ -225,12 +235,23 @@ statement: select_stmt
          | copy_into_stmt
          | grant_stmt
          | revoke_stmt
+         | call_procedure_stmt
+         | put_stmt
+         | begin_stmt
+         | commit_stmt
+         | rollback_stmt
+         | savepoint_stmt
+         | rollback_to_savepoint_stmt
+         | declare_stmt
+         | set_stmt
+         | execute_immediate_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
         | update_stmt
         | delete_stmt
         | merge_stmt
+        | insert_all_stmt
 
 // DDL Statements
 ddl_stmt: create_stmt
@@ -244,12 +265,13 @@ ddl_stmt: create_stmt
 select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
 select_list: STAR | select_item ( COMMA select_item)*
 select_item: expr (AS? IDENTIFIER)?
-from_clause: FROM base_table_ref join_clause* // Explicit base table + joins
+from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 
 // Removed old recursive table_ref rule
 
 base_table_ref: qualified_name (AS? IDENTIFIER)?
                | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
+               | LATERAL function_call (AS? IDENTIFIER)?
 
 join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
 
@@ -294,9 +316,16 @@ create_stmt: create_table_stmt
            | create_schema_stmt
            | create_function_stmt
            | create_procedure_stmt
+           | create_resource_monitor_stmt
+           | create_sequence_stmt
+           | create_file_format_stmt
+           | create_role_stmt
+           | create_masking_policy_stmt
+           | create_tag_stmt
+           | create_row_access_policy_stmt
 
-create_table_stmt: CREATE (OR REPLACE)? TABLE qualified_name (LPAREN column_def ( COMMA column_def)* RPAREN)?
-column_def: qualified_name data_type autoincrement_clause? (column_constraint)*
+create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)? | AS select_stmt)
+column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (COMMENT SINGLE_QUOTED_STRING)?
 data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)?
 
 // Revert to the simplest constraint definition without extra grouping
@@ -310,6 +339,8 @@ column_constraint: NOT NULL
 // Rule for AUTOINCREMENT/IDENTITY
 autoincrement_clause: (AUTOINCREMENT | IDENTITY) (START number INCREMENT number)?
 
+table_constraint: PRIMARY KEY LPAREN qualified_name ( COMMA qualified_name )* RPAREN
+
 create_view_stmt: CREATE (OR REPLACE)? VIEW qualified_name AS select_stmt
 
 create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE (IF NOT EXISTS)? qualified_name warehouse_param*
@@ -318,7 +349,7 @@ warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
                | AUTO_RESUME EQ boolean
                | INITIALLY_SUSPENDED EQ boolean
 
-create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS _statement
+create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS (call_procedure_stmt | _statement)
 task_param: WAREHOUSE EQ qualified_name
           | SCHEDULE EQ SINGLE_QUOTED_STRING
           | AFTER EQ qualified_name
@@ -334,7 +365,7 @@ stage_param: URL EQ SINGLE_QUOTED_STRING
 // Helper rule for file format options within parentheses
 file_format_option: IDENTIFIER EQ (SINGLE_QUOTED_STRING | IDENTIFIER | boolean | number)
 
-create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name
+create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name (COMMENT EQ SINGLE_QUOTED_STRING)?
 
 create_schema_stmt: CREATE (OR REPLACE)? SCHEMA (IF NOT EXISTS)? qualified_name
 
@@ -358,7 +389,7 @@ create_function_stmt: CREATE create_function_mods qualified_name function_args f
 
 create_function_mods: (OR REPLACE)? (TEMP | TEMPORARY)? SECURE? (FUNCTION | AGGREGATE FUNCTION) (IF NOT EXISTS)?
 
-function_args: LPAREN [argument_def ( COMMA argument_def)*] RPAREN
+function_args: LPAREN [argument_def ( COMMA argument_func_args)*] RPAREN
 
 function_returns: RETURNS (data_type | table_return_type)
 
@@ -403,6 +434,9 @@ alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
                   | MODIFY COLUMN qualified_name data_type
                   | RENAME COLUMN qualified_name TO qualified_name
                   | RENAME TO qualified_name
+                  | ADD ROW ACCESS POLICY qualified_name ON LPAREN qualified_name (COMMA qualified_name)* RPAREN
+                  | DROP ROW ACCESS POLICY
+                  | RENAME ROW ACCESS POLICY TO qualified_name
 
 alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
@@ -432,14 +466,17 @@ object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | STAGE | DATABASE | SCHEM
 truncate_stmt: TRUNCATE TABLE qualified_name
 
 // SHOW statement
-show_stmt: SHOW object_types
+show_stmt: SHOW object_types like_clause? scope_clause?
 object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
+like_clause: LIKE SINGLE_QUOTED_STRING
+scope_clause: IN (DATABASE | SCHEMA) qualified_name
 
 // DESCRIBE statement
 describe_stmt: (DESCRIBE | DESC) object_type qualified_name
 
-// USE statement (Example for WAREHOUSE)
+// USE statement (Example for WAREHOUSE and ROLE)
 use_stmt: USE object_type qualified_name
+        | USE ROLE IDENTIFIER
 
 // COPY INTO statement
 copy_into_stmt: COPY INTO qualified_name FROM STAGE_PATH copy_option*
@@ -458,12 +495,13 @@ privilege_list: ALL PRIVILEGES? | privilege ( COMMA privilege )*
 
 privilege: SELECT | INSERT | UPDATE | DELETE | USAGE | CREATE | ALTER | DROP // Add more as needed
 
-object_specification: object_type qualified_name | DATABASE qualified_name | SCHEMA qualified_name | FUTURE object_type IN (DATABASE | SCHEMA) qualified_name
+object_specification: object_type qualified_name | DATABASE qualified_name | SCHEMA qualified_name | FUTURE object_type IN (DATABASE | SCHEMA) qualified_name | ALL object_types IN SCHEMA qualified_name
 
 grantee_type: ROLE // Add USER, SHARE etc. if needed
 
 // --- Expressions (Revised with Explicit Precedence) ---
 expr: disjunction
+    | function_call OVER window_spec
 
 disjunction: disjunction OR conjunction | conjunction
 
@@ -489,6 +527,7 @@ atom: literal
      | cast_expr
      | case_expr
      | LPAREN expr RPAREN
+     | LPAREN select_stmt RPAREN  // Added for scalar subqueries
      | exists_expr
      | quantified_comparison
 
@@ -501,14 +540,118 @@ cast_expr: CAST LPAREN expr AS data_type RPAREN
 case_expr: CASE (expr)? (WHEN expr THEN expr)+ (ELSE expr)? END
 exists_expr: EXISTS LPAREN select_stmt RPAREN
 quantified_comparison: expr comparison_op (ANY | ALL | SOME) LPAREN select_stmt RPAREN
+                    | expr IN LPAREN expr_list RPAREN
 
 // Function calls (Refactored)
-function_call: qualified_name LPAREN func_args? RPAREN
-func_args: DISTINCT expr_list | expr_list
+function_call: (qualified_name | COUNT | SUM | AVG | MAX | MIN) LPAREN func_args? RPAREN
+func_args: STAR | DISTINCT expr_list | expr_list | named_arg_list
 expr_list: expr ( COMMA expr )*
+named_arg_list: named_arg (COMMA named_arg)*
+named_arg: IDENTIFIER FAT_ARROW expr
 
 // Literals
 literal: string
        | number
        | boolean
        | NULL
+
+TRIGGERS: "TRIGGERS"i
+PERCENT: "PERCENT"i
+DO: "DO"i
+NOTIFY: "NOTIFY"i
+
+create_resource_monitor_stmt: CREATE (OR REPLACE)? RESOURCE MONITOR qualified_name WITH CREDIT_QUOTA EQ number triggers_clause?
+
+triggers_clause: TRIGGERS trigger_def+
+trigger_def: ON number PERCENT DO NOTIFY
+
+CREDIT_QUOTA: "CREDIT_QUOTA"i
+
+create_sequence_stmt: CREATE (OR REPLACE)? SEQUENCE qualified_name sequence_options?
+
+sequence_options: (START EQ number)? (INCR EQ number | INCREMENT EQ number)?
+
+INCR: "INCR"i
+
+FILE: "FILE"i
+FORMAT: "FORMAT"i
+
+create_file_format_stmt: CREATE (OR REPLACE)? FILE FORMAT qualified_name TYPE EQ string file_format_option_kv*
+file_format_option_kv: FIELD_DELIMITER EQ string
+
+FIELD_DELIMITER: "FIELD_DELIMITER"i
+
+create_role_stmt: CREATE (OR REPLACE)? ROLE qualified_name
+
+MASKING: "MASKING"i
+POLICY: "POLICY"i
+ARROW: "->"
+
+create_masking_policy_stmt: CREATE MASKING POLICY qualified_name AS LPAREN masking_args RPAREN RETURNS data_type ARROW expr
+masking_args: IDENTIFIER data_type (COMMA IDENTIFIER data_type)*
+
+CALL: "CALL"i
+
+call_procedure_stmt: CALL qualified_name LPAREN (expr_list)? RPAREN
+
+PUT: "PUT"i
+
+put_stmt: PUT file_path STAGE_PATH put_option*
+put_option: IDENTIFIER EQ expr
+file_path: /file:\/\/[^\s]+/
+
+BEGIN: "BEGIN"i
+COMMIT: "COMMIT"i
+ROLLBACK: "ROLLBACK"i
+SAVEPOINT: "SAVEPOINT"i
+
+begin_stmt: BEGIN
+commit_stmt: COMMIT
+rollback_stmt: ROLLBACK
+savepoint_stmt: SAVEPOINT IDENTIFIER
+rollback_to_savepoint_stmt: ROLLBACK TO SAVEPOINT IDENTIFIER
+
+declare_stmt: DECLARE IDENTIFIER data_type
+set_stmt: SET IDENTIFIER EQ expr
+
+DECLARE: "DECLARE"i
+
+COUNT: "COUNT"i
+SUM: "SUM"i
+AVG: "AVG"i
+MAX: "MAX"i
+MIN: "MIN"i
+
+create_tag_stmt: CREATE (OR REPLACE)? TAG (IF NOT EXISTS)? qualified_name (ALLOWED_VALUES value_list)? (COMMENT EQ SINGLE_QUOTED_STRING)?
+value_list: SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)*
+
+create_row_access_policy_stmt: CREATE (OR REPLACE)? ROW ACCESS POLICY (IF NOT EXISTS)? qualified_name AS LPAREN row_access_args RPAREN RETURNS BOOLEAN ARROW row_access_body (COMMENT EQ SINGLE_QUOTED_STRING)?
+row_access_args: row_access_arg (COMMA row_access_arg)*
+row_access_arg: IDENTIFIER data_type
+row_access_body: expr
+
+cluster_by_clause: CLUSTER BY LPAREN expr (COMMA expr)* RPAREN
+data_retention_clause: DATA_RETENTION_TIME_IN_DAYS EQ number
+with_tag_clause: WITH TAG LPAREN tag_assignment (COMMA tag_assignment)* RPAREN
+tag_assignment: qualified_name EQ SINGLE_QUOTED_STRING
+
+OVER: "OVER"i
+LATERAL: "LATERAL"i
+
+window_spec: LPAREN window_spec_contents RPAREN
+window_spec_contents: (partition_by_clause order_clause?) | (order_clause) | // PARTITION BY ... ORDER BY ...
+partition_by_clause: PARTITION BY expr (COMMA expr)*
+
+PARTITION: "PARTITION"i
+
+argument_func_args: argument_def
+
+FAT_ARROW: "=>"
+
+insert_all_stmt: INSERT ALL when_insert_clause+ select_stmt
+when_insert_clause: WHEN expr THEN INTO qualified_name (LPAREN qualified_name (COMMA qualified_name)* RPAREN)? VALUES value_tuple
+
+EXECUTE: "EXECUTE"i
+IMMEDIATE: "IMMEDIATE"i
+
+execute_immediate_stmt: EXECUTE IMMEDIATE DOLLAR_QUOTED_STRING

@@ -268,5 +268,218 @@ def test_parse_fixture_files(fixture_file):
         except LarkError as e:
             pytest.fail(f"Parsing valid fixture {fixture_file} raised LarkError unexpectedly: {e}")
 
+def test_parse_use_role():
+    sql = "USE ROLE SYSADMIN;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing USE ROLE should return a Tree."
+
+def test_parse_create_database_with_comment():
+    sql = "CREATE OR REPLACE DATABASE corp_db COMMENT='Corporate Data';"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE DATABASE with COMMENT should return a Tree."
+
+def test_parse_create_resource_monitor_with_triggers():
+    sql = "CREATE OR REPLACE RESOURCE MONITOR rm1 WITH CREDIT_QUOTA=1000 TRIGGERS ON 80 PERCENT DO NOTIFY;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE RESOURCE MONITOR with TRIGGERS should return a Tree."
+
+def test_parse_create_table_with_table_pk():
+    sql = "CREATE OR REPLACE TABLE orders (order_id INT, PRIMARY KEY (order_id));"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TABLE with table-level PRIMARY KEY should return a Tree."
+
+def test_parse_create_sequence():
+    sql = "CREATE OR REPLACE SEQUENCE order_seq_003 START = 3000 INCREMENT = 1;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE SEQUENCE should return a Tree."
+
+def test_parse_create_file_format():
+    sql = "CREATE OR REPLACE FILE FORMAT csv_format_003 TYPE = 'CSV' FIELD_DELIMITER = ',';"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE FILE FORMAT should return a Tree."
+
+def test_parse_create_role():
+    sql = "CREATE ROLE sales_analyst_001;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE ROLE should return a Tree."
+
+def test_parse_create_masking_policy():
+    sql = "CREATE MASKING POLICY ssn_mask_001 AS (VAL STRING) RETURNS STRING -> CASE WHEN CURRENT_ROLE() IN ('HR_ADMIN') THEN VAL ELSE 'XXX-XX-XXXX' END;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE MASKING POLICY should return a Tree."
+
+def test_parse_create_task_with_call():
+    sql = "CREATE OR REPLACE TASK daily_raise_001 WAREHOUSE = analytics_wh SCHEDULE = 'USING CRON 0 0 * * * UTC' AS CALL raise_orders_001();"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TASK with CALL procedure should return a Tree."
+
+def test_parse_put_statement():
+    sql = "PUT file://local/path/to/orders_001.csv @sales_stage_001 AUTO_COMPRESS=TRUE;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing PUT statement should return a Tree."
+
+def test_parse_begin():
+    sql = "BEGIN;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing BEGIN should return a Tree."
+
+def test_parse_commit():
+    sql = "COMMIT;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing COMMIT should return a Tree."
+
+def test_parse_rollback():
+    sql = "ROLLBACK;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ROLLBACK should return a Tree."
+
+def test_parse_savepoint():
+    sql = "SAVEPOINT before_bonus_001;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SAVEPOINT should return a Tree."
+
+def test_parse_rollback_to_savepoint():
+    sql = "ROLLBACK TO SAVEPOINT before_bonus_001;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ROLLBACK TO SAVEPOINT should return a Tree."
+
+def test_parse_declare():
+    sql = "DECLARE v_total_orders_001 INT;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing DECLARE should return a Tree."
+
+def test_parse_set():
+    sql = "SET v_total_orders_001 = (SELECT COUNT(*) FROM sales_orders_001);"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SET should return a Tree."
+
+def test_parse_select_count_star():
+    sql = "SELECT COUNT(*) FROM t;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SELECT COUNT(*) should return a Tree."
+
+def test_parse_set_with_count_star():
+    sql = "SET x = (SELECT COUNT(*) FROM t);"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SET with COUNT(*) should return a Tree."
+
+def test_parse_create_tag():
+    """Test parsing CREATE TAG statement with ALLOWED_VALUES and COMMENT."""
+    sql = "CREATE OR REPLACE TAG my_tag ALLOWED_VALUES 'A', 'B', 'C' COMMENT = 'Test tag';"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TAG SQL should return a Tree."
+
+def test_parse_create_row_access_policy():
+    """Test parsing CREATE ROW ACCESS POLICY statement."""
+    sql = """
+    CREATE OR REPLACE ROW ACCESS POLICY rap_test AS (empl_id VARCHAR) RETURNS BOOLEAN ->
+        CASE WHEN 'it_admin' = CURRENT_ROLE() THEN TRUE ELSE FALSE END
+        COMMENT = 'Allow IT admin to see rows';
+    """
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE ROW ACCESS POLICY SQL should return a Tree."
+
+def test_parse_in_tuple():
+    sql = "SELECT 1 WHERE 'foo' IN ('foo', 'bar', 'baz');"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing IN with tuple of literals should return a Tree."
+
+def test_parse_create_transient_table_with_options():
+    sql = (
+        "CREATE OR REPLACE TRANSIENT TABLE t1 ("
+        "id INT, name STRING, PRIMARY KEY (id)"
+        ") CLUSTER BY (id, name) DATA_RETENTION_TIME_IN_DAYS = 0 WITH TAG (my_tag = 'foo', another_tag = 'bar');"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TRANSIENT TABLE with options should return a Tree."
+
+def test_parse_create_table_with_column_comment():
+    sql = (
+        "CREATE TABLE t2 ("
+        "id INT COMMENT 'Primary key',"
+        "name STRING COMMENT 'User name',"
+        "age INT"
+        ");"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TABLE with column COMMENT should return a Tree."
+
+def test_parse_create_table_with_cluster_by_expr():
+    sql = (
+        "CREATE TABLE t3 (id INT, region STRING) "
+        "CLUSTER BY (id, UPPER(region));"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TABLE with CLUSTER BY expr should return a Tree."
+
+def test_parse_create_table_as_select():
+    sql = (
+        "CREATE TABLE t4 AS SELECT * FROM t1 WHERE x > 0;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TABLE AS SELECT (CTAS) should return a Tree."
+
+def test_parse_alter_table_add_row_access_policy():
+    sql = (
+        "ALTER TABLE t1 ADD ROW ACCESS POLICY my_policy ON (col1, col2);"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER TABLE ADD ROW ACCESS POLICY should return a Tree."
+
+def test_parse_alter_table_drop_row_access_policy():
+    sql = "ALTER TABLE t1 DROP ROW ACCESS POLICY;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER TABLE DROP ROW ACCESS POLICY should return a Tree."
+
+def test_parse_alter_table_rename_row_access_policy():
+    sql = "ALTER TABLE t1 RENAME ROW ACCESS POLICY TO new_policy;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER TABLE RENAME ROW ACCESS POLICY should return a Tree."
+
+def test_parse_select_with_window_function():
+    sql = (
+        "SELECT id, ROW_NUMBER() OVER (PARTITION BY region ORDER BY id) AS rn FROM t1;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SELECT with window function should return a Tree."
+
+def test_parse_select_with_lateral_flatten():
+    sql = (
+        "SELECT * FROM t1, LATERAL FLATTEN(input => items) f;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SELECT with LATERAL FLATTEN should return a Tree."
+
+def test_parse_select_with_lateral_flatten_named_arg():
+    sql = (
+        "SELECT * FROM t1, LATERAL FLATTEN(input => items) f;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing LATERAL FLATTEN with named argument should return a Tree."
+
+def test_parse_insert_all_multi_table():
+    sql = (
+        "INSERT ALL "
+        "WHEN x = 1 THEN INTO t1 (a, b) VALUES (1, 2) "
+        "WHEN x = 2 THEN INTO t2 (a, b) VALUES (3, 4) "
+        "SELECT * FROM src;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing multi-table INSERT ALL should return a Tree."
+
+def test_parse_execute_immediate():
+    sql = (
+        "EXECUTE IMMEDIATE $$"
+        "DECLARE msg STRING; BEGIN msg := 'Hello'; RETURN msg; END;"
+        "$$;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing EXECUTE IMMEDIATE should return a Tree."
+
+def test_parse_show_tables_like_in_schema():
+    sql = "SHOW TABLES LIKE 'sales%orders%' IN SCHEMA corp_db.sales_013;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing SHOW TABLES LIKE ... IN SCHEMA should return a Tree."
+
 if __name__ == '__main__':
     pytest.main() 
