@@ -25,6 +25,7 @@ except ImportError: # Handle running this file directly for unittest discovery
 COMPLEX_MIX_FIXTURE = "tests/fixtures/valid/complex_mix.sql"
 COMPLEX_SELECT_FIXTURE = "tests/fixtures/valid/complex_select.sql"
 FUNCTION_PROCEDURE_FIXTURE = "tests/fixtures/valid/function_and_procedure.sql"
+STAGE_FILEFORMAT_COPYINTO_FIXTURE = "tests/fixtures/valid/stage_fileformat_copyinto.sql"
 
 # --- Pytest Fixtures for Analysis Results --- 
 
@@ -42,6 +43,11 @@ def complex_select_result() -> AnalysisResult:
 def function_procedure_result() -> AnalysisResult:
     """Provides the analysis result for function_and_procedure.sql"""
     return analyze_fixture_file(FUNCTION_PROCEDURE_FIXTURE)
+
+@pytest.fixture(scope="module")
+def stage_fileformat_copyinto_result() -> AnalysisResult:
+    """Provides the analysis result for stage_fileformat_copyinto.sql"""
+    return analyze_fixture_file(STAGE_FILEFORMAT_COPYINTO_FIXTURE)
 
 # --- Pytest Test Functions for Reporting with Fixtures ---
 
@@ -151,6 +157,18 @@ def test_text_formatter_function_procedure(function_procedure_result):
     # assert "- CREATE PROCEDURE: 1" not in report # Check if procedure object is created
     assert "Detailed Object List" not in report
 
+def test_text_formatter_stage_fileformat_copyinto(stage_fileformat_copyinto_result):
+    """Test text output for the stage_fileformat_copyinto fixture."""
+    report = text_formatter.format_text(stage_fileformat_copyinto_result, verbose=True)
+    # Check for key object types and actions
+    assert "STAGE" in report
+    assert "FILE_FORMAT" in report
+    assert "COPY_INTO" in report or "COPY_INTO_TABLE" in report
+    # Check for references
+    assert "REFERENCE FILE_FORMAT" in report or "REFERENCE STAGE" in report
+    # Check for detailed section
+    assert "Detailed Stage/File Format/COPY INTO Objects" in report
+
 def test_json_formatter_complex_mix(complex_mix_result):
     """Test JSON output for the complex_mix fixture."""
     report = json_formatter.format_json(complex_mix_result)
@@ -198,6 +216,18 @@ def test_json_formatter_function_procedure(function_procedure_result):
     # procedure_obj = [o for o in data['objects_found'] if o['object_type'] == 'PROCEDURE']
     # assert not procedure_obj # Check if procedure object is created
 
+def test_json_formatter_stage_fileformat_copyinto(stage_fileformat_copyinto_result):
+    """Test JSON output for the stage_fileformat_copyinto fixture."""
+    report = json_formatter.format_json(stage_fileformat_copyinto_result)
+    data = json.loads(report)
+    # Check for expected object types and actions
+    assert any(o['object_type'] == 'STAGE' for o in data['objects_found'])
+    assert any(o['object_type'] == 'FILE_FORMAT' for o in data['objects_found'])
+    assert any('COPY_INTO_TABLE' in o['action'] for o in data['objects_found'])
+    # Check for references
+    assert any(o['object_type'] == 'FILE_FORMAT' and o['action'] == 'REFERENCE' for o in data['objects_found'])
+    assert any(o['object_type'] == 'STAGE' and o['action'] == 'REFERENCE' for o in data['objects_found'])
+
 def test_html_formatter_complex_mix(complex_mix_result):
     """Test HTML output for the complex_mix fixture."""
     report = html_formatter.format_html(complex_mix_result)
@@ -230,6 +260,15 @@ def test_html_formatter_function_procedure(function_procedure_result):
     assert 'Summary' in report
     assert 'Object Interactions' in report
     assert '<table' in report
+
+def test_html_formatter_stage_fileformat_copyinto(stage_fileformat_copyinto_result):
+    """Test HTML output for the stage_fileformat_copyinto fixture."""
+    report = html_formatter.format_html(stage_fileformat_copyinto_result)
+    # Check for key object types and actions in the HTML
+    assert "Stage, File Format, and COPY INTO Details" in report
+    assert "STAGE" in report
+    assert "FILE_FORMAT" in report
+    assert "COPY_INTO" in report or "COPY_INTO_TABLE" in report
 
 # --- Refactor existing unittest structure to pytest --- 
 

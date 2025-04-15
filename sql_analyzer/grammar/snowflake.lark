@@ -1,5 +1,4 @@
 // Lark grammar for Snowflake SQL
-%import common.CNAME -> IDENTIFIER
 %import common.SIGNED_NUMBER
 %import common.INT -> UNSIGNED_INTEGER
 %import common.ESCAPED_STRING
@@ -272,6 +271,7 @@ from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 base_table_ref: qualified_name (AS? IDENTIFIER)?
                | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
                | LATERAL function_call (AS? IDENTIFIER)?
+               | STAGE_PATH (AS? IDENTIFIER)?
 
 join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
 
@@ -479,7 +479,10 @@ use_stmt: USE object_type qualified_name
         | USE ROLE IDENTIFIER
 
 // COPY INTO statement
-copy_into_stmt: COPY INTO qualified_name FROM STAGE_PATH copy_option*
+copy_into_stmt: COPY INTO copy_target FROM copy_source copy_option*
+
+copy_target: qualified_name | STAGE_PATH
+copy_source: STAGE_PATH | qualified_name | LPAREN select_stmt RPAREN
 
 copy_option: file_format_clause | on_error_clause
 
@@ -655,3 +658,5 @@ EXECUTE: "EXECUTE"i
 IMMEDIATE: "IMMEDIATE"i
 
 execute_immediate_stmt: EXECUTE IMMEDIATE DOLLAR_QUOTED_STRING
+
+IDENTIFIER: /@?[a-zA-Z_][a-zA-Z0-9_\$]*/

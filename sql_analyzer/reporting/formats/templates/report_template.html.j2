@@ -48,6 +48,24 @@
         </table>
     </div>
 
+    <div class="summary-card">
+        <h2>Stage, File Format, and COPY INTO Details</h2>
+        <table>
+            <thead><tr><th>Type</th><th>Name</th><th>Action</th><th>File</th><th>Line</th></tr></thead>
+            <tbody>
+            {% for obj in result.objects_found if obj.object_type in ["STAGE", "FILE_FORMAT"] or "COPY_INTO" in obj.action %}
+                <tr>
+                    <td>{{ obj.object_type }}</td>
+                    <td>{{ obj.name }}</td>
+                    <td>{{ obj.action }}</td>
+                    <td>{{ obj.file_path }}</td>
+                    <td>{{ obj.line }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     <h2>Errors</h2>
     {% if result.errors %}
     <table>

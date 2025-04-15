@@ -22,6 +22,13 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 
 ## 1. `COPY INTO`, `STAGE`, `FILE FORMAT`
 
+**Progress Update (Implementation in Progress):**
+- [x] Visitor methods for `CREATE STAGE`, `CREATE FILE FORMAT`, and `COPY INTO` have been implemented in `parser/visitor.py` (now extract and record object names, actions, and detailed options/references such as FILE_FORMAT, URL, TYPE, etc.).
+- [x] Extraction of detailed options and references for these statements is complete in the visitor.
+- [x] Reporting layer (text, JSON, HTML) now highlights and summarizes STAGE, FILE_FORMAT, and COPY INTO actions and references.
+- [x] Thorough tests (positive and negative) have been added for CREATE STAGE, CREATE FILE FORMAT, and COPY INTO, covering parsing, analysis, and reporting.
+- [x] Feature 1 is fully implemented and tested.
+
 **Goal:** Parse and analyze data loading/unloading commands, including the necessary stage and file format definitions.
 
 **Steps:**

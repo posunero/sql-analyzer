@@ -62,18 +62,21 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
         for (obj_type, action), count in sorted_obj_summary:
              output.write(f"  - {action} {obj_type}: {count}\n")
 
-        # Optional: Add detailed list later if needed via verbosity flag
+        # Highlight STAGE, FILE_FORMAT, and COPY_INTO actions
+        stage_objs = [obj for obj in result.objects_found if obj.object_type in ("STAGE", "FILE_FORMAT") or "COPY_INTO" in obj.action]
+        if stage_objs:
+            output.write("\nDetailed Stage/File Format/COPY INTO Objects:\n")
+            for obj in stage_objs:
+                location = f" (Line: {obj.line})" if obj.line > 0 else ""
+                output.write(f"    - {obj.action} {obj.object_type}: {obj.name}{location}\n")
+
+        # Add detailed object list in verbose mode
         if verbose:
             output.write("\nDetailed Object List:\n")
-            sorted_objects = sorted(result.objects_found, key=lambda o: (o.file_path, o.line, o.object_type, o.action, o.name))
-            last_file = None
-            for obj in sorted_objects:
-                if obj.file_path != last_file:
-                    output.write(f"  File: {obj.file_path}\n")
-                    last_file = obj.file_path
-                location = f" (Line: {obj.line})" if obj.line > 0 else ""
-                # Indent object details under the file path
-                output.write(f"    - {obj.action} {obj.object_type}: {obj.name}{location}\n")
+            for obj in result.objects_found:
+                location = f" (Line: {obj.line})" if getattr(obj, 'line', 0) else ""
+                file_info = f" [File: {getattr(obj, 'file_path', 'N/A')}]" if getattr(obj, 'file_path', None) else ""
+                output.write(f"    - {obj.action} {obj.object_type}: {obj.name}{location}{file_info}\n")
     else:
         output.write("No database objects found.\n")
     output.write("\n")

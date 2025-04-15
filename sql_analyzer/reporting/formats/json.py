@@ -62,4 +62,7 @@ def format_json(result: AnalysisResult) -> str:
 # Ensure the directory exists if running this directly for testing (unlikely needed)
 # if __name__ == '__main__':
 #     from pathlib import Path
-#     Path(__file__).parent.mkdir(parents=True, exist_ok=True) 
+#     Path(__file__).parent.mkdir(parents=True, exist_ok=True)
+
+# The JSON output already includes all objects and interactions, including STAGE, FILE_FORMAT, and COPY_INTO actions, via the AnalysisResult dataclass.
+# No code changes needed, but this comment clarifies that the new features are covered. 

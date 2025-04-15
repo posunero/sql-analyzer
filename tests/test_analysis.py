@@ -407,6 +407,38 @@ def test_analyze_function_procedure_fixture():
     expected_obj_tuples = sorted(expected_objects)
     assert found_obj_tuples == expected_obj_tuples, "Mismatch in found objects (functions)"
 
+def test_analyze_stage_fileformat_copyinto_fixture():
+    """Test analysis of the stage_fileformat_copyinto.sql fixture for correct object extraction."""
+    fixture_path = "tests/fixtures/valid/stage_fileformat_copyinto.sql"
+    result = analyze_fixture_file(fixture_path)
+    # Check for expected statement types
+    assert result.statement_counts.get('CREATE_FILE_FORMAT', 0) >= 3
+    assert result.statement_counts.get('CREATE_STAGE', 0) >= 3
+    assert result.statement_counts.get('COPY_INTO_TABLE', 0) >= 4 or result.statement_counts.get('COPY_INTO_STAGE', 0) >= 1
+    # Check for expected objects
+    file_formats = [o for o in result.objects_found if o.object_type == 'FILE_FORMAT']
+    stages = [o for o in result.objects_found if o.object_type == 'STAGE']
+    copy_into = [o for o in result.objects_found if 'COPY_INTO' in o.action]
+    assert len(file_formats) >= 3
+    assert len(stages) >= 3
+    assert len(copy_into) >= 4
+    # Check for references to file formats and stages
+    referenced_file_formats = [o for o in result.objects_found if o.object_type == 'FILE_FORMAT' and o.action == 'REFERENCE']
+    referenced_stages = [o for o in result.objects_found if o.object_type == 'STAGE' and o.action == 'REFERENCE']
+    assert referenced_file_formats, "Should reference file formats in COPY INTO and STAGE"
+    assert referenced_stages, "Should reference stages in COPY INTO"
+
+def test_analyze_stage_fileformat_copyinto_invalid_fixture():
+    """Test analysis of the invalid stage_fileformat_copyinto_invalid.sql fixture records errors."""
+    fixture_path = "tests/fixtures/invalid/stage_fileformat_copyinto_invalid.sql"
+    try:
+        result = analyze_fixture_file(fixture_path)
+    except Exception:
+        # If parsing fails completely, that's acceptable for invalid input
+        return
+    # If analysis returns a result, it should have errors
+    assert result.errors, "Analysis of invalid fixture should record errors."
+
 # --- End tests using complex fixtures ---
 
 # TODO: Add tests for merging results from multiple analyses

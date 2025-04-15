@@ -481,5 +481,42 @@ def test_parse_show_tables_like_in_schema():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing SHOW TABLES LIKE ... IN SCHEMA should return a Tree."
 
+@pytest.mark.parametrize("sql", [
+    "CREATE FILE FORMAT csv_fmt TYPE = 'CSV' FIELD_DELIMITER = ',';",
+    "CREATE FILE FORMAT json_fmt TYPE = 'JSON';",
+    "CREATE FILE FORMAT parquet_fmt TYPE = 'PARQUET';",
+    "CREATE STAGE mystage1 URL = 's3://bucket/data/' FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = '|');",
+    "CREATE STAGE mystage2 FILE_FORMAT = csv_fmt;",
+    "CREATE STAGE mystage3 URL = 'azure://container/data/';",
+    "COPY INTO mytable FROM @mystage1 FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = '|');",
+    "COPY INTO mytable2 FROM @mystage2 FILE_FORMAT = (FORMAT_NAME = csv_fmt);",
+    "COPY INTO mytable3 FROM @mystage3;",
+    "COPY INTO @mystage1 FROM mytable;",
+    "COPY INTO mytable4 FROM (SELECT * FROM @mystage2 WHERE col1 > 10) FILE_FORMAT = (FORMAT_NAME = csv_fmt);"
+])
+def test_parse_stage_fileformat_copyinto_variants(sql):
+    """Test parsing of CREATE STAGE, CREATE FILE FORMAT, and COPY INTO variants."""
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), f"Parsing SQL should return a Tree. SQL: {sql}"
+
+
+def test_parse_stage_fileformat_copyinto_fixture():
+    """Test parsing the full stage_fileformat_copyinto.sql fixture."""
+    fixture_path = "tests/fixtures/valid/stage_fileformat_copyinto.sql"
+    with open(fixture_path) as f:
+        sql = f.read()
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing the stage_fileformat_copyinto.sql fixture should return a Tree."
+
+def test_parse_stage_fileformat_copyinto_invalid_fixture():
+    """Test parsing the invalid stage_fileformat_copyinto_invalid.sql fixture raises errors or fails."""
+    fixture_path = "tests/fixtures/invalid/stage_fileformat_copyinto_invalid.sql"
+    with open(fixture_path) as f:
+        sql = f.read()
+    from lark import LarkError
+    import pytest
+    with pytest.raises(LarkError):
+        parse_sql(sql)
+
 if __name__ == '__main__':
     pytest.main() 

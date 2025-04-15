@@ -175,6 +175,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 'DROP_SCHEMA_STMT': 'DROP_SCHEMA',
                 'CREATE_VIEW_STMT': 'CREATE_VIEW',
                 'CREATE_DATABASE_STMT': 'CREATE_DATABASE',
+                'CREATE_STAGE_STMT': 'CREATE_STAGE',
+                'CREATE_FILE_FORMAT_STMT': 'CREATE_FILE_FORMAT',
+                'COPY_INTO_STMT': 'COPY_INTO', # Base type, specific types recorded elsewhere
                 'ALTER_WAREHOUSE_STMT': 'ALTER_WAREHOUSE',
                 'UPDATE_STMT': 'UPDATE',
                 'INSERT_STMT': 'INSERT',
@@ -193,7 +196,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             # Debug the statement type determination
             logger.debug(f"Statement type mapping: {node_data} -> {stmt_type}")
             
-            # Record in normal statement counts
+            # Record the mapped statement type in normal counts
+            # Specific visitors might record more detailed counts later (e.g., COPY_INTO_TABLE)
             self.engine.record_statement(stmt_type, stmt_node, self.current_file)
             
             # Check if this is a destructive statement and record it
@@ -217,56 +221,75 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         
         # --- Process FROM and JOIN first --- 
         if from_clause:
-            # Helper to record a table/view reference
+            # Helper to record a table/view/stage reference
             def record_ref(node: Tree):
                 qual_name_node = self._find_first_child_by_name(node, 'qualified_name')
-                if qual_name_node:
-                    table_name = self._extract_qualified_name(qual_name_node)
-                    first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
-                    if table_name and first_token:
-                        # Check if the parent (base_table_ref) has an alias sibling
-                        is_alias = False
-                        if hasattr(node, 'parent') and node.parent is not None:
-                            siblings = node.parent.children
-                            try:
-                                node_index = siblings.index(node)
-                                if node_index + 1 < len(siblings):
-                                    next_sibling = siblings[node_index + 1]
-                                    if isinstance(next_sibling, Token) and next_sibling.type == 'IDENTIFIER':
-                                        if node_index + 2 >= len(siblings) or not (isinstance(siblings[node_index + 2], Token) and siblings[node_index + 2].type == 'DOT'):
-                                            is_alias = True 
-                                if node_index > 0 and isinstance(siblings[node_index -1], Token) and siblings[node_index - 1].type == 'AS':
-                                    is_alias = True
-                            except ValueError:
-                                pass 
-                                
-                        common_aliases = {"regionsales", "topcustomers", "cte1", "sub"} 
-                        if table_name.lower() in common_aliases:
-                            logger.debug(f"Skipping likely alias: {table_name}")
-                            return
-                        
-                        if table_name.lower() in {"for"}: 
-                            logger.debug(f"Skipping likely keyword: {table_name}")
-                            return
+                stage_path_node = self._find_first_child_by_name(node, 'STAGE_PATH')
 
-                        logger.debug(f"Found table/view reference in SELECT/JOIN: {table_name}")
-                        # Record as REFERENCE for backward compatibility
-                        self.engine.record_object(
-                            name=table_name,
-                            obj_type="TABLE",
-                            action="REFERENCE",
-                            node=first_token, 
-                            file_path=self.current_file
-                        )
-                        
-                        # Also record as SELECT for object interactions
-                        self.engine.record_object(
-                            name=table_name,
-                            obj_type="TABLE",
-                            action="SELECT",
-                            node=first_token, 
-                            file_path=self.current_file
-                        )
+                ref_name = None
+                obj_type = None
+                first_token = None
+
+                if qual_name_node:
+                    ref_name = self._extract_qualified_name(qual_name_node)
+                    first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+                elif stage_path_node:
+                    ref_name = stage_path_node.children[0].value if stage_path_node.children else ""
+                    first_token = stage_path_node # Use the node itself for location
+                
+                if not ref_name or not first_token:
+                    return # Could not extract name or location info
+
+                # *** Determine object type based on name prefix ***
+                if ref_name.startswith('@'):
+                    obj_type = "STAGE"
+                else:
+                    obj_type = "TABLE" # Assume TABLE/VIEW for non-@ names
+
+                # Check if the parent (base_table_ref) has an alias sibling
+                is_alias = False
+                if hasattr(node, 'parent') and node.parent is not None:
+                    siblings = node.parent.children
+                    try:
+                        node_index = siblings.index(node)
+                        if node_index + 1 < len(siblings):
+                            next_sibling = siblings[node_index + 1]
+                            if isinstance(next_sibling, Token) and next_sibling.type == 'IDENTIFIER':
+                                if node_index + 2 >= len(siblings) or not (isinstance(siblings[node_index + 2], Token) and siblings[node_index + 2].type == 'DOT'):
+                                    is_alias = True 
+                            if node_index > 0 and isinstance(siblings[node_index -1], Token) and siblings[node_index - 1].type == 'AS':
+                                is_alias = True
+                    except ValueError:
+                        pass 
+                                
+                common_aliases = {"regionsales", "topcustomers", "cte1", "sub"} 
+                if isinstance(ref_name, str) and ref_name.lower() in common_aliases:
+                    logger.debug(f"Skipping likely alias: {ref_name}")
+                    return
+                
+                if isinstance(ref_name, str) and ref_name.lower() in {"for"}: 
+                    logger.debug(f"Skipping likely keyword: {ref_name}")
+                    return
+
+                logger.debug(f"Found {obj_type} reference in SELECT/JOIN: {ref_name}")
+                # Record as REFERENCE
+                self.engine.record_object(
+                    name=ref_name,
+                    obj_type=obj_type,
+                    action="REFERENCE",
+                    node=first_token, 
+                    file_path=self.current_file
+                )
+                
+                # Also record as SELECT for object interactions (only if it's a TABLE)
+                if obj_type == "TABLE":
+                     self.engine.record_object(
+                         name=ref_name,
+                         obj_type="TABLE",
+                         action="SELECT",
+                         node=first_token, 
+                         file_path=self.current_file
+                     )
 
             # Process base table/view in FROM clause
             base_table_node = self._find_first_child_by_name(from_clause, 'base_table_ref')
@@ -766,6 +789,233 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 
                 # Make sure to record the TRUNCATE_TABLE destructive statement
                 self.engine.record_destructive_statement("TRUNCATE_TABLE", tree, self.current_file)
+
+    def create_stage_stmt(self, tree: Tree):
+        """Visits `create_stage_stmt` nodes. Extracts the stage name and options."""
+        self._debug_tree(tree, "Create Stage Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            stage_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if stage_name and first_token:
+                self.engine.record_object(
+                    name=stage_name,
+                    obj_type="STAGE",
+                    action="CREATE",
+                    node=first_token,
+                    file_path=self.current_file
+                )
+        # Extract FILE_FORMAT and URL references if present
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'stage_param':
+                for param in child.children:
+                    if isinstance(param, Tree) and param.data == 'file_format_option':
+                        # This is a FILE_FORMAT reference
+                        file_format_name = None
+                        for subparam in param.children:
+                            if isinstance(subparam, Token) and subparam.type == 'IDENTIFIER':
+                                file_format_name = subparam.value
+                        if file_format_name:
+                            self.engine.record_object(
+                                name=file_format_name,
+                                obj_type="FILE_FORMAT",
+                                action="REFERENCE",
+                                node=param,
+                                file_path=self.current_file
+                            )
+                    elif isinstance(param, Token) and param.type == 'URL':
+                        self.engine.record_object(
+                            name=stage_name,
+                            obj_type="STAGE",
+                            action="URL",
+                            node=param,
+                            file_path=self.current_file
+                        )
+
+    def create_file_format_stmt(self, tree: Tree):
+        """Visits `create_file_format_stmt` nodes. Extracts the file format name and options."""
+        self._debug_tree(tree, "Create File Format Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            format_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if format_name and first_token:
+                self.engine.record_object(
+                    name=format_name,
+                    obj_type="FILE_FORMAT",
+                    action="CREATE",
+                    node=first_token,
+                    file_path=self.current_file
+                )
+        # Extract TYPE and file format options
+        type_value = None
+        for child in tree.children:
+            if isinstance(child, Token) and child.type == 'TYPE':
+                type_value = child.value
+            elif isinstance(child, Tree) and child.data == 'file_format_option_kv':
+                for param in child.children:
+                    if isinstance(param, Token) and param.type == 'FIELD_DELIMITER':
+                        self.engine.record_object(
+                            name=format_name,
+                            obj_type="FILE_FORMAT",
+                            action="FIELD_DELIMITER",
+                            node=param,
+                            file_path=self.current_file
+                        )
+        if type_value:
+            self.engine.record_object(
+                name=format_name,
+                obj_type="FILE_FORMAT",
+                action=f"TYPE_{type_value}",
+                node=first_token,
+                file_path=self.current_file
+            )
+
+    def copy_into_stmt(self, tree: Tree):
+        """Visits `copy_into_stmt` nodes. Extracts source and target for COPY INTO, and options."""
+        self._debug_tree(tree, "Copy Into Statement")
+
+        copy_target_node = self._find_first_child_by_name(tree, 'copy_target')
+        target_recorded = False
+        target_name_str = None
+        target_type = None
+        target_node_for_loc = None
+
+        if copy_target_node:
+            qual_name_node = self._find_first_child_by_name(copy_target_node, 'qualified_name')
+            stage_path_node = self._find_first_child_by_name(copy_target_node, 'STAGE_PATH')
+
+            if qual_name_node:
+                target_name_str = self._extract_qualified_name(qual_name_node)
+                target_node_for_loc = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            elif stage_path_node:
+                target_name_str = stage_path_node.children[0].value if stage_path_node.children else ""
+                target_node_for_loc = stage_path_node
+            
+            if target_name_str and target_node_for_loc:
+                # *** Determine target type based on name prefix ***
+                if target_name_str.startswith('@'):
+                    target_type = "STAGE"
+                    self.engine.record_object(
+                        name=target_name_str,
+                        obj_type=target_type,
+                        action="COPY_INTO_STAGE",
+                        node=target_node_for_loc,
+                        file_path=self.current_file
+                    )
+                    # Also record as a reference for source/target (if it's the target)
+                    self.engine.record_object(
+                        name=target_name_str,
+                        obj_type=target_type,
+                        action="REFERENCE",
+                        node=target_node_for_loc,
+                        file_path=self.current_file
+                    )
+                    # Also record the specific statement type
+                    self.engine.record_statement("COPY_INTO_STAGE", tree, self.current_file)
+                else:
+                    target_type = "TABLE"
+                    self.engine.record_object(
+                        name=target_name_str,
+                        obj_type=target_type,
+                        action="COPY_INTO_TABLE",
+                        node=target_node_for_loc,
+                        file_path=self.current_file
+                    )
+                    # Also record the specific statement type
+                    self.engine.record_statement("COPY_INTO_TABLE", tree, self.current_file)
+                target_recorded = True
+        
+        if not target_recorded:
+             logger.warning(f"Could not determine target (TABLE or STAGE) in COPY INTO statement: {tree.pretty()}")
+
+        # --- Process Copy Source ---
+        copy_source_node = self._find_first_child_by_name(tree, 'copy_source')
+        if copy_source_node:
+            source_qual_name_node = self._find_first_child_by_name(copy_source_node, 'qualified_name')
+            source_stage_path_node = self._find_first_child_by_name(copy_source_node, 'STAGE_PATH')
+            source_select_node = self._find_first_child_by_name(copy_source_node, 'select_stmt')
+
+            source_name_str = None
+            source_type = None
+            source_node_for_loc = None
+
+            if source_qual_name_node:
+                source_name_str = self._extract_qualified_name(source_qual_name_node)
+                source_node_for_loc = next((t for t in source_qual_name_node.children if isinstance(t, Token)), None)
+            elif source_stage_path_node:
+                source_name_str = source_stage_path_node.children[0].value if source_stage_path_node.children else ""
+                source_node_for_loc = source_stage_path_node
+            
+            if source_name_str and source_node_for_loc:
+                 # *** Determine source type based on name prefix ***
+                 if source_name_str.startswith('@'):
+                     source_type = "STAGE"
+                 else:
+                     source_type = "TABLE"
+                 
+                 self.engine.record_object(
+                     name=source_name_str,
+                     obj_type=source_type,
+                     action="REFERENCE", # Source is referenced
+                     node=source_node_for_loc,
+                     file_path=self.current_file
+                 )
+            elif source_select_node:
+                # If source is a subquery, visit it to find references within
+                logger.debug("Descending into SELECT statement within COPY INTO source...")
+                self.visit(source_select_node)
+
+        # --- Process Copy Options (e.g., FILE_FORMAT reference) ---
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'copy_option':
+                file_format_clause = self._find_first_child_by_name(child, 'file_format_clause')
+                if file_format_clause:
+                    # Look for a qualified_name (direct reference) first
+                    ff_qual_name_node = self._find_first_child_by_name(file_format_clause, 'qualified_name')
+                    if ff_qual_name_node:
+                         file_format_name = self._extract_qualified_name(ff_qual_name_node)
+                         first_token = next((t for t in ff_qual_name_node.children if isinstance(t, Token)), None)
+                         if file_format_name and first_token:
+                            self.engine.record_object(
+                                name=file_format_name,
+                                obj_type="FILE_FORMAT",
+                                action="REFERENCE",
+                                node=first_token,
+                                file_path=self.current_file
+                            )
+                    else:
+                        # Look for IDENTIFIER within file_format_option (inline definition case)
+                        # This part might need refinement based on exact grammar for inline options
+                        # Check if FORMAT_NAME = IDENTIFIER exists
+                        for option_node in file_format_clause.find_data('file_format_option'):
+                             # Assuming structure like: IDENTIFIER EQ (value | qualified_name)
+                             id_token = None
+                             val_token = None
+                             eq_found = False
+                             for item in option_node.children:
+                                 if isinstance(item, Token) and item.type == 'IDENTIFIER':
+                                     id_token = item
+                                 elif isinstance(item, Token) and item.type == 'EQ':
+                                     eq_found = True
+                                 elif id_token and eq_found: # Value comes after ID and EQ
+                                     if isinstance(item, Token) and item.type == 'IDENTIFIER': # Check if value is identifier
+                                         val_token = item
+                                         break
+                                     # Might need to handle SINGLE_QUOTED_STRING too if FORMAT_NAME = 'name' is valid
+
+                             if id_token and id_token.value.upper() == 'FORMAT_NAME' and val_token:
+                                 file_format_name = val_token.value
+                                 self.engine.record_object(
+                                     name=file_format_name,
+                                     obj_type="FILE_FORMAT",
+                                     action="REFERENCE",
+                                     node=val_token, # Use the token for the name
+                                     file_path=self.current_file
+                                 )
+                                 break # Found the format name reference
+
+        # Optionally, extract ON_ERROR etc. from other copy_option children
 
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.
