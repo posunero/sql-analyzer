@@ -3,12 +3,13 @@ Manages the generation of reports in different formats.
 """
 
 from ..analysis.models import AnalysisResult
-from .formats import text, json # Assuming text.py and json.py exist
+from .formats import text, json, html # Add html import
 
 # Map format strings to formatter functions
 _FORMATTERS = {
     'text': text.format_text,
     'json': json.format_json,
+    'html': html.format_html,
     # Add other formats like 'csv' here if implemented
 }
 

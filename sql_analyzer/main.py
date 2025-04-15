@@ -151,8 +151,16 @@ def main():
             format_name=args.format,
             verbose=args.verbose_report
         )
-        print(report_output) # Print to standard output
-        # TODO: Add logic to write to file if args.output is set
+        if args.output:
+            try:
+                Path(args.output).write_text(report_output, encoding='utf-8')
+                print(f"Report written to {args.output}")
+            except Exception as e:
+                logger.error(f"Failed to write report to {args.output}: {e}")
+                print(f"Error writing report to {args.output}: {e}", file=sys.stderr)
+                exit_code = 1
+        else:
+            print(report_output) # Print to standard output
     except (ValueError, ImportError, AttributeError) as e:
         logger.error(f"Error generating report: {e}", exc_info=True)
         print(f"Error generating report: {e}", file=sys.stderr)

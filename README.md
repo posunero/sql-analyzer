@@ -8,7 +8,14 @@ A command-line tool to analyze Snowflake SQL files, extracting metadata, statist
 
 ## Features
 
-*   Parses Snowflake SQL syntax using a Lark grammar.
+*   Parses Snowflake SQL syntax using a Lark grammar. Key supported constructs include:
+    *   **DDL**: `CREATE/ALTER/DROP/SHOW/DESCRIBE` for `TABLE`, `VIEW`, `WAREHOUSE`, `TASK`, `STREAM`, `STAGE`, `DATABASE`, `SCHEMA`, `PROCEDURE`, `FUNCTION`, `SEQUENCE`, `RESOURCE MONITOR`, `FILE FORMAT`, `ROLE`, `MASKING POLICY`, `TAG`, `ROW ACCESS POLICY`.
+    *   **Advanced DDL**: `CREATE OR REPLACE`, `IF [NOT] EXISTS`, `TRANSIENT` tables, `CLUSTER BY (expr...)`, `DATA_RETENTION_TIME_IN_DAYS`, table `WITH TAG (...)`, column `COMMENT '...'`, `CREATE TABLE AS SELECT` (CTAS), `ALTER TABLE` actions (including `ADD/DROP/RENAME ROW ACCESS POLICY`).
+    *   **DML**: `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `INSERT ALL` (multi-table insert), `TRUNCATE`.
+    *   **Query**: `SELECT`, `WITH` (CTEs), various `JOIN` types, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, window functions (`func() OVER (PARTITION BY ... ORDER BY ...)`), `LATERAL FLATTEN` table functions, `IN (...)` tuple syntax.
+    *   **Transactions**: `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`.
+    *   **Snowflake Scripting**: `DECLARE`, `SET`, `EXECUTE IMMEDIATE $$...$$`.
+    *   **Other**: `USE`, `GRANT`, `REVOKE`, `COPY INTO`, `PUT`.
 *   Identifies and counts statement types (e.g., `SELECT`, `CREATE_TABLE`, `INSERT`, `USE_WAREHOUSE`, `USE_DATABASE`, `ALTER_TABLE`).
 *   Tracks destructive operations (e.g., `CREATE OR REPLACE`, `DROP`, `DELETE`, `TRUNCATE`, `ALTER TABLE DROP COLUMN`).
 *   Extracts database objects (tables, views, functions, databases, warehouses, etc.) and tracks their actions (e.g., `CREATE`, `ALTER`, `DROP`, `USE`, `REFERENCE`, `SELECT`).

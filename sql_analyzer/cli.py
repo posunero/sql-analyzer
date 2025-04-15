@@ -28,7 +28,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--format',
         type=str,
-        choices=['text', 'json'],
+        choices=['text', 'json', 'html'],
         default='text',
         help='Output format for the analysis results. (default: text)'
     )
@@ -52,6 +52,14 @@ def parse_arguments() -> argparse.Namespace:
         '--fail-fast',
         action='store_true',
         help='Stop processing immediately if an error is encountered in any file.'
+    )
+
+    parser.add_argument(
+        '--output',
+        '--out',
+        type=str,
+        default=None,
+        help='Optional path to write the output report file instead of printing to stdout.'
     )
 
     # Add more arguments here as needed, e.g., output file

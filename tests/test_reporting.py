@@ -13,6 +13,7 @@ from sql_analyzer.analysis.models import AnalysisResult, ObjectInfo
 from sql_analyzer.reporting import manager
 from sql_analyzer.reporting.formats import text as text_formatter
 from sql_analyzer.reporting.formats import json as json_formatter
+from sql_analyzer.reporting.formats import html as html_formatter
 
 # Assuming analyze_fixture_file is correctly defined in test_analysis
 try:
@@ -196,6 +197,39 @@ def test_json_formatter_function_procedure(function_procedure_result):
     assert referenced_funcs == {"simple_math.add_two_integers"}
     # procedure_obj = [o for o in data['objects_found'] if o['object_type'] == 'PROCEDURE']
     # assert not procedure_obj # Check if procedure object is created
+
+def test_html_formatter_complex_mix(complex_mix_result):
+    """Test HTML output for the complex_mix fixture."""
+    report = html_formatter.format_html(complex_mix_result)
+    # Check for key HTML elements and content
+    assert '<html' in report and '</html>' in report
+    assert '<h1>SQL Analysis Report</h1>' in report
+    assert 'USE_WAREHOUSE' in report
+    assert 'USE_DATABASE' in report
+    assert 'Object Interactions' in report
+    assert 'Summary' in report
+    # Check for at least one table row for object interactions
+    assert '<table' in report and '<td>' in report
+
+def test_html_formatter_complex_select(complex_select_result):
+    """Test HTML output for the complex_select fixture."""
+    report = html_formatter.format_html(complex_select_result)
+    assert '<html' in report and '</html>' in report
+    assert 'SELECT' in report
+    assert 'Object Interactions' in report
+    assert 'Summary' in report
+    assert '<table' in report
+    # Check for errors section
+    assert 'Errors' in report
+
+def test_html_formatter_function_procedure(function_procedure_result):
+    """Test HTML output for the function_procedure fixture."""
+    report = html_formatter.format_html(function_procedure_result)
+    assert '<html' in report and '</html>' in report
+    assert 'CREATE_FUNCTION' in report or 'CREATE FUNCTION' in report
+    assert 'Summary' in report
+    assert 'Object Interactions' in report
+    assert '<table' in report
 
 # --- Refactor existing unittest structure to pytest --- 
 
