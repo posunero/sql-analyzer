@@ -25,6 +25,49 @@ A command-line tool to analyze Snowflake SQL files, extracting metadata, statist
 *   Supports different output formats (Text, JSON - more planned).
 *   Handles file and directory inputs.
 
+## Snowflake SQL Coverage
+
+Current implementation covers approximately **70-75%** of the Snowflake SQL specification. The parser successfully handles:
+
+- Core SQL syntax (SELECT, INSERT, UPDATE, DELETE)
+- Most DDL operations for common Snowflake objects
+- Standard DML operations
+- Transaction control statements
+- Basic Snowflake-specific features (warehouses, tasks, streams)
+- Function and procedure definitions with various language options
+- Data sharing features
+
+**Areas planned for future implementation (25-30% remaining):**
+
+- Advanced Snowflake features:
+  - Complete LATERAL FLATTEN and semi-structured data operations
+  - Full Cortex Search capabilities
+  - Database and application roles
+  - Container Services and job features
+
+- Modern analytics features:
+  - Machine learning model operations
+  - Full Apache Iceberg table support
+  - Snowpark Container Services
+  - Advanced monitoring and alerting
+
+- Security and compliance:
+  - Complete row access policies
+  - Column-level security
+  - Dynamic data masking
+  - Authentication policies
+
+- Data pipeline features:
+  - Complete Snowpipe and Snowpipe streaming
+  - Notification integrations
+
+- Newer features (post-2023):
+  - Organization accounts
+  - Privacy policies
+  - More cloud service integrations
+  - Streamlit application support
+  - External access integrations
+
 ## Installation
 
 1.  **Clone the repository:**
