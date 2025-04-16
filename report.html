@@ -19,12 +19,12 @@
 </head>
 <body>
     <h1>SQL Analysis Report</h1>
-    <p>Generated: 2025-04-15 01:43:58 UTC</p>
+    <p>Generated: 2025-04-15 04:02:43 UTC</p>
 
     <div class="summary-card">
         <h2>Summary</h2>
         <ul>
-            <li><strong>Total Statements:</strong> 386</li>
+            <li><strong>Total Statements:</strong> 398</li>
             <li><strong>Total Destructive Statements:</strong> 143</li>
             <li><strong>Total Errors:</strong> 0</li>
         </ul>
@@ -38,6 +38,8 @@
                 <tr><td>USE_DATABASE</td><td>1</td></tr>
             
                 <tr><td>USE_SCHEMA</td><td>14</td></tr>
+            
+                <tr><td>COPY_INTO_TABLE</td><td>12</td></tr>
             
                 <tr><td>CREATE_OR_REPLACE_DATABASE</td><td>1</td></tr>
             
@@ -81,7 +83,7 @@
             
                 <tr><td>PUT_STMT</td><td>12</td></tr>
             
-                <tr><td>COPY_INTO_STMT</td><td>12</td></tr>
+                <tr><td>COPY_INTO</td><td>12</td></tr>
             
                 <tr><td>BEGIN_STMT</td><td>12</td></tr>
             
@@ -134,6 +136,600 @@
         </table>
     </div>
 
+    <div class="summary-card">
+        <h2>Stage, File Format, and COPY INTO Details</h2>
+        <table>
+            <thead><tr><th>Type</th><th>Name</th><th>Action</th><th>File</th><th>Line</th></tr></thead>
+            <tbody>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_001</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>55</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>TYPE</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>0</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_002</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>122</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_003</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>182</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_004</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>242</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_005</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>302</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_006</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>361</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_007</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>411</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_008</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>461</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_009</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>511</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_010</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>561</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_011</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>611</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>sales_stage_012</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>661</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>CREATE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>FIELD_DELIMITER</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                </tr>
+            
+                <tr>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>TYPE_TYPE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_001</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>88</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_001</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>88</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_002</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>150</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_002</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>150</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_003</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>210</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_003</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>210</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_004</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>270</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_004</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>270</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_005</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>330</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_005</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>330</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_006</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>384</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_006</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>384</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_007</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>434</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_007</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>434</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_008</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>484</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_008</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>484</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_009</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>534</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_009</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>534</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_010</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>584</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_010</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>584</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_011</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>634</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_011</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>634</td>
+                </tr>
+            
+                <tr>
+                    <td>TABLE</td>
+                    <td>sales_orders_012</td>
+                    <td>COPY_INTO_TABLE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>684</td>
+                </tr>
+            
+                <tr>
+                    <td>STAGE</td>
+                    <td>@sales_stage_012</td>
+                    <td>REFERENCE</td>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>684</td>
+                </tr>
+            
+            </tbody>
+        </table>
+    </div>
+
     <h2>Errors</h2>
     
         <p>No errors found.</p>
@@ -154,6 +750,84 @@
                 <td>DATABASE</td>
                 <td>corp_db</td>
                 <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>TYPE</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_001</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_002</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_003</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_004</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_005</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_006</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_007</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_008</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_009</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_010</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_011</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
+            </tr>
+        
+            <tr>
+                <td>FILE_FORMAT</td>
+                <td>csv_format_012</td>
+                <td>CREATE, FIELD_DELIMITER, TYPE_TYPE</td>
             </tr>
         
             <tr>
@@ -343,6 +1017,150 @@
             </tr>
         
             <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_001</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_002</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_003</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_004</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_005</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_006</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_007</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_008</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_009</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_010</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_011</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>@sales_stage_012</td>
+                <td>REFERENCE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_001</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_002</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_003</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_004</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_005</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_006</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_007</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_008</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_009</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_010</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_011</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
+                <td>STAGE</td>
+                <td>sales_stage_012</td>
+                <td>CREATE</td>
+            </tr>
+        
+            <tr>
                 <td>TABLE</td>
                 <td>pending_orders_013</td>
                 <td>REPLACE, TRUNCATE</td>
@@ -351,73 +1169,73 @@
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_001</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_002</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_003</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_004</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_005</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_006</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_007</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_008</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_009</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_010</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_011</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
                 <td>TABLE</td>
                 <td>sales_orders_012</td>
-                <td>INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
+                <td>COPY_INTO_TABLE, INSERT, REFERENCE, REPLACE, SELECT, UPDATE</td>
             </tr>
         
             <tr>
@@ -851,6 +1669,51 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>55</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_001</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>FILE_FORMAT</td>
+                    <td>TYPE</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>56</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_001</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>75</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -874,6 +1737,42 @@
                     <td>VIEW</td>
                     <td>active_orders_002</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>122</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_002</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>123</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_002</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -905,6 +1804,42 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>182</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_003</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>183</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_003</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>199</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -928,6 +1863,42 @@
                     <td>VIEW</td>
                     <td>active_orders_004</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>242</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_004</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>243</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_004</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -959,6 +1930,42 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>302</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_005</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>303</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_005</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>319</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -982,6 +1989,42 @@
                     <td>VIEW</td>
                     <td>active_orders_006</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>361</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_006</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>362</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_006</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -1013,6 +2056,42 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>411</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_007</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>412</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_007</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>425</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -1036,6 +2115,42 @@
                     <td>VIEW</td>
                     <td>active_orders_008</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>461</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_008</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>462</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_008</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -1067,6 +2182,42 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>511</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_009</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>512</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_009</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>525</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -1090,6 +2241,42 @@
                     <td>VIEW</td>
                     <td>active_orders_010</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>561</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_010</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>562</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_010</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -1121,6 +2308,42 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>611</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_011</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>612</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_011</td>
+                    <td>TYPE_TYPE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>625</td>
                     <td>28</td>
                     <td>FUNCTION</td>
@@ -1144,6 +2367,42 @@
                     <td>VIEW</td>
                     <td>active_orders_012</td>
                     <td>REPLACE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>661</td>
+                    <td>25</td>
+                    <td>STAGE</td>
+                    <td>sales_stage_012</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>CREATE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                    <td>59</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>FIELD_DELIMITER</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>662</td>
+                    <td>31</td>
+                    <td>FILE_FORMAT</td>
+                    <td>csv_format_012</td>
+                    <td>TYPE_TYPE</td>
                 </tr>
             
                 <tr>
@@ -1490,11 +2749,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>88</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_001</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>88</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_001</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>110</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_002</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>150</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_002</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>150</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_002</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
@@ -1508,11 +2803,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>210</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_003</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>210</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_003</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>230</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_004</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>270</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_004</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>270</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_004</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
@@ -1526,11 +2857,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>330</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_005</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>330</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_005</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>350</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_006</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>384</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_006</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>384</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_006</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
@@ -1544,11 +2911,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>434</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_007</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>434</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_007</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>450</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_008</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>484</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_008</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>484</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_008</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
@@ -1562,11 +2965,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>534</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_009</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>534</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_009</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>550</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_010</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>584</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_010</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>584</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_010</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
@@ -1580,11 +3019,47 @@
             
                 <tr>
                     <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>634</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_011</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>634</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_011</td>
+                    <td>REFERENCE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
                     <td>650</td>
                     <td>12</td>
                     <td>SCHEMA</td>
                     <td>corp_db.sales_012</td>
                     <td>USE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>684</td>
+                    <td>11</td>
+                    <td>TABLE</td>
+                    <td>sales_orders_012</td>
+                    <td>COPY_INTO_TABLE</td>
+                </tr>
+            
+                <tr>
+                    <td>sample_sql\extensive_snowflake.sql</td>
+                    <td>684</td>
+                    <td>33</td>
+                    <td>STAGE</td>
+                    <td>@sales_stage_012</td>
+                    <td>REFERENCE</td>
                 </tr>
             
                 <tr>
