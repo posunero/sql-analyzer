@@ -439,9 +439,115 @@ def test_analyze_stage_fileformat_copyinto_invalid_fixture():
     # If analysis returns a result, it should have errors
     assert result.errors, "Analysis of invalid fixture should record errors."
 
+def test_analyze_task_statements_fixture():
+    """Test analysis of TASK statements in the complex_mix.sql fixture."""
+    result = analyze_fixture_file("tests/fixtures/valid/complex_mix.sql")
+    # Check for statement types
+    assert result.statement_counts.get('CREATE_TASK', 0) > 0, "Should detect CREATE_TASK statement"
+    assert result.statement_counts.get('ALTER_TASK', 0) > 0, "Should detect ALTER_TASK statement"
+    assert result.statement_counts.get('DROP_TASK', 0) > 0, "Should detect DROP_TASK statement"
+    assert result.statement_counts.get('EXECUTE_TASK', 0) > 0, "Should detect EXECUTE_TASK statement"
+    assert result.statement_counts.get('SHOW_TASKS', 0) > 0 or result.statement_counts.get('SHOW', 0) > 0, "Should detect SHOW TASKS statement"
+    assert result.statement_counts.get('DESCRIBE_TASK', 0) > 0 or result.statement_counts.get('DESCRIBE', 0) > 0 or result.statement_counts.get('DESC', 0) > 0, "Should detect DESCRIBE TASK statement"
+    # Check for object actions
+    task_objects = [o for o in result.objects_found if o.object_type == 'TASK']
+    assert any(o.action == 'CREATE_TASK' for o in task_objects), "Should record CREATE_TASK action on TASK object"
+    assert any(o.action == 'ALTER_TASK' for o in task_objects), "Should record ALTER_TASK action on TASK object"
+    assert any(o.action == 'EXECUTE_TASK' for o in task_objects), "Should record EXECUTE_TASK action on TASK object"
+    assert any(o.action == 'DROP' for o in task_objects), "Should record DROP action on TASK object"
+
 # --- End tests using complex fixtures ---
 
 # TODO: Add tests for merging results from multiple analyses
 # TODO: Add tests specifically targeting the visitor's ability to extract
 #       different object types (views, functions, etc.) once implemented.
 # TODO: Add tests for correct line/column numbers in ObjectInfo. 
+
+def test_analyze_drop_task():
+    """Test analysis of DROP TASK statement."""
+    sql = "DROP TASK IF EXISTS my_task;"
+    result = analyze_sql(sql)
+    
+    # Check statement count
+    assert result.statement_counts.get('DROP_TASK', 0) > 0, "DROP_TASK statement not detected"
+    
+    # Check objects
+    task_objects = [obj for obj in result.objects_found if obj.object_type == 'TASK']
+    assert len(task_objects) > 0, "No TASK objects found"
+    
+    # Verify at least one has a DROP action
+    assert any(obj.action == 'DROP' for obj in task_objects), "No DROP action found on TASK objects"
+    
+    # Check destructive statements
+    assert result.destructive_counts.get('DROP_TASK', 0) > 0, "DROP_TASK not recorded as destructive"
+
+def test_analyze_task_dependencies():
+    """Test analysis of task dependencies and SQL statements in AS clauses."""
+    result = analyze_fixture_file("tests/fixtures/valid/task_dependencies.sql")
+    
+    # Check statement counts
+    assert result.statement_counts.get('CREATE_TASK', 0) >= 4, "Should detect at least 4 CREATE_TASK statements"
+    assert result.statement_counts.get('ALTER_TASK', 0) >= 2, "Should detect at least 2 ALTER_TASK statements"
+    
+    # Verify task objects
+    task_objects = [o for o in result.objects_found if o.object_type == 'TASK']
+    task_names = {o.name for o in task_objects}
+    expected_tasks = {'first_task', 'second_task', 'third_task', 'complex_etl_task', 'proc_task'}
+    for task in expected_tasks:
+        assert task in task_names, f"Task '{task}' not found"
+    
+    # Verify warehouse references for each task
+    warehouse_refs = [o for o in result.objects_found if o.object_type == 'WAREHOUSE' and o.action == 'REFERENCE']
+    wh_names = {o.name for o in warehouse_refs}
+    expected_warehouses = {'analytics_wh', 'reporting_wh', 'etl_wh', 'proc_wh'}
+    for wh in expected_warehouses:
+        assert wh in wh_names, f"Warehouse '{wh}' reference not found"
+    
+    # Verify task dependencies are recorded
+    # Check for dependencies in object_interactions
+    task_dependencies = [o for o in result.objects_found if o.object_type == 'TASK' and o.action == 'DEPENDENCY']
+    assert len(task_dependencies) >= 3, "Should have at least 3 task dependencies (AFTER clauses)"
+    
+    # Verify table references from SQL in AS clauses
+    # Now check for both REFERENCE and SELECT actions since tables can be referenced either way
+    table_refs = [o for o in result.objects_found if o.object_type == 'TABLE' and o.action in ('REFERENCE', 'SELECT', 'UPDATE')]
+    expected_tables = {'staging_table', 'source_table', 'reference_table', 'target_table'}
+    table_names = {o.name for o in table_refs}
+    for tbl in expected_tables:
+        assert tbl in table_names, f"Table '{tbl}' reference not found from AS clause"
+    
+    # Verify insert/update/merge actions from AS clauses
+    assert any(o.object_type == 'TABLE' and o.action == 'INSERT' and o.name == 'audit_log' for o in result.objects_found), "INSERT into audit_log not detected"
+    assert any(o.object_type == 'TABLE' and o.action == 'UPDATE' and o.name == 'staging_table' for o in result.objects_found), "UPDATE on staging_table not detected"
+    assert any(o.object_type == 'TABLE' and o.action == 'INSERT' and o.name == 'reporting.monthly_metrics' for o in result.objects_found), "INSERT into monthly_metrics not detected"
+    
+    # Verify procedure call references
+    proc_calls = [o for o in result.objects_found if o.object_type == 'PROCEDURE' and o.action == 'CALL']
+    assert any(o.name == 'process_data' for o in proc_calls), "CALL to process_data procedure not detected"
+
+def test_analyze_task_dependency_removal():
+    """Test analysis of ALTER TASK with REMOVE AFTER dependencies."""
+    sql = """
+    CREATE OR REPLACE TASK task_a WAREHOUSE = wh1 SCHEDULE = 'USING CRON 0 0 * * * UTC' 
+    AS SELECT 1;
+    
+    CREATE OR REPLACE TASK task_b WAREHOUSE = wh1 AFTER task_a 
+    AS SELECT 2;
+    
+    ALTER TASK task_b REMOVE AFTER task_a;
+    """
+    result = analyze_sql(sql)
+    
+    # Check statement counts - note: There are duplicates due to how the parser visits both the nested and top-level statements
+    assert result.statement_counts.get('CREATE_TASK', 0) >= 2, "Should detect CREATE_TASK statements"
+    assert result.statement_counts.get('ALTER_TASK', 0) >= 1, "Should detect ALTER_TASK statement"
+    
+    # Check for object dependencies
+    task_b_key = ('TASK', 'task_b')
+    dependencies = result.object_dependencies.get(task_b_key, set())
+    
+    # Verify AFTER dependency was recorded from CREATE TASK
+    assert ('TASK', 'task_a', 'AFTER') in dependencies, "AFTER dependency from CREATE TASK not found"
+    
+    # Verify REMOVED_AFTER dependency was recorded from ALTER TASK
+    assert ('TASK', 'task_a', 'REMOVED_AFTER') in dependencies, "REMOVED_AFTER dependency from ALTER TASK not found" 

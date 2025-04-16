@@ -49,6 +49,9 @@ class AnalysisResult:
         object_interactions: A dictionary mapping (object_type, object_name) tuples
             to a set of actions (uppercase strings like 'CREATE', 'DELETE', 'SELECT')
             performed on that object.
+        object_dependencies: A dictionary mapping (object_type, object_name) tuples
+            to a set of (dependent_type, dependent_name, relationship_type) tuples,
+            recording dependencies between objects.
         current_file: The path of the current file being processed.
     """
     statement_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
@@ -56,13 +59,14 @@ class AnalysisResult:
     errors: List[Dict[str, object]] = field(default_factory=list) # Keys: 'file', 'line', 'message'
     destructive_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
     object_interactions: DefaultDict[Tuple[str, str], Set[str]] = field(default_factory=lambda: defaultdict(set))
+    object_dependencies: DefaultDict[Tuple[str, str], Set[Tuple[str, str, str]]] = field(default_factory=lambda: defaultdict(set))
     current_file: str = ""
 
     def merge(self, other_result: 'AnalysisResult') -> None:
         """Merges results from another AnalysisResult object into this one.
 
         Combines statement counts, object lists, error lists, destructive counts,
-        and object interactions.
+        object interactions, and object dependencies.
 
         Args:
             other_result: The `AnalysisResult` object to merge from.
@@ -73,6 +77,8 @@ class AnalysisResult:
             self.destructive_counts[stmt_type] += count
         for obj_key, actions in other_result.object_interactions.items():
             self.object_interactions[obj_key].update(actions)
+        for obj_key, deps in other_result.object_dependencies.items():
+            self.object_dependencies[obj_key].update(deps)
         # Keep objects_found merge for now, though its utility might decrease
         self.objects_found.extend(other_result.objects_found)
         self.errors.extend(other_result.errors)
@@ -179,3 +185,25 @@ class AnalysisResult:
         self.object_interactions[obj_key].add(action)
         # Note: line/column are not stored directly in object_interactions yet,
         # but are available if needed later. The primary interaction record is the action set. 
+
+    def add_dependency(self, object_type: str, object_name: str, 
+                       dependent_type: str, dependent_name: str, 
+                       relationship_type: str) -> None:
+        """Records a dependency relationship between two objects.
+        
+        Args:
+            object_type: The type of the parent object (e.g., 'TASK')
+            object_name: The name of the parent object
+            dependent_type: The type of the dependent object (e.g., 'TABLE', 'TASK')
+            dependent_name: The name of the dependent object
+            relationship_type: The type of relationship (e.g., 'AFTER', 'REFERENCES')
+        """
+        # Convert to uppercase for consistent storage
+        object_type = object_type.upper()
+        dependent_type = dependent_type.upper()
+        relationship_type = relationship_type.upper()
+        
+        # Add the dependency
+        parent_key = (object_type, object_name)
+        dependent_tuple = (dependent_type, dependent_name, relationship_type)
+        self.object_dependencies[parent_key].add(dependent_tuple) 

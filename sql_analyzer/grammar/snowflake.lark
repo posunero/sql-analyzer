@@ -103,6 +103,7 @@ DEFAULT: "DEFAULT"i
 COLUMN: "COLUMN"i
 ADD: "ADD"i
 MODIFY: "MODIFY"i
+REMOVE: "REMOVE"i
 
 RENAME: "RENAME"i
 TO: "TO"i
@@ -128,6 +129,8 @@ URL: "URL"i
 RETURNS: "RETURNS"i
 LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
+ALLOW_OVERLAPPING_EXECUTION: "ALLOW_OVERLAPPING_EXECUTION"i
+USER_TASK_TIMEOUT_MS: "USER_TASK_TIMEOUT_MS"i
 INPUT: "INPUT"i
 CAST: "CAST"i
 INNER: "INNER"i
@@ -244,6 +247,7 @@ statement: select_stmt
          | declare_stmt
          | set_stmt
          | execute_immediate_stmt
+         | execute_task_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
@@ -352,7 +356,10 @@ warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
 create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS (call_procedure_stmt | _statement)
 task_param: WAREHOUSE EQ qualified_name
           | SCHEDULE EQ SINGLE_QUOTED_STRING
-          | AFTER EQ qualified_name
+          | AFTER (EQ)? qualified_name
+          | ALLOW_OVERLAPPING_EXECUTION
+          | USER_TASK_TIMEOUT_MS EQ number
+          | COMMENT EQ SINGLE_QUOTED_STRING
 
 create_stream_stmt: CREATE (OR REPLACE)? STREAM qualified_name ON (TABLE | STAGE) qualified_name stream_param*
 stream_param: APPEND_ONLY EQ boolean
@@ -455,6 +462,9 @@ alter_task_action: SET WAREHOUSE EQ qualified_name
                  | SET SCHEDULE EQ SINGLE_QUOTED_STRING
                  | SUSPEND
                  | RESUME
+                 | REMOVE AFTER (EQ)? qualified_name
+                 | ADD AFTER (EQ)? qualified_name
+                 | MODIFY AS (call_procedure_stmt | _statement)
 
 alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY EQ boolean
 
@@ -660,3 +670,11 @@ IMMEDIATE: "IMMEDIATE"i
 execute_immediate_stmt: EXECUTE IMMEDIATE DOLLAR_QUOTED_STRING
 
 IDENTIFIER: /@?[a-zA-Z_][a-zA-Z0-9_\$]*/
+
+// --- TASK Statements ---
+// EXECUTE TASK
+execute_task_stmt: EXECUTE TASK qualified_name
+
+// SHOW TASKS is covered by the general show_stmt rule
+
+// DESCRIBE TASK is covered by the general describe_stmt rule

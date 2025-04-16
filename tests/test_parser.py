@@ -518,5 +518,11 @@ def test_parse_stage_fileformat_copyinto_invalid_fixture():
     with pytest.raises(LarkError):
         parse_sql(sql)
 
+def test_parse_drop_task():
+    """Test parsing DROP TASK statement specifically."""
+    sql = "DROP TASK IF EXISTS my_task;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing DROP TASK should return a Tree."
+
 if __name__ == '__main__':
     pytest.main() 

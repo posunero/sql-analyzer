@@ -113,6 +113,66 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
 
         return ".".join(name_parts)
 
+    def _record_table_reference_in_context(self, table_name: str, action: str, node: Tree | Token) -> None:
+        """Record a table reference within the current context (e.g., task).
+
+        If we're processing within a task context, record the dependency between
+        the task and the referenced table.
+
+        Args:
+            table_name: The name of the referenced table
+            action: The action being performed (e.g., 'REFERENCE', 'INSERT', 'UPDATE')
+            node: The AST node that contains the table reference
+        """
+        # First, record the standard object reference
+        self.engine.record_object(
+            name=table_name,
+            obj_type="TABLE",
+            action=action,
+            node=node,
+            file_path=self.current_file
+        )
+        
+        # If we're in a task context, record the dependency between the task and the table
+        context = getattr(self, 'current_context', None)
+        if context and context['type'] == 'TASK' and context['name']:
+            # Record the dependency with the appropriate relationship type based on the action
+            relationship_type = action  # Use action as relationship type by default
+            self.engine.result.add_dependency(
+                "TASK", context['name'],
+                "TABLE", table_name,
+                relationship_type
+            )
+
+    def _record_object_reference(self, obj_name: str, obj_type: str, action: str, node: Tree | Token) -> None:
+        """Record an object reference with the correct object type.
+
+        Args:
+            obj_name: The name of the referenced object
+            obj_type: The type of the object (e.g., 'TABLE', 'STAGE', 'FILE_FORMAT', 'WAREHOUSE')
+            action: The action being performed (e.g., 'REFERENCE', 'CREATE', 'DROP')
+            node: The AST node that contains the object reference
+        """
+        # Record the standard object reference with the specified type
+        self.engine.record_object(
+            name=obj_name,
+            obj_type=obj_type,
+            action=action,
+            node=node,
+            file_path=self.current_file
+        )
+        
+        # If we're in a task context, record the dependency between the task and the object
+        context = getattr(self, 'current_context', None)
+        if context and context['type'] == 'TASK' and context['name']:
+            # Record the dependency with the appropriate relationship type based on the action
+            relationship_type = action  # Use action as relationship type by default
+            self.engine.result.add_dependency(
+                "TASK", context['name'],
+                obj_type, obj_name,
+                relationship_type
+            )
+
     def statement(self, tree: Tree):
         """Intercepts high-level `statement` nodes.
 
@@ -173,6 +233,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 'DROP_VIEW_STMT': 'DROP_VIEW',
                 'DROP_DATABASE_STMT': 'DROP_DATABASE',
                 'DROP_SCHEMA_STMT': 'DROP_SCHEMA',
+                'DROP_TASK_STMT': 'DROP_TASK',
                 'CREATE_VIEW_STMT': 'CREATE_VIEW',
                 'CREATE_DATABASE_STMT': 'CREATE_DATABASE',
                 'CREATE_STAGE_STMT': 'CREATE_STAGE',
@@ -187,6 +248,21 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 'TRUNCATE_TABLE_STMT': 'TRUNCATE_TABLE',
                 'CREATE_OR_REPLACE_TABLE': 'CREATE_OR_REPLACE_TABLE',
                 'CREATE_OR_REPLACE_VIEW': 'CREATE_OR_REPLACE_VIEW',
+                'CREATE_TASK_STMT': 'CREATE_TASK',
+                'ALTER_TASK_STMT': 'ALTER_TASK',
+                'EXECUTE_TASK_STMT': 'EXECUTE_TASK',
+                'SHOW_STMT': 'SHOW',
+                'DESCRIBE_STMT': 'DESCRIBE',
+                'CALL_PROCEDURE_STMT': 'CALL',
+                'PUT_STMT': 'PUT',
+                'BEGIN_STMT': 'BEGIN',
+                'COMMIT_STMT': 'COMMIT',
+                'ROLLBACK_STMT': 'ROLLBACK',
+                'SAVEPOINT_STMT': 'SAVEPOINT',
+                'ROLLBACK_TO_SAVEPOINT_STMT': 'ROLLBACK_TO_SAVEPOINT',
+                'DECLARE_STMT': 'DECLARE',
+                'SET_STMT': 'SET',
+                'EXECUTE_IMMEDIATE_STMT': 'EXECUTE_IMMEDIATE',
                 # Add more mappings as needed
             }
             
@@ -198,10 +274,13 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             
             # Record the mapped statement type in normal counts
             # Specific visitors might record more detailed counts later (e.g., COPY_INTO_TABLE)
-            self.engine.record_statement(stmt_type, stmt_node, self.current_file)
+            # Let specific visitors for USE and DROP handle recording their own statement counts
+            if stmt_type not in ("USE", "DROP"):
+                self.engine.record_statement(stmt_type, stmt_node, self.current_file)
             
             # Check if this is a destructive statement and record it
-            if stmt_type in DESTRUCTIVE_STATEMENTS:
+            # Note: Destructive recording for DROP_X is handled in the drop_stmt visitor now
+            if stmt_type in DESTRUCTIVE_STATEMENTS and not stmt_type.startswith("DROP_"):
                 logger.debug(f"Recording destructive statement: {stmt_type}")
                 self.engine.record_destructive_statement(stmt_type, stmt_node, self.current_file)
         else:
@@ -273,23 +352,11 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
 
                 logger.debug(f"Found {obj_type} reference in SELECT/JOIN: {ref_name}")
                 # Record as REFERENCE
-                self.engine.record_object(
-                    name=ref_name,
-                    obj_type=obj_type,
-                    action="REFERENCE",
-                    node=first_token, 
-                    file_path=self.current_file
-                )
+                self._record_object_reference(ref_name, obj_type, "SELECT", first_token)
                 
                 # Also record as SELECT for object interactions (only if it's a TABLE)
                 if obj_type == "TABLE":
-                     self.engine.record_object(
-                         name=ref_name,
-                         obj_type="TABLE",
-                         action="SELECT",
-                         node=first_token, 
-                         file_path=self.current_file
-                     )
+                     self._record_object_reference(ref_name, obj_type, "SELECT", first_token)
 
             # Process base table/view in FROM clause
             base_table_node = self._find_first_child_by_name(from_clause, 'base_table_ref')
@@ -329,23 +396,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 logger.debug(f"Found table reference in INSERT: {table_name}")
-                # Record as REFERENCE for backward compatibility
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="REFERENCE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
-                
-                # Also record as INSERT for object interactions
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="INSERT",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                # Record in the current context (e.g., task context)
+                self._record_object_reference(table_name, "TABLE", "INSERT", first_token)
         # Currently don't parse the SELECT part of INSERT INTO SELECT
         # or the VALUES part for potential function calls etc.
         # self.visit_children(tree) # Avoid recursion if grammar nests SELECT here
@@ -373,13 +425,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 # If it's a REPLACE operation, record as such
                 action = "REPLACE" if is_replace else "CREATE"
                 logger.debug(f"Found table {action}: {table_name}")
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action=action,
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
+                self._record_object_reference(table_name, "TABLE", action, first_token)
                 
                 # If it's a REPLACE operation, record as destructive
                 if is_replace:
@@ -402,13 +448,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in table_ref.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 # Record the basic ALTER action on the table
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="ALTER",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(table_name, "TABLE", "ALTER", first_token)
         
         # Check for DROP COLUMN operations - using a more flexible approach
         is_drop_column = False
@@ -452,29 +492,17 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if column_name:
                 logger.debug(f"Found DROP COLUMN operation on {table_name}.{column_name}")
                 # Record specific column drop
-                self.engine.record_object(
-                    name=f"{table_name}.{column_name}",
-                    obj_type="COLUMN",
-                    action=action,
-                    node=first_token if first_token else tree.children[0],
-                    file_path=self.current_file
-                )
+                self._record_object_reference(f"{table_name}.{column_name}", "TABLE", action, first_token if first_token else tree.children[0])
                 
                 # Also record DROP_COLUMN action on the table itself for easier querying
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action=action,
-                    node=first_token if first_token else tree.children[0],
-                    file_path=self.current_file
-                )
+                self._record_object_reference(table_name, "TABLE", action, first_token if first_token else tree.children[0])
                 
                 # Always record that this is a destructive action
                 self.engine.record_destructive_statement("ALTER_TABLE_DROP_COLUMN", tree, self.current_file)
             else:
                 logger.debug(f"Found DROP COLUMN operation on {table_name} but couldn't identify column name")
                 # Still record as destructive even if we can't identify the column
-                self.engine.record_destructive_statement("ALTER_TABLE_DROP_COLUMN", tree, self.current_file)
+                self._record_object_reference(table_name, "TABLE", action, first_token if first_token else tree.children[0])
 
     def create_view_stmt(self, tree: Tree):
         """Visits `create_view_stmt` nodes. Extracts the `qualified_name` of the view.
@@ -501,13 +529,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 # If it's a REPLACE operation, record as such
                 action = "REPLACE" if is_replace else "CREATE"
                 logger.debug(f"Found view {action}: {view_name}")
-                self.engine.record_object(
-                    name=view_name,
-                    obj_type="VIEW",
-                    action=action,
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
+                self._record_object_reference(view_name, "VIEW", action, first_token)
                 
                 # If it's a REPLACE operation, record as destructive
                 if is_replace:
@@ -525,13 +547,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if db_name and first_token:
                 logger.debug(f"Found database creation: {db_name}")
-                self.engine.record_object(
-                    name=db_name,
-                    obj_type="DATABASE",
-                    action="CREATE",
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
+                self._record_object_reference(db_name, "DATABASE", "CREATE", first_token)
 
     def alter_warehouse_stmt(self, tree: Tree):
         """Visits `alter_warehouse_stmt` nodes. Extracts the `qualified_name` of the warehouse.
@@ -545,13 +561,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if wh_name and first_token:
                 logger.debug(f"Found warehouse alteration: {wh_name}")
-                self.engine.record_object(
-                    name=wh_name,
-                    obj_type="WAREHOUSE",
-                    action="ALTER",
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
+                self._record_object_reference(wh_name, "WAREHOUSE", "ALTER", first_token)
 
     def update_stmt(self, tree: Tree):
         """Visits `update_stmt` nodes. Extracts table references.
@@ -574,13 +584,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in table_ref.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 logger.debug(f"Found table being updated: {table_name}")
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="UPDATE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                # Record in the current context (e.g., task context)
+                self._record_object_reference(table_name, "TABLE", "UPDATE", first_token)
                 
                 # Make sure to record the UPDATE destructive statement
                 self.engine.record_destructive_statement("UPDATE", tree, self.current_file)
@@ -588,75 +593,129 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
     def drop_stmt(self, tree: Tree):
         """Visits `drop_stmt` nodes. Extracts the object being dropped.
 
-        Identifies the database object being dropped (e.g., TABLE, VIEW).
+        Identifies the database object being dropped (e.g., TABLE, VIEW, TASK).
         Records found objects under appropriate 'DROP' action.
         Also ensures the destructive statement is recorded.
         """
         self._debug_tree(tree, "Drop Statement")
         
-        # Determine the object type being dropped
+        # Determine the object type being dropped by finding the relevant token
         obj_type = None
+        obj_type_token = None
+        
+        # Get all valid object type strings from the grammar's object_type rule
+        # These should match the TOKEN TYPES (not values) in the grammar
+        valid_object_types = {
+            'TABLE', 'VIEW', 'WAREHOUSE', 'TASK', 'STREAM', 'STAGE', 
+            'DATABASE', 'SCHEMA', 'PROCEDURE', 'FUNCTION', 'SEQUENCE'
+        }
+        
         for child in tree.children:
-            if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'DATABASE', 'SCHEMA'):
-                obj_type = child.value.upper()
+            if isinstance(child, Tree) and child.data == 'object_type':
+                # Look inside the object_type node for the actual object type token
+                for subchild in child.children:
+                    if isinstance(subchild, Token) and subchild.type in valid_object_types:
+                        obj_type = subchild.type
+                        obj_type_token = subchild
+                        break
+                if obj_type:
+                    break
+            # Direct token child (older grammar style)
+            elif isinstance(child, Token) and child.type in valid_object_types:
+                obj_type = child.type
+                obj_type_token = child
                 break
         
         if not obj_type:
-            logger.warning("Could not determine object type in DROP statement")
-            return
+            logger.warning(f"Could not determine object type in DROP statement: {tree.pretty()}")
+            # Attempt to infer from the node data if possible (less reliable)
+            if tree.data.startswith('drop_') and tree.data.endswith('_stmt'):
+                 inferred_type = tree.data.replace('drop_', '').replace('_stmt', '').upper()
+                 if inferred_type in valid_object_types:
+                      obj_type = inferred_type
+                      logger.info(f"Inferred object type '{obj_type}' from node data in DROP statement.")
+                 else:
+                     return # Still couldn't determine type
+            else:
+                 return # Exit if type unknown
         
         # Find the object name
         qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
             obj_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
-            if obj_name and first_token:
+            # Use the object type token for location if name token isn't found (e.g., only obj type present)
+            node_for_loc = first_token if first_token else obj_type_token 
+            
+            if obj_name and node_for_loc:
                 action = "DROP"
                 logger.debug(f"Found {obj_type} being dropped: {obj_name}")
-                self.engine.record_object(
-                    name=obj_name,
-                    obj_type=obj_type,
-                    action=action,
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(obj_name, obj_type, action, node_for_loc)
                 
                 # Make sure to record the specific DROP_X destructive statement
                 specific_stmt_type = f"DROP_{obj_type}"
                 self.engine.record_destructive_statement(specific_stmt_type, tree, self.current_file)
+                # Also record the specific statement count here
+                logger.debug(f"VISITOR: Recording specific statement type: {specific_stmt_type}")
+                self.engine.record_statement(specific_stmt_type, tree, self.current_file)
+            else:
+                 logger.warning(f"Could not extract name or location token for DROP {obj_type} statement: {tree.pretty()}")
+        else:
+             logger.warning(f"Could not find qualified_name node in DROP {obj_type} statement: {tree.pretty()}")
 
     def use_stmt(self, tree: Tree):
-        """Visits `use_stmt` nodes. Extracts the `object_type` and `qualified_name`.
+        """Visits `use_stmt` nodes. Extracts the `object_type` and name.
 
-        Determines the object type (WAREHOUSE, DATABASE, etc.) from the `object_type` child node.
+        Handles both `USE <object_type> <qualified_name>` and `USE ROLE <identifier>`.
         Records the found object as 'USE'.
         """
-        # print("VISITOR: Inside use_stmt visitor method") # Keep commented out unless needed
         logger.debug("VISITOR: Beginning use_stmt method")
         self._debug_tree(tree, "Use Statement")
         obj_type = "UNKNOWN"
-        obj_type_node = self._find_first_child_by_name(tree, 'object_type')
-        if obj_type_node and obj_type_node.children and isinstance(obj_type_node.children[0], Token):
-            obj_type = obj_type_node.children[0].value.upper()
-            logger.debug(f"VISITOR: Extracted object_type = {obj_type}")
+        obj_name = None
+        first_token = None
 
-        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
-        if qual_name_node:
-            obj_name = self._extract_qualified_name(qual_name_node)
-            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
-            if obj_name and first_token:
-                logger.debug(f"VISITOR: Found {obj_type} use: {obj_name}")
-                self.engine.record_object(
-                    name=obj_name,
-                    obj_type=obj_type,
-                    action="USE",
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
-            else:
-                logger.warning(f"VISITOR: Failed to extract object name from qualified_name: {qual_name_node}")
+        # Check for USE ROLE IDENTIFIER form first
+        role_token = None
+        identifier_token = None
+        for i, child in enumerate(tree.children):
+            if isinstance(child, Token) and child.type == 'ROLE':
+                role_token = child
+                if i + 1 < len(tree.children) and isinstance(tree.children[i+1], Token) and tree.children[i+1].type == 'IDENTIFIER':
+                    identifier_token = tree.children[i+1]
+                    break
+
+        if role_token and identifier_token:
+            obj_type = "ROLE"
+            obj_name = identifier_token.value
+            first_token = identifier_token
+            logger.debug(f"VISITOR: Extracted ROLE usage: {obj_name}")
         else:
-            logger.warning(f"VISITOR: Failed to find qualified_name node in use_stmt")
+            # Handle USE <object_type> <qualified_name> form
+            obj_type_node = self._find_first_child_by_name(tree, 'object_type')
+            if obj_type_node and obj_type_node.children and isinstance(obj_type_node.children[0], Token):
+                obj_type = obj_type_node.children[0].value.upper()
+                logger.debug(f"VISITOR: Extracted object_type = {obj_type}")
+
+            qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+            if qual_name_node:
+                obj_name = self._extract_qualified_name(qual_name_node)
+                first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+                if obj_name:
+                    logger.debug(f"VISITOR: Extracted object name = {obj_name}")
+                else:
+                     logger.warning(f"VISITOR: Failed to extract object name from qualified_name: {qual_name_node}")
+            else:
+                logger.warning(f"VISITOR: Failed to find qualified_name node in non-ROLE use_stmt")
+
+        # Record the object if we found name and type
+        if obj_name and first_token and obj_type != "UNKNOWN":
+            logger.debug(f"VISITOR: Recording USE action for {obj_type}: {obj_name}")
+            self._record_object_reference(obj_name, obj_type, "USE", first_token)
+            # Record the specific statement type
+            self.engine.record_statement(f"USE_{obj_type}", tree, self.current_file)
+        else:
+            logger.warning(f"VISITOR: Could not record USE statement - Missing name, token, or type. Name: {obj_name}, Type: {obj_type}, Token found: {first_token is not None}")
 
     def create_function_stmt(self, tree: Tree):
         """Visits `create_function_stmt` nodes. Extracts the function name.
@@ -683,13 +742,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in func_name_node.children if isinstance(t, Token)), None)
             if func_name and first_token:
                 logger.debug(f"Found function creation: {func_name}")
-                self.engine.record_object(
-                    name=func_name,
-                    obj_type="FUNCTION",
-                    action="CREATE",
-                    node=first_token, # Pass the specific token
-                    file_path=self.current_file
-                )
+                self._record_object_reference(func_name, "FUNCTION", "CREATE", first_token)
         else:
              logger.warning(f"Could not reliably determine function name in create_function_stmt: {tree.pretty()}")
 
@@ -716,13 +769,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                     'SUM', 'COUNT', 'AVG', 'MIN', 'MAX', 'CAST', 'TRY_CAST'
                 ]: # Add more as needed
                      logger.debug(f"Found function reference: {func_name}")
-                     self.engine.record_object(
-                        name=func_name,
-                        obj_type="FUNCTION",
-                        action="REFERENCE",
-                        node=first_token, # Pass the specific token
-                        file_path=self.current_file
-                    )
+                     self._record_object_reference(func_name, "FUNCTION", "REFERENCE", first_token)
                 else:
                     logger.debug(f"Skipping common/built-in function reference: {func_name}")
         else:
@@ -751,13 +798,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in table_ref.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 logger.debug(f"Found table targeted by DELETE: {table_name}")
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="DELETE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(table_name, "TABLE", "DELETE", first_token)
                 
                 # Make sure to record the DELETE destructive statement
                 self.engine.record_destructive_statement("DELETE", tree, self.current_file)
@@ -779,13 +820,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in table_ref.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 logger.debug(f"Found table targeted by TRUNCATE: {table_name}")
-                self.engine.record_object(
-                    name=table_name,
-                    obj_type="TABLE",
-                    action="TRUNCATE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(table_name, "TABLE", "TRUNCATE", first_token)
                 
                 # Make sure to record the TRUNCATE_TABLE destructive statement
                 self.engine.record_destructive_statement("TRUNCATE_TABLE", tree, self.current_file)
@@ -798,39 +833,55 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             stage_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if stage_name and first_token:
-                self.engine.record_object(
-                    name=stage_name,
-                    obj_type="STAGE",
-                    action="CREATE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(stage_name, "STAGE", "CREATE", first_token)
         # Extract FILE_FORMAT and URL references if present
         for child in tree.children:
             if isinstance(child, Tree) and child.data == 'stage_param':
-                for param in child.children:
+                # Iterate through tokens/nodes within stage_param
+                param_children = child.children
+                i = 0
+                while i < len(param_children):
+                    param = param_children[i]
                     if isinstance(param, Tree) and param.data == 'file_format_option':
-                        # This is a FILE_FORMAT reference
-                        file_format_name = None
+                        # Handle inline file format options (e.g., TYPE = 'CSV')
+                        option_name_token = None
                         for subparam in param.children:
                             if isinstance(subparam, Token) and subparam.type == 'IDENTIFIER':
-                                file_format_name = subparam.value
-                        if file_format_name:
-                            self.engine.record_object(
-                                name=file_format_name,
-                                obj_type="FILE_FORMAT",
-                                action="REFERENCE",
-                                node=param,
-                                file_path=self.current_file
-                            )
+                                option_name_token = subparam
+                                break # Found the identifier token
+                        if option_name_token:
+                            self._record_object_reference(option_name_token.value, "OPTION", "REFERENCE", option_name_token)
+                        i += 1 # Move past the file_format_option node
+                    elif isinstance(param, Token) and param.type == 'FILE_FORMAT':
+                        # Handle named file format reference (e.g., FILE_FORMAT = my_fmt)
+                        # Expect EQ and qualified_name next
+                        if i + 2 < len(param_children) and isinstance(param_children[i+1], Token) and param_children[i+1].type == 'EQ':
+                            ff_node = param_children[i+2]
+                            if isinstance(ff_node, Tree) and ff_node.data == 'qualified_name':
+                                ff_name = self._extract_qualified_name(ff_node)
+                                ff_token = next((t for t in ff_node.children if isinstance(t, Token)), None)
+                                if ff_name and ff_token:
+                                    self._record_object_reference(ff_name, "FILE_FORMAT", "REFERENCE", ff_token)
+                                i += 3 # Move past FILE_FORMAT, EQ, qualified_name
+                            else:
+                                i += 1 # Move past FILE_FORMAT if structure unexpected
+                        else:
+                           i += 1 # Move past FILE_FORMAT if structure unexpected
                     elif isinstance(param, Token) and param.type == 'URL':
-                        self.engine.record_object(
-                            name=stage_name,
-                            obj_type="STAGE",
-                            action="URL",
-                            node=param,
-                            file_path=self.current_file
-                        )
+                        # Handle URL parameter
+                        if i + 2 < len(param_children) and isinstance(param_children[i+1], Token) and param_children[i+1].type == 'EQ':
+                             url_node = param_children[i+2]
+                             # Assuming URL value is a token (e.g., SINGLE_QUOTED_STRING)
+                             if isinstance(url_node, Token):
+                                 self._record_object_reference(stage_name, "STAGE", "URL_REFERENCE", url_node)
+                                 i += 3 # Move past URL, EQ, value
+                             else:
+                                i += 1 # Move past URL if structure unexpected
+                        else:
+                            i += 1 # Move past URL if structure unexpected
+                    else:
+                        # Unknown/unhandled parameter token/node
+                        i += 1
 
     def create_file_format_stmt(self, tree: Tree):
         """Visits `create_file_format_stmt` nodes. Extracts the file format name and options."""
@@ -840,13 +891,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             format_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if format_name and first_token:
-                self.engine.record_object(
-                    name=format_name,
-                    obj_type="FILE_FORMAT",
-                    action="CREATE",
-                    node=first_token,
-                    file_path=self.current_file
-                )
+                self._record_object_reference(format_name, "FILE_FORMAT", "CREATE", first_token)
         # Extract TYPE and file format options
         type_value = None
         for child in tree.children:
@@ -855,21 +900,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             elif isinstance(child, Tree) and child.data == 'file_format_option_kv':
                 for param in child.children:
                     if isinstance(param, Token) and param.type == 'FIELD_DELIMITER':
-                        self.engine.record_object(
-                            name=format_name,
-                            obj_type="FILE_FORMAT",
-                            action="FIELD_DELIMITER",
-                            node=param,
-                            file_path=self.current_file
-                        )
+                        self._record_object_reference(format_name, "FILE_FORMAT", "FIELD_DELIMITER", param)
         if type_value:
-            self.engine.record_object(
-                name=format_name,
-                obj_type="FILE_FORMAT",
-                action=f"TYPE_{type_value}",
-                node=first_token,
-                file_path=self.current_file
-            )
+            self._record_object_reference(format_name, "FILE_FORMAT", f"TYPE_{type_value}", first_token)
 
     def copy_into_stmt(self, tree: Tree):
         """Visits `copy_into_stmt` nodes. Extracts source and target for COPY INTO, and options."""
@@ -896,33 +929,15 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 # *** Determine target type based on name prefix ***
                 if target_name_str.startswith('@'):
                     target_type = "STAGE"
-                    self.engine.record_object(
-                        name=target_name_str,
-                        obj_type=target_type,
-                        action="COPY_INTO_STAGE",
-                        node=target_node_for_loc,
-                        file_path=self.current_file
-                    )
+                    self._record_object_reference(target_name_str, "STAGE", "COPY_INTO_STAGE", target_node_for_loc)
                     # Also record as a reference for source/target (if it's the target)
-                    self.engine.record_object(
-                        name=target_name_str,
-                        obj_type=target_type,
-                        action="REFERENCE",
-                        node=target_node_for_loc,
-                        file_path=self.current_file
-                    )
-                    # Also record the specific statement type
+                    self._record_object_reference(target_name_str, "STAGE", "REFERENCE", target_node_for_loc)
+                    # Record the specific statement count
                     self.engine.record_statement("COPY_INTO_STAGE", tree, self.current_file)
                 else:
                     target_type = "TABLE"
-                    self.engine.record_object(
-                        name=target_name_str,
-                        obj_type=target_type,
-                        action="COPY_INTO_TABLE",
-                        node=target_node_for_loc,
-                        file_path=self.current_file
-                    )
-                    # Also record the specific statement type
+                    self._record_object_reference(target_name_str, "TABLE", "COPY_INTO_TABLE", target_node_for_loc)
+                    # Record the specific statement count
                     self.engine.record_statement("COPY_INTO_TABLE", tree, self.current_file)
                 target_recorded = True
         
@@ -951,16 +966,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                  # *** Determine source type based on name prefix ***
                  if source_name_str.startswith('@'):
                      source_type = "STAGE"
+                     self._record_object_reference(source_name_str, "STAGE", "REFERENCE", source_node_for_loc)
                  else:
                      source_type = "TABLE"
-                 
-                 self.engine.record_object(
-                     name=source_name_str,
-                     obj_type=source_type,
-                     action="REFERENCE", # Source is referenced
-                     node=source_node_for_loc,
-                     file_path=self.current_file
-                 )
+                     self._record_object_reference(source_name_str, "TABLE", "REFERENCE", source_node_for_loc)
             elif source_select_node:
                 # If source is a subquery, visit it to find references within
                 logger.debug("Descending into SELECT statement within COPY INTO source...")
@@ -977,13 +986,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                          file_format_name = self._extract_qualified_name(ff_qual_name_node)
                          first_token = next((t for t in ff_qual_name_node.children if isinstance(t, Token)), None)
                          if file_format_name and first_token:
-                            self.engine.record_object(
-                                name=file_format_name,
-                                obj_type="FILE_FORMAT",
-                                action="REFERENCE",
-                                node=first_token,
-                                file_path=self.current_file
-                            )
+                            self._record_object_reference(file_format_name, "FILE_FORMAT", "REFERENCE", first_token)
                     else:
                         # Look for IDENTIFIER within file_format_option (inline definition case)
                         # This part might need refinement based on exact grammar for inline options
@@ -1006,16 +1009,251 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
 
                              if id_token and id_token.value.upper() == 'FORMAT_NAME' and val_token:
                                  file_format_name = val_token.value
-                                 self.engine.record_object(
-                                     name=file_format_name,
-                                     obj_type="FILE_FORMAT",
-                                     action="REFERENCE",
-                                     node=val_token, # Use the token for the name
-                                     file_path=self.current_file
-                                 )
+                                 self._record_object_reference(file_format_name, "FILE_FORMAT", "REFERENCE", val_token)
                                  break # Found the format name reference
 
         # Optionally, extract ON_ERROR etc. from other copy_option children
+
+    def create_task_stmt(self, tree: Tree):
+        """Visits `create_task_stmt` nodes. Extracts the task name, warehouse, schedule, dependencies, and SQL body."""
+        self._debug_tree(tree, "Create Task Statement")
+        
+        # Extract task name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        task_name = None
+        if qual_name_node:
+            task_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if task_name and first_token:
+                self._record_object_reference(task_name, "TASK", "CREATE_TASK", first_token)
+                self.engine.record_statement("CREATE_TASK", tree, self.current_file)
+        
+        # Extract referenced warehouse, schedule, dependencies (AFTER)
+        referenced_warehouse = None
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'task_param':
+                for param in child.children:
+                    if isinstance(param, Token) and param.type == 'WAREHOUSE':
+                        # Next child should be the warehouse name
+                        idx = child.children.index(param)
+                        if idx + 2 < len(child.children):
+                            wh_node = child.children[idx + 2]
+                            if isinstance(wh_node, Tree) and wh_node.data == 'qualified_name':
+                                wh_name = self._extract_qualified_name(wh_node)
+                                wh_token = next((t for t in wh_node.children if isinstance(t, Token)), None)
+                                if wh_name and wh_token:
+                                    # Record warehouse reference
+                                    referenced_warehouse = wh_name
+                                    self._record_object_reference(wh_name, "WAREHOUSE", "REFERENCE", wh_token)
+                    elif isinstance(param, Token) and param.type == 'AFTER':
+                        # Find the qualified_name for the dependency task
+                        dep_node = None
+                        for i in range(child.children.index(param) + 1, len(child.children)):
+                            if isinstance(child.children[i], Tree) and child.children[i].data == 'qualified_name':
+                                dep_node = child.children[i]
+                                break
+                        
+                        if dep_node:
+                            dep_name = self._extract_qualified_name(dep_node)
+                            dep_token = next((t for t in dep_node.children if isinstance(t, Token)), None)
+                            if dep_name and dep_token:
+                                # Record the dependency
+                                self._record_object_reference(dep_name, "TASK", "DEPENDENCY", dep_token)
+                                
+                                # Add explicit AFTER dependency relationship
+                                if task_name:
+                                    self.engine.result.add_dependency(
+                                        "TASK", task_name,
+                                        "TASK", dep_name,
+                                        "AFTER"
+                                    )
+        
+        # Analyze the SQL statement in the AS clause using a task context to track dependencies
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data in ('call_procedure_stmt', '_statement'):
+                # Record current task name to track SQL dependencies
+                old_context = getattr(self, 'current_context', None)
+                self.current_context = {
+                    'type': 'TASK',
+                    'name': task_name,
+                    'warehouse': referenced_warehouse
+                }
+                
+                try:
+                    # Process the SQL statement
+                    self.visit(child)
+                finally:
+                    # Restore previous context
+                    self.current_context = old_context
+
+    def alter_task_stmt(self, tree: Tree):
+        """Visits `alter_task_stmt` nodes. Extracts the task name and action."""
+        self._debug_tree(tree, "Alter Task Statement")
+        
+        # Extract task name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        task_name = None
+        if qual_name_node:
+            task_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if task_name and first_token:
+                self._record_object_reference(task_name, "TASK", "ALTER_TASK", first_token)
+                self.engine.record_statement("ALTER_TASK", tree, self.current_file)
+        
+        # Extract referenced warehouse or dependencies
+        referenced_warehouse = None
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'alter_task_action':
+                # Check for ADD AFTER or REMOVE AFTER
+                for i, param in enumerate(child.children):
+                    if isinstance(param, Token):
+                        if param.type == 'WAREHOUSE' and i + 2 < len(child.children):
+                            # Get warehouse reference
+                            wh_node = child.children[i + 2]
+                            if isinstance(wh_node, Tree) and wh_node.data == 'qualified_name':
+                                wh_name = self._extract_qualified_name(wh_node)
+                                wh_token = next((t for t in wh_node.children if isinstance(t, Token)), None)
+                                if wh_name and wh_token:
+                                    # Record warehouse reference
+                                    referenced_warehouse = wh_name
+                                    self._record_object_reference(wh_name, "WAREHOUSE", "REFERENCE", wh_token)
+                        
+                        elif param.type in ('ADD', 'REMOVE') and i + 1 < len(child.children):
+                            # Check for AFTER keyword following ADD or REMOVE
+                            if (isinstance(child.children[i + 1], Token) and 
+                                child.children[i + 1].type == 'AFTER'):
+                                
+                                # Find the qualified_name for the dependency task
+                                dep_node = None
+                                for j in range(i + 2, len(child.children)):
+                                    if isinstance(child.children[j], Tree) and child.children[j].data == 'qualified_name':
+                                        dep_node = child.children[j]
+                                        break
+                                
+                                if dep_node:
+                                    dep_name = self._extract_qualified_name(dep_node)
+                                    dep_token = next((t for t in dep_node.children if isinstance(t, Token)), None)
+                                    if dep_name and dep_token:
+                                        action = "DEPENDENCY"
+                                        # Record the dependency
+                                        self._record_object_reference(dep_name, "TASK", action, dep_token)
+                                        
+                                        # Add or remove dependency relationship
+                                        if task_name:
+                                            relationship_type = "AFTER"
+                                            if param.type == 'ADD':
+                                                self.engine.result.add_dependency(
+                                                    "TASK", task_name,
+                                                    "TASK", dep_name,
+                                                    relationship_type
+                                                )
+                                            elif param.type == 'REMOVE':
+                                                # Also track dependency removal
+                                                self.engine.result.add_dependency(
+                                                    "TASK", task_name,
+                                                    "TASK", dep_name,
+                                                    "REMOVED_" + relationship_type
+                                                )
+                        
+        # If MODIFY AS, analyze the SQL statement 
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'alter_task_action':
+                for i, param in enumerate(child.children):
+                    if isinstance(param, Token) and param.type == 'MODIFY' and i + 1 < len(child.children):
+                        if isinstance(child.children[i + 1], Token) and child.children[i + 1].type == 'AS':
+                            # Find the SQL statement
+                            for j in range(i + 2, len(child.children)):
+                                if isinstance(child.children[j], Tree) and child.children[j].data in ('call_procedure_stmt', '_statement'):
+                                    # Record current task name to track SQL dependencies
+                                    old_context = getattr(self, 'current_context', None)
+                                    self.current_context = {
+                                        'type': 'TASK',
+                                        'name': task_name,
+                                        'warehouse': referenced_warehouse
+                                    }
+                                    
+                                    try:
+                                        # Process the SQL statement
+                                        self.visit(child.children[j])
+                                    finally:
+                                        # Restore previous context
+                                        self.current_context = old_context
+
+    def execute_task_stmt(self, tree: Tree):
+        """Visits `execute_task_stmt` nodes. Extracts the task name and records EXECUTE_TASK action."""
+        self._debug_tree(tree, "Execute Task Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            task_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if task_name and first_token:
+                self._record_object_reference(task_name, "TASK", "EXECUTE_TASK", first_token)
+                self.engine.record_statement("EXECUTE_TASK", tree, self.current_file)
+
+    def call_procedure_stmt(self, tree: Tree):
+        """Visits `call_procedure_stmt` nodes. Extracts the procedure name."""
+        self._debug_tree(tree, "Call Procedure Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            proc_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if proc_name and first_token:
+                self.engine.record_object(
+                    name=proc_name,
+                    obj_type="PROCEDURE",
+                    action="CALL",
+                    node=first_token,
+                    file_path=self.current_file
+                )
+                
+                # If in task context, record dependency between task and procedure
+                context = getattr(self, 'current_context', None)
+                if context and context['type'] == 'TASK' and context['name']:
+                    self.engine.result.add_dependency(
+                        "TASK", context['name'],
+                        "PROCEDURE", proc_name,
+                        "CALL"
+                    )
+
+    def merge_stmt(self, tree: Tree):
+        """Visits `merge_stmt` nodes. Extracts table references.
+
+        Identifies target table (MERGE INTO) and source table (USING).
+        Records target table as 'UPDATE' action and source as 'SELECT' action.
+        """
+        self._debug_tree(tree, "Merge Statement")
+        
+        # Extract target table (MERGE INTO <target_table>)
+        target_table_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if target_table_node:
+            target_table = self._extract_qualified_name(target_table_node)
+            first_token = next((t for t in target_table_node.children if isinstance(t, Token)), None)
+            if target_table and first_token:
+                logger.debug(f"Found target table in MERGE: {target_table}")
+                self._record_object_reference(target_table, "TABLE", "UPDATE", first_token)
+        
+        # Extract source table (USING <source_table>)
+        # Find the base_table_ref after the USING keyword
+        source_node = None
+        for i, child in enumerate(tree.children):
+            if isinstance(child, Token) and child.type == 'USING' and i+1 < len(tree.children):
+                source_node = tree.children[i+1]
+                break
+        
+        if source_node and isinstance(source_node, Tree) and source_node.data == 'base_table_ref':
+            # Process the source table reference
+            qual_name_node = self._find_first_child_by_name(source_node, 'qualified_name')
+            if qual_name_node:
+                source_table = self._extract_qualified_name(qual_name_node)
+                first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+                if source_table and first_token:
+                    logger.debug(f"Found source table in MERGE: {source_table}")
+                    self._record_object_reference(source_table, "TABLE", "SELECT", first_token)
+        
+        # Visit child nodes to process any subqueries
+        for child in tree.children:
+            if isinstance(child, Tree):
+                self.visit(child)
 
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.

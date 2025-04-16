@@ -64,6 +64,17 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 
 ## 2. `TASK`
 
+**Progress Update:**
+- [x] The grammar now correctly supports CREATE TASK, ALTER TASK, DROP TASK, and EXECUTE TASK statements
+- [x] Visitor methods for `create_task_stmt`, `alter_task_stmt`, and `execute_task_stmt` have been implemented
+- [x] Fixed the `drop_stmt` visitor method to correctly identify and extract TASK objects from DROP TASK statements
+- [x] Added special handling in the engine's `record_destructive_statement` to ensure DROP_TASK statements are properly counted
+- [x] Added tests to verify correct parsing and analysis of DROP TASK statements
+- [x] Basic dependency tracking between tasks (via AFTER clause) implemented (ADD/REMOVE AFTER)
+- [x] Basic analysis of SQL in the AS clause implemented (identifies table/proc references)
+- [ ] Further enhancement needed for complex dependency scenarios (AFTER clause)
+- [ ] Further enhancement needed for full dependency tracking within AS clause SQL
+
 **Goal:** Parse and analyze task creation and alteration for scheduled SQL execution.
 
 **Steps:**

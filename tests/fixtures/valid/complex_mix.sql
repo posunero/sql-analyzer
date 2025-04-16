@@ -25,4 +25,23 @@ SELECT id, name FROM my_schema.mixed_case_table WHERE id = 1;
 ALTER TABLE my_schema.Mixed_Case_Table ADD COLUMN created_ts timestamp_ltz DEFAULT CURRENT_TIMESTAMP();
 
 -- Drop a view (even if it doesn't exist, for testing)
-DROP VIEW IF EXISTS old_reporting_view; 
+DROP VIEW IF EXISTS old_reporting_view;
+
+-- TASK statement examples for testing
+CREATE OR REPLACE TASK my_hourly_task
+  WAREHOUSE = my_wh
+  SCHEDULE = 'USING CRON 0 5 * * * UTC'
+AS
+  INSERT INTO log_tbl VALUES (CURRENT_TIMESTAMP());
+
+ALTER TASK my_hourly_task SET SCHEDULE = 'USING CRON 0 6 * * * UTC';
+ALTER TASK my_hourly_task SUSPEND;
+ALTER TASK my_hourly_task RESUME;
+
+DROP TASK IF EXISTS my_hourly_task;
+
+EXECUTE TASK my_hourly_task;
+
+SHOW TASKS;
+
+DESCRIBE TASK my_hourly_task; 

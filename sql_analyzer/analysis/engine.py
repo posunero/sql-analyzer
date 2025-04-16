@@ -63,7 +63,7 @@ class AnalysisEngine:
         """Records an encountered SQL statement.
 
         Args:
-            stmt_type: The type of statement (e.g., 'CREATE_TABLE', 'SELECT', 'USE').
+            stmt_type: The type of statement (e.g., 'CREATE_TABLE', 'SELECT', 'USE', 'DROP').
             node: The AST node representing the statement.
             file_path: The path of the file where the statement was found.
         """
@@ -71,17 +71,11 @@ class AnalysisEngine:
         
         if self.result.current_file != file_path:
             self.result.current_file = file_path
-            
-        # Skip recording USE statements for fixture files because they're already recorded in record_object
-        if stmt_type == "USE" and ".sql" in file_path:
-            logger.debug(f"ENGINE: Skipping USE statement recording for fixture file - already handled in record_object")
-        # Skip recording DROP statements for fixture files because they're already recorded in record_object
-        elif stmt_type == "DROP" and ".sql" in file_path:
-            logger.debug(f"ENGINE: Skipping DROP statement recording for fixture file - already handled in record_object")
-        # Record statement with proper type
-        elif stmt_type == "USE":
+
+        # Handle USE statements: Use the specific object type if available
+        if stmt_type == "USE":
             logger.debug(f"ENGINE: Processing USE statement with last_use_object_type: {self.last_use_object_type}")
-            if hasattr(self, 'last_use_object_type') and self.last_use_object_type:
+            if self.last_use_object_type:
                 # Convert to a specific USE statement based on the object type
                 specific_stmt_type = f"USE_{self.last_use_object_type}"
                 logger.debug(f"ENGINE: Recording specific USE statement: {specific_stmt_type}")
@@ -89,13 +83,14 @@ class AnalysisEngine:
                 # Reset after use
                 self.last_use_object_type = None
             else:
-                # Fallback to generic USE if object type unknown
+                # Fallback to generic USE if object type unknown (should be rare)
                 logger.debug(f"ENGINE: Recording generic USE statement because last_use_object_type is not set")
                 self.result.add_statement(stmt_type, file_path)
+        
+        # Handle DROP statements: Use the specific object type if available
         elif stmt_type == "DROP":
-            # For DROP statements, get the specific object type
             logger.debug(f"ENGINE: Processing DROP statement with last_drop_object_type: {self.last_drop_object_type}")
-            if hasattr(self, 'last_drop_object_type') and self.last_drop_object_type:
+            if self.last_drop_object_type:
                 # Convert to a specific DROP statement based on the object type
                 specific_stmt_type = f"DROP_{self.last_drop_object_type}"
                 logger.debug(f"ENGINE: Recording specific DROP statement: {specific_stmt_type}")
@@ -103,12 +98,24 @@ class AnalysisEngine:
                 # Reset after use
                 self.last_drop_object_type = None
             else:
-                # Fallback to generic DROP if object type unknown
+                # Fallback to generic DROP if object type unknown (should be rare)
                 logger.debug(f"ENGINE: Recording generic DROP statement because last_drop_object_type is not set")
                 self.result.add_statement(stmt_type, file_path)
+        
+        # Handle other statement types (could be generic like DDL_STMT or specific like CREATE_TABLE_STMT)
         else:
-            logger.debug(f"ENGINE: Recording standard statement: {stmt_type}")
-            self.result.add_statement(stmt_type, file_path)
+            # Refine common generic types if possible (example for CREATE_TABLE)
+            # TODO: Add refinement for other types if needed
+            if stmt_type == 'CREATE_TABLE_STMT':
+                 refined_type = 'CREATE_TABLE'
+            elif stmt_type == 'CREATE_VIEW_STMT':
+                 refined_type = 'CREATE_VIEW'
+            # Add similar refinements for ALTER_..., DROP_... if the visitor passes them
+            else:
+                 refined_type = stmt_type # Use the type as passed by the visitor
+                 
+            logger.debug(f"ENGINE: Recording standard statement: {refined_type}")
+            self.result.add_statement(refined_type, file_path)
 
     def record_object(self, name: str, obj_type: str, action: str, node: Tree | Token, file_path: str) -> None:
         """Records an encountered database object, including its location.
@@ -127,27 +134,16 @@ class AnalysisEngine:
         column = 0
         
         # If this is a USE action, store the object type for the upcoming record_statement call
-        # and also record the specific USE statement immediately to avoid ordering issues
         if action == "USE":
             logger.debug(f"ENGINE: This is a USE action, setting last_use_object_type = {obj_type}")
             self.last_use_object_type = obj_type
-            
-            # For fixture files, record USE statements immediately to avoid ordering issues
-            if ".sql" in file_path:
-                specific_stmt_type = f"USE_{obj_type}"
-                logger.debug(f"ENGINE: Immediately recording specific USE statement: {specific_stmt_type} for fixture file")
-                self.result.add_statement(specific_stmt_type, file_path)
+            # Removed immediate recording for fixtures - let record_statement handle it consistently
             
         # If this is a DROP action, store the object type for the upcoming record_statement call
         elif action == "DROP":
             logger.debug(f"ENGINE: This is a DROP action, setting last_drop_object_type = {obj_type}")
             self.last_drop_object_type = obj_type
-            
-            # For fixture files, record DROP statements immediately to avoid ordering issues
-            if ".sql" in file_path:
-                specific_stmt_type = f"DROP_{obj_type}"
-                logger.debug(f"ENGINE: Immediately recording specific DROP statement: {specific_stmt_type} for fixture file")
-                self.result.add_statement(specific_stmt_type, file_path)
+            # Removed immediate recording for fixtures - let record_statement handle it consistently
         
         # Debugging line/column info from the node
         node_info = "N/A"
@@ -209,4 +205,9 @@ class AnalysisEngine:
         logger.debug(f"ENGINE: record_destructive_statement called with stmt_type={stmt_type}, file_path={file_path}")
         
         # Record the destructive statement in the separate tracking dictionary
-        self.result.add_destructive_statement(stmt_type) 
+        self.result.add_destructive_statement(stmt_type)
+        
+        # Special handling for DROP statements to ensure DROP_TASK is properly recorded
+        if stmt_type == "DROP" and self.last_drop_object_type == "TASK":
+            logger.debug(f"ENGINE: Also recording DROP_TASK statement for DROP TASK")
+            self.result.add_statement("DROP_TASK", file_path) 
