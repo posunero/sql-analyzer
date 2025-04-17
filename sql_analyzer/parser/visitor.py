@@ -162,13 +162,13 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             file_path=self.current_file
         )
         
-        # If we're in a task context, record the dependency between the task and the object
+        # If we're within a context (e.g., TASK or PIPE), record the dependency between the parent and the object
         context = getattr(self, 'current_context', None)
-        if context and context['type'] == 'TASK' and context['name']:
-            # Record the dependency with the appropriate relationship type based on the action
-            relationship_type = action  # Use action as relationship type by default
+        if context and context.get('name'):
+            parent_type = context.get('type')
+            relationship_type = action
             self.engine.result.add_dependency(
-                "TASK", context['name'],
+                parent_type, context.get('name'),
                 obj_type, obj_name,
                 relationship_type
             )
@@ -272,10 +272,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             # Debug the statement type determination
             logger.debug(f"Statement type mapping: {node_data} -> {stmt_type}")
             
-            # Record the mapped statement type in normal counts
-            # Specific visitors might record more detailed counts later (e.g., COPY_INTO_TABLE)
-            # Let specific visitors for USE and DROP handle recording their own statement counts
-            if stmt_type not in ("USE", "DROP"):
+            # Record the mapped statement type in normal counts, skipping any raw _STMT entries
+            # Specific visitors handle USE, DROP, and full PIPE DDL
+            # Skip generic counts for grammar nodes ending in '_STMT'
+            if stmt_type not in ("USE", "DROP") and not stmt_type.endswith('_STMT'):
                 self.engine.record_statement(stmt_type, stmt_node, self.current_file)
             
             # Check if this is a destructive statement and record it
@@ -611,7 +611,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         # Get all valid object type strings from the grammar's object_type rule
         # These should match the TOKEN TYPES (not values) in the grammar
         valid_object_types = {
-            'TABLE', 'VIEW', 'WAREHOUSE', 'TASK', 'STREAM', 'STAGE', 
+            'TABLE', 'VIEW', 'WAREHOUSE', 'TASK', 'STREAM', 'PIPE', 'STAGE',
             'DATABASE', 'SCHEMA', 'PROCEDURE', 'FUNCTION', 'SEQUENCE'
         }
         
@@ -1005,7 +1005,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                         # This part might need refinement based on exact grammar for inline options
                         # Check if FORMAT_NAME = IDENTIFIER exists
                         for option_node in file_format_clause.find_data('file_format_option'):
-                             # Assuming structure like: IDENTIFIER EQ (value | qualified_name)
+                             # Assuming structure: IDENTIFIER EQ value
                              id_token = None
                              val_token = None
                              eq_found = False
@@ -1014,15 +1014,18 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                                      id_token = item
                                  elif isinstance(item, Token) and item.type == 'EQ':
                                      eq_found = True
-                                 elif id_token and eq_found: # Value comes after ID and EQ
-                                     if isinstance(item, Token) and item.type == 'IDENTIFIER': # Check if value is identifier
+                                 elif id_token and eq_found:
+                                     # Capture identifier or quoted string as value
+                                     if isinstance(item, Token) and item.type in ('IDENTIFIER', 'SINGLE_QUOTED_STRING'):
                                          val_token = item
                                          break
-                                     # Might need to handle SINGLE_QUOTED_STRING too if FORMAT_NAME = 'name' is valid
-
                              if id_token and id_token.value.upper() == 'FORMAT_NAME' and val_token:
-                                 file_format_name = val_token.value
-                                 self._record_object_reference(file_format_name, "FILE_FORMAT", "REFERENCE", val_token)
+                                 # Extract unquoted format name
+                                 if val_token.type == 'SINGLE_QUOTED_STRING':
+                                     fmt_name = val_token.value.strip("'")
+                                 else:
+                                     fmt_name = val_token.value
+                                 self._record_object_reference(fmt_name, "FILE_FORMAT", "REFERENCE", val_token)
                                  break # Found the format name reference
 
         # Optionally, extract ON_ERROR etc. from other copy_option children
@@ -1319,6 +1322,61 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if isinstance(param_token, Token) and stream_name:
                 param_name = param_token.value.upper()
                 self._record_object_reference(stream_name, "STREAM", param_name, param_token)
+
+    def create_pipe_stmt(self, tree: Tree):
+        """Visits `create_pipe_stmt` nodes. Extracts the pipe name, parameters, and embedded COPY INTO statement."""
+        self._debug_tree(tree, "Create Pipe Statement")
+        # Extract pipe name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        pipe_name = None
+        if qual_name_node:
+            pipe_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if pipe_name and first_token:
+                self._record_object_reference(pipe_name, "PIPE", "CREATE_PIPE", first_token)
+                self.engine.record_statement("CREATE_PIPE", tree, self.current_file)
+        # Extract pipe parameters
+        for param in tree.find_data('pipe_param'):
+            param_token = param.children[0] if param.children else None
+            if isinstance(param_token, Token) and pipe_name:
+                param_name = param_token.type
+                self._record_object_reference(pipe_name, "PIPE", param_name, param_token)
+        # Visit embedded COPY INTO statement within the pipe
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'copy_into_stmt':
+                old_context = getattr(self, 'current_context', None)
+                self.current_context = {'type': 'PIPE', 'name': pipe_name}
+                try:
+                    self.visit(child)
+                finally:
+                    self.current_context = old_context
+
+    def alter_pipe_stmt(self, tree: Tree):
+        """Visits `alter_pipe_stmt` nodes. Extracts the pipe name and updated parameters."""
+        self._debug_tree(tree, "Alter Pipe Statement")
+        # Extract pipe name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        pipe_name = None
+        first_token = None
+        if qual_name_node:
+            pipe_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+        # Determine if this is a SET alter or a REFRESH alter
+        has_set = any(isinstance(child, Token) and child.type == 'SET' for child in tree.children)
+        # Only count SET variant as ALTER_PIPE statement
+        if pipe_name and first_token and has_set:
+            self._record_object_reference(pipe_name, "PIPE", "ALTER_PIPE", first_token)
+            self.engine.record_statement("ALTER_PIPE", tree, self.current_file)
+        # Record REFRESH as an object action, do not count as ALTER_PIPE
+        for child in tree.children:
+            if isinstance(child, Token) and child.type == 'REFRESH' and pipe_name:
+                self._record_object_reference(pipe_name, "PIPE", "REFRESH", child)
+        # Extract updated pipe parameters (common to SET variant)
+        for param in tree.find_data('pipe_param'):
+            param_token = param.children[0] if param.children else None
+            if isinstance(param_token, Token) and pipe_name:
+                param_name = param_token.type
+                self._record_object_reference(pipe_name, "PIPE", param_name, param_token)
 
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.

@@ -128,22 +128,29 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 
 ## 4. `PIPE`
 
+**Progress Update (Implementation in Progress):**
+- [x] Grammar rules for `CREATE PIPE`, `ALTER PIPE`, and `DROP PIPE` added to `snowflake.lark`.
+- [x] Visitor methods `visit_create_pipe_stmt` and `visit_alter_pipe_stmt` implemented in `parser/visitor.py`, recording PIPE creation, alteration, parameters, and embedded COPY dependencies.
+- [x] Analysis engine records actions `CREATE_PIPE`, `ALTER_PIPE`, and `DROP_PIPE`, and dependencies for embedded COPY commands.
+- [x] Reporting layer (text, JSON, HTML) updated to include PIPE objects and interactions.
+- [x] Tests created for parsing, analysis, and reporting of PIPE statements.
+
 **Goal:** Parse and analyze pipe creation and alteration for Snowpipe.
 
-**Steps:**
-
+**Steps for PIPE implementation:**
 1.  **Grammar (`snowflake.lark`):**
     *   Define rules for `CREATE PIPE [IF NOT EXISTS] <name> ...`: Include `AUTO_INGEST = TRUE|FALSE`, `AWS_SNS_TOPIC = '...'` / `AZURE_EVENT_GRID_TOPIC = '...'` / `GCP_PUBSUB_SUBSCRIPTION = '...'`, `COMMENT = '...'`, `AS <copy_statement>`.
     *   Define rules for `ALTER PIPE <name> ...`: Include `SET ...` (e.g., `PIPE_EXECUTION_PAUSED = TRUE|FALSE`), `REFRESH`.
     *   Define rules for `DROP PIPE [IF EXISTS] <name>`.
+    *   Completed in `snowflake.lark` and `parser/visitor.py`.
 2.  **Visitor (`parser/visitor.py`):**
     *   Add `visit_create_pipe_statement`.
     *   Add `visit_alter_pipe_statement`.
     *   Add `visit_drop_pipe_statement`.
 3.  **Analysis (`analysis/engine.py` / `models.py`):**
-    *   Record pipe actions (`action='CREATE_PIPE'`, `'ALTER_PIPE'`, `'DROP_PIPE'`).
-    *   Extract properties like `AUTO_INGEST`.
-    *   Crucially, parse and analyze the embedded `<copy_statement>` recursively, linking its dependencies (source stage, target table, file format) back to the pipe.
+    *   AnalysisResult now captures `CREATE_PIPE`, `ALTER_PIPE`, `DROP_PIPE` in `statement_counts` and `object_interactions`.
+    *   Text, JSON, and HTML reports now include PIPE objects and interactions.
+    *   Comprehensive tests added in `tests/test_parser.py`, `tests/test_analysis.py`, and `tests/test_reporting.py` for PIPE.
 4.  **Reporting:**
     *   Add counts for pipe DDL.
     *   List pipes and key properties. Indicate the associated `COPY` command details.

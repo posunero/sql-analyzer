@@ -36,6 +36,23 @@ class DataclassJSONEncoder(json.JSONEncoder):
             if 'destructive_counts' in data and isinstance(data['destructive_counts'], defaultdict):
                  data['destructive_counts'] = dict(data['destructive_counts'])
 
+            # Process object_dependencies: Convert tuple keys to strings and values to list of dicts
+            if 'object_dependencies' in data and isinstance(data['object_dependencies'], dict):
+                if all(isinstance(k, tuple) for k in data['object_dependencies'].keys()):
+                    new_dependencies = {}
+                    for key_tuple, deps in data['object_dependencies'].items():
+                        parent_key = f"{key_tuple[0]}:{key_tuple[1]}"
+                        dep_list = []
+                        for dep in deps:
+                            # Each dep is (dependent_type, dependent_name, relationship_type)
+                            dep_list.append({
+                                'dependent_type': dep[0],
+                                'dependent_name': dep[1],
+                                'relationship_type': dep[2]
+                            })
+                        new_dependencies[parent_key] = dep_list
+                    data['object_dependencies'] = new_dependencies
+
             # 3. Return the modified dictionary for the base encoder to handle
             return data 
 
@@ -51,13 +68,45 @@ class DataclassJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 def format_json(result: AnalysisResult) -> str:
-    """Formats the analysis result into a JSON string.
+    """Formats the analysis result into a JSON string by constructing a pure-Python dict."""
+    from dataclasses import asdict
 
-    Uses a custom encoder (`DataclassJSONEncoder`) to handle the serialization
-    of the `AnalysisResult` dataclass and its nested `ObjectInfo` dataclasses,
-    as well as converting the `defaultdict` for statement counts.
-    """
-    return json.dumps(result, cls=DataclassJSONEncoder, indent=2)
+    # Convert counts
+    statement_counts = dict(result.statement_counts)
+    destructive_counts = dict(result.destructive_counts)
+    # Objects found
+    objects_found = [asdict(obj) for obj in result.objects_found]
+    # Errors
+    errors = result.errors
+    # Object interactions: convert tuple keys
+    object_interactions = {
+        f"{obj_type}:{name}": sorted(list(actions))
+        for (obj_type, name), actions in result.object_interactions.items()
+    }
+    # Object dependencies: convert tuple keys and tuples to dicts
+    object_dependencies = {}
+    for (obj_type, name), deps in result.object_dependencies.items():
+        key = f"{obj_type}:{name}"
+        dep_list = []
+        for dep in deps:
+            dep_list.append({
+                "dependent_type": dep[0],
+                "dependent_name": dep[1],
+                "relationship_type": dep[2]
+            })
+        object_dependencies[key] = dep_list
+
+    # Build final dict
+    result_dict = {
+        "statement_counts": statement_counts,
+        "destructive_counts": destructive_counts,
+        "objects_found": objects_found,
+        "errors": errors,
+        "object_interactions": object_interactions,
+        "object_dependencies": object_dependencies,
+        "current_file": result.current_file,
+    }
+    return json.dumps(result_dict, indent=2)
 
 # Ensure the directory exists if running this directly for testing (unlikely needed)
 # if __name__ == '__main__':

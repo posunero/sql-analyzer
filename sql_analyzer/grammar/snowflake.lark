@@ -76,6 +76,7 @@ DESC: "DESC"i
 DESCRIBE: "DESCRIBE"i
 COMMENT: "COMMENT"i
 REPLACE: "REPLACE"i
+REFRESH: "REFRESH"i
 
 // Object types
 TABLE: "TABLE"i
@@ -92,6 +93,7 @@ SEQUENCE: "SEQUENCE"i
 MATERIALIZED: "MATERIALIZED"i
 RESOURCE: "RESOURCE"i
 MONITOR: "MONITOR"i
+PIPE: "PIPE"i
 
 // Column constraints
 PRIMARY: "PRIMARY"i
@@ -131,6 +133,10 @@ LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
 ALLOW_OVERLAPPING_EXECUTION: "ALLOW_OVERLAPPING_EXECUTION"i
 USER_TASK_TIMEOUT_MS: "USER_TASK_TIMEOUT_MS"i
+AUTO_INGEST: "AUTO_INGEST"i
+AWS_SNS_TOPIC: "AWS_SNS_TOPIC"i
+AZURE_EVENT_GRID_TOPIC: "AZURE_EVENT_GRID_TOPIC"i
+GCP_PUBSUB_SUBSCRIPTION: "GCP_PUBSUB_SUBSCRIPTION"i
 AT: "AT"i
 BEFORE: "BEFORE"i
 OFFSET: "OFFSET"i
@@ -319,6 +325,7 @@ create_stmt: create_table_stmt
            | create_warehouse_stmt
            | create_task_stmt
            | create_stream_stmt
+           | create_pipe_stmt
            | create_stage_stmt
            | create_database_stmt
            | create_schema_stmt
@@ -374,6 +381,16 @@ at_before_clause: (AT | BEFORE) LPAREN at_before_param ( COMMA at_before_param )
 at_before_param: TIMESTAMP FAT_ARROW expr
                | OFFSET FAT_ARROW expr
                | STATEMENT FAT_ARROW expr
+
+// Grammar for create_pipe statement
+create_pipe_stmt: CREATE (OR REPLACE)? PIPE (IF NOT EXISTS)? qualified_name pipe_param* AS copy_into_stmt
+
+// Parameters for PIPE
+pipe_param: AUTO_INGEST EQ boolean
+          | AWS_SNS_TOPIC EQ SINGLE_QUOTED_STRING
+          | AZURE_EVENT_GRID_TOPIC EQ SINGLE_QUOTED_STRING
+          | GCP_PUBSUB_SUBSCRIPTION EQ SINGLE_QUOTED_STRING
+          | COMMENT EQ SINGLE_QUOTED_STRING
 
 create_stage_stmt: CREATE (OR REPLACE)? STAGE qualified_name stage_param*
 stage_param: URL EQ SINGLE_QUOTED_STRING
@@ -444,6 +461,7 @@ alter_stmt: alter_table_stmt
           | alter_warehouse_stmt
           | alter_task_stmt
           | alter_stream_stmt
+          | alter_pipe_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
 alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
@@ -478,9 +496,12 @@ alter_task_action: SET WAREHOUSE EQ qualified_name
 
 alter_stream_stmt: ALTER STREAM qualified_name SET stream_set_clause
 
+// Grammar for alter_pipe statement
+alter_pipe_stmt: ALTER PIPE qualified_name (REFRESH | SET pipe_param ( COMMA pipe_param )*)
+
 // DROP statements
 drop_stmt: DROP object_type (IF EXISTS)? qualified_name
-object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
 
 // TRUNCATE statement
 truncate_stmt: TRUNCATE TABLE qualified_name
