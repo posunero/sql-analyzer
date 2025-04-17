@@ -131,6 +131,10 @@ LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
 ALLOW_OVERLAPPING_EXECUTION: "ALLOW_OVERLAPPING_EXECUTION"i
 USER_TASK_TIMEOUT_MS: "USER_TASK_TIMEOUT_MS"i
+AT: "AT"i
+BEFORE: "BEFORE"i
+OFFSET: "OFFSET"i
+STATEMENT: "STATEMENT"i
 INPUT: "INPUT"i
 CAST: "CAST"i
 INNER: "INNER"i
@@ -361,9 +365,15 @@ task_param: WAREHOUSE EQ qualified_name
           | USER_TASK_TIMEOUT_MS EQ number
           | COMMENT EQ SINGLE_QUOTED_STRING
 
-create_stream_stmt: CREATE (OR REPLACE)? STREAM qualified_name ON (TABLE | STAGE) qualified_name stream_param*
+create_stream_stmt: CREATE (OR REPLACE)? STREAM (IF NOT EXISTS)? qualified_name ON (TABLE | STAGE) qualified_name stream_param* at_before_clause?
 stream_param: APPEND_ONLY EQ boolean
             | SHOW_INITIAL_ROWS EQ boolean
+
+// Parameters for stream: append_only, show_initial_rows
+at_before_clause: (AT | BEFORE) LPAREN at_before_param ( COMMA at_before_param )* RPAREN
+at_before_param: TIMESTAMP FAT_ARROW expr
+               | OFFSET FAT_ARROW expr
+               | STATEMENT FAT_ARROW expr
 
 create_stage_stmt: CREATE (OR REPLACE)? STAGE qualified_name stage_param*
 stage_param: URL EQ SINGLE_QUOTED_STRING
@@ -466,7 +476,7 @@ alter_task_action: SET WAREHOUSE EQ qualified_name
                  | ADD AFTER (EQ)? qualified_name ( COMMA qualified_name )*
                  | MODIFY AS (call_procedure_stmt | _statement_wrapper)
 
-alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY EQ boolean
+alter_stream_stmt: ALTER STREAM qualified_name SET stream_set_clause
 
 // DROP statements
 drop_stmt: DROP object_type (IF EXISTS)? qualified_name
@@ -678,3 +688,8 @@ execute_task_stmt: EXECUTE TASK qualified_name
 // SHOW TASKS is covered by the general show_stmt rule
 
 // DESCRIBE TASK is covered by the general describe_stmt rule
+
+// Allow SET of one or more stream parameters
+stream_set_clause: stream_param ( COMMA stream_param )*
+
+TIMESTAMP: "TIMESTAMP"i

@@ -185,6 +185,27 @@ def test_parse_alter_stream():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing ALTER STREAM SQL should return a Tree."
 
+def test_parse_create_stream_if_not_exists():
+    """Test parsing CREATE STREAM with IF NOT EXISTS."""
+    sql = "CREATE STREAM IF NOT EXISTS my_stream ON TABLE source_tbl APPEND_ONLY = TRUE;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE STREAM IF NOT EXISTS SQL should return a Tree."
+
+def test_parse_create_stream_with_at_before():
+    """Test parsing CREATE STREAM with AT/BFORE clause."""
+    sql = "CREATE STREAM my_stream ON TABLE source_tbl AT(TIMESTAMP => '2023-01-01', OFFSET => 10, STATEMENT => 100);"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE STREAM with AT/BFORE clause should return a Tree."
+
+@pytest.mark.parametrize("sql", [
+    "ALTER STREAM my_stream SET APPEND_ONLY = FALSE;",
+    "ALTER STREAM my_stream SET APPEND_ONLY = FALSE, SHOW_INITIAL_ROWS = TRUE;"
+])
+def test_parse_alter_stream_multiple_params(sql):
+    """Test parsing ALTER STREAM statement with multiple parameters."""
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), f"Parsing ALTER STREAM SQL should return a Tree. SQL: {sql}"
+
 def test_parse_truncate():
     """Test parsing TRUNCATE TABLE statement."""
     sql = "TRUNCATE TABLE db1.sch1.temp_table;"

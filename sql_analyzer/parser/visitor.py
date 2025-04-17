@@ -1266,6 +1266,60 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if isinstance(child, Tree):
                 self.visit(child)
 
+    def create_stream_stmt(self, tree: Tree):
+        """Visits `create_stream_stmt` nodes. Extracts the stream name, base object, and parameters."""
+        self._debug_tree(tree, "Create Stream Statement")
+        # Extract stream name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        stream_name = None
+        if qual_name_node:
+            stream_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if stream_name and first_token:
+                self._record_object_reference(stream_name, "STREAM", "CREATE_STREAM", first_token)
+                self.engine.record_statement("CREATE_STREAM", tree, self.current_file)
+        # Extract base table or stage reference (second qualified_name)
+        qual_nodes = [c for c in tree.children if isinstance(c, Tree) and c.data == 'qualified_name']
+        if len(qual_nodes) >= 2:
+            base_node = qual_nodes[1]
+            base_name = self._extract_qualified_name(base_node)
+            base_token = next((t for t in base_node.children if isinstance(t, Token)), None)
+            # Determine base type from preceding token
+            base_type = None
+            idx = tree.children.index(base_node)
+            if idx >= 1 and isinstance(tree.children[idx-1], Token):
+                if tree.children[idx-1].type in ('TABLE', 'STAGE'):
+                    base_type = tree.children[idx-1].type
+            if base_name and base_token and base_type:
+                self._record_object_reference(base_name, base_type, "REFERENCE", base_token)
+        # Extract at_before_clause parameters
+        at_clause = self._find_first_child_by_name(tree, 'at_before_clause')
+        if at_clause:
+            for param in at_clause.find_data('at_before_param'):
+                first_token = param.children[0] if param.children else None
+                if isinstance(first_token, Token) and stream_name:
+                    param_name = first_token.value.upper()
+                    self._record_object_reference(stream_name, "STREAM", param_name, first_token)
+
+    def alter_stream_stmt(self, tree: Tree):
+        """Visits `alter_stream_stmt` nodes. Extracts the stream name and updated parameters."""
+        self._debug_tree(tree, "Alter Stream Statement")
+        # Extract stream name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        stream_name = None
+        if qual_name_node:
+            stream_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if stream_name and first_token:
+                self._record_object_reference(stream_name, "STREAM", "ALTER_STREAM", first_token)
+                self.engine.record_statement("ALTER_STREAM", tree, self.current_file)
+        # Extract stream parameters (could be nested within stream_set_clause)
+        for param in tree.find_data('stream_param'):
+            param_token = param.children[0] if param.children else None
+            if isinstance(param_token, Token) and stream_name:
+                param_name = param_token.value.upper()
+                self._record_object_reference(stream_name, "STREAM", param_name, param_token)
+
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.
 

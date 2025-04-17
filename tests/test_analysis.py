@@ -296,6 +296,47 @@ def test_analyze_database_ops():
     assert any(action in important_actions for action in actions_on_db), \
            f"None of the expected actions {important_actions} found on 'new_db'"
 
+def test_analyze_create_stream():
+    """Test analysis of CREATE STREAM statement."""
+    sql = "CREATE STREAM my_stream ON TABLE source_tbl APPEND_ONLY = TRUE;"
+    result = analyze_sql(sql)
+    assert result.statement_counts.get('CREATE_STREAM', 0) == 1
+    # Check stream object
+    streams = [o for o in result.objects_found if o.object_type == 'STREAM']
+    assert len(streams) == 1 and streams[0].name == 'my_stream'
+    assert streams[0].action == 'CREATE_STREAM'
+    # Check base table reference
+    tables = [o for o in result.objects_found if o.object_type == 'TABLE' and o.name == 'source_tbl']
+    assert tables and any(o.action == 'REFERENCE' for o in tables)
+
+def test_analyze_create_stream_if_not_exists():
+    """Test analysis of CREATE STREAM IF NOT EXISTS."""
+    sql = "CREATE STREAM IF NOT EXISTS my_stream ON TABLE source_tbl APPEND_ONLY = TRUE;"
+    result = analyze_sql(sql)
+    assert result.statement_counts.get('CREATE_STREAM', 0) == 1
+
+def test_analyze_create_stream_with_at_before():
+    """Test analysis of CREATE STREAM with AT/BFORE clause."""
+    sql = "CREATE STREAM my_stream ON TABLE source_tbl AT(TIMESTAMP => '2023-01-01', OFFSET => 10, STATEMENT => 100);"
+    result = analyze_sql(sql)
+    assert result.statement_counts.get('CREATE_STREAM', 0) == 1
+    # Check at_before parameters recorded as interactions
+    stream_keys = [(o.object_type, o.name, o.action) for o in result.objects_found if o.object_type == 'STREAM']
+    # Expect actions TIMESTAMP, OFFSET, STATEMENT
+    actions = {action for (_, _, action) in stream_keys}
+    assert 'TIMESTAMP' in actions and 'OFFSET' in actions and 'STATEMENT' in actions
+
+def test_analyze_alter_stream():
+    """Test analysis of ALTER STREAM with parameters."""
+    sql = "ALTER STREAM my_stream SET APPEND_ONLY = FALSE, SHOW_INITIAL_ROWS = TRUE;"
+    result = analyze_sql(sql)
+    assert result.statement_counts.get('ALTER_STREAM', 0) == 1
+    streams = [o for o in result.objects_found if o.object_type == 'STREAM']
+    assert streams and any(o.action == 'ALTER_STREAM' for o in streams)
+    # Check parameters recorded
+    actions = {o.action for o in streams}
+    assert 'APPEND_ONLY' in actions and 'SHOW_INITIAL_ROWS' in actions
+
 # --- End new test functions ---
 
 # --- Tests using complex fixtures ---
