@@ -550,4 +550,70 @@ def test_analyze_task_dependency_removal():
     assert ('TASK', 'task_a', 'AFTER') in dependencies, "AFTER dependency from CREATE TASK not found"
     
     # Verify REMOVED_AFTER dependency was recorded from ALTER TASK
-    assert ('TASK', 'task_a', 'REMOVED_AFTER') in dependencies, "REMOVED_AFTER dependency from ALTER TASK not found" 
+    assert ('TASK', 'task_a', 'REMOVED_AFTER') in dependencies, "REMOVED_AFTER dependency from ALTER TASK not found"
+
+# Add tests for additional TASK feature scenarios
+
+def test_analyze_task_multiple_after_dependencies():
+    """Test ALTER TASK ADD AFTER with multiple task dependencies in a single statement."""
+    sql = """
+    CREATE OR REPLACE TASK base_task
+      WAREHOUSE = wh_base
+    AS
+      SELECT 1;
+
+    CREATE OR REPLACE TASK multi_dep_task
+      WAREHOUSE = wh_base
+      AFTER base_task
+    AS
+      SELECT 2;
+
+    ALTER TASK multi_dep_task ADD AFTER base_task, another_task, schema2.third_task;
+    """
+    result = analyze_sql(sql)
+    deps = result.object_dependencies.get(('TASK', 'multi_dep_task'), set())
+    assert ('TASK', 'base_task', 'ADDED_AFTER') in deps
+    assert ('TASK', 'another_task', 'ADDED_AFTER') in deps
+    assert ('TASK', 'schema2.third_task', 'ADDED_AFTER') in deps
+
+def test_analyze_task_recursive_cte_analysis():
+    """Test recursive analysis of CTEs within the AS clause of a TASK."""
+    sql = """
+    CREATE OR REPLACE TASK cte_task
+      WAREHOUSE = wh_cte
+    AS
+      WITH base AS (
+        SELECT id, value FROM raw_data
+      ),
+      filtered AS (
+        SELECT id, value FROM base WHERE value > 100
+      )
+      INSERT INTO processed_data
+      SELECT id, value FROM filtered;
+    """
+    result = analyze_sql(sql)
+    # Check CREATE_TASK detection
+    assert result.statement_counts.get('CREATE_TASK', 0) == 1
+    # Warehouse reference
+    assert any(o.object_type == 'WAREHOUSE' and o.name == 'wh_cte' for o in result.objects_found)
+    # Table references in CTE and final insert
+    assert any(o.object_type == 'TABLE' and o.name == 'raw_data' and o.action in ('REFERENCE', 'SELECT') for o in result.objects_found)
+    assert any(o.object_type == 'TABLE' and o.name == 'processed_data' and o.action == 'INSERT' for o in result.objects_found)
+
+def test_analyze_task_merge_delete():
+    """Test recursive analysis of DELETE action within MERGE in a TASK AS clause."""
+    sql = """
+    CREATE OR REPLACE TASK delete_task
+      WAREHOUSE = wh_del
+    AS
+      MERGE INTO target_table t
+      USING source_table s
+      ON t.id = s.id
+      WHEN MATCHED THEN DELETE;
+    """
+    result = analyze_sql(sql)
+    assert result.statement_counts.get('CREATE_TASK', 0) == 1
+    # DELETE action on target_table
+    assert any(o.object_type == 'TABLE' and o.name == 'target_table' and o.action == 'DELETE' for o in result.objects_found)
+    # REFERENCE action on source_table
+    assert any(o.object_type == 'TABLE' and o.name == 'source_table' and o.action in ('REFERENCE', 'SELECT') for o in result.objects_found)

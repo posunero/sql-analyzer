@@ -398,9 +398,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 logger.debug(f"Found table reference in INSERT: {table_name}")
                 # Record in the current context (e.g., task context)
                 self._record_object_reference(table_name, "TABLE", "INSERT", first_token)
-        # Currently don't parse the SELECT part of INSERT INTO SELECT
-        # or the VALUES part for potential function calls etc.
-        # self.visit_children(tree) # Avoid recursion if grammar nests SELECT here
+        # Recurse into nested SQL (SELECT, VALUES, etc.) to capture dependencies
+        for child in tree.children:
+            if isinstance(child, Tree):
+                self.visit(child)
 
     def create_table_stmt(self, tree: Tree):
         """Visits `create_table_stmt` nodes. Extracts the `qualified_name` of the table.
@@ -589,6 +590,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 
                 # Make sure to record the UPDATE destructive statement
                 self.engine.record_destructive_statement("UPDATE", tree, self.current_file)
+                # Recurse into nested SQL (expressions, where clauses) to capture dependencies
+                for child in tree.children:
+                    if isinstance(child, Tree):
+                        self.visit(child)
 
     def drop_stmt(self, tree: Tree):
         """Visits `drop_stmt` nodes. Extracts the object being dropped.
@@ -662,6 +667,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                  logger.warning(f"Could not extract name or location token for DROP {obj_type} statement: {tree.pretty()}")
         else:
              logger.warning(f"Could not find qualified_name node in DROP {obj_type} statement: {tree.pretty()}")
+        # Recurse into nested SQL (expressions, where clauses) to capture dependencies
+        for child in tree.children:
+            if isinstance(child, Tree):
+                self.visit(child)
 
     def use_stmt(self, tree: Tree):
         """Visits `use_stmt` nodes. Extracts the `object_type` and name.
@@ -802,6 +811,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 
                 # Make sure to record the DELETE destructive statement
                 self.engine.record_destructive_statement("DELETE", tree, self.current_file)
+                # Recurse into nested SQL (expressions, where clauses) to capture dependencies
+                for child in tree.children:
+                    if isinstance(child, Tree):
+                        self.visit(child)
 
     def truncate_stmt(self, tree: Tree):
         """Visits `truncate_stmt` nodes. Extracts table references.
@@ -1070,7 +1083,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         
         # Analyze the SQL statement in the AS clause using a task context to track dependencies
         for child in tree.children:
-            if isinstance(child, Tree) and child.data in ('call_procedure_stmt', '_statement'):
+            # Include the wrapper for WITH clauses (_statement_wrapper)
+            if isinstance(child, Tree) and child.data in ('call_procedure_stmt', '_statement', '_statement_wrapper'):
+                
                 # Record current task name to track SQL dependencies
                 old_context = getattr(self, 'current_context', None)
                 self.current_context = {
@@ -1120,41 +1135,30 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                         
                         elif param.type in ('ADD', 'REMOVE') and i + 1 < len(child.children):
                             # Check for AFTER keyword following ADD or REMOVE
-                            if (isinstance(child.children[i + 1], Token) and 
-                                child.children[i + 1].type == 'AFTER'):
-                                
-                                # Find the qualified_name for the dependency task
-                                dep_node = None
-                                for j in range(i + 2, len(child.children)):
-                                    if isinstance(child.children[j], Tree) and child.children[j].data == 'qualified_name':
-                                        dep_node = child.children[j]
-                                        break
-                                
-                                if dep_node:
-                                    dep_name = self._extract_qualified_name(dep_node)
-                                    dep_token = next((t for t in dep_node.children if isinstance(t, Token)), None)
-                                    if dep_name and dep_token:
-                                        action = "DEPENDENCY"
-                                        # Record the dependency
-                                        self._record_object_reference(dep_name, "TASK", action, dep_token)
-                                        
-                                        # Add or remove dependency relationship
-                                        if task_name:
-                                            relationship_type = "AFTER"
-                                            if param.type == 'ADD':
+                            if isinstance(child.children[i + 1], Token) and child.children[i + 1].type == 'AFTER':
+                                # Record multiple dependencies following AFTER
+                                j = i + 2
+                                while j < len(child.children):
+                                    node = child.children[j]
+                                    if isinstance(node, Tree) and node.data == 'qualified_name':
+                                        dep_name = self._extract_qualified_name(node)
+                                        dep_token = next((t for t in node.children if isinstance(t, Token)), None)
+                                        if dep_name and dep_token:
+                                            # Record the dependency action
+                                            self._record_object_reference(dep_name, "TASK", "DEPENDENCY", dep_token)
+                                            if task_name:
+                                                # Distinguish between added vs removed AFTER
+                                                if param.type == 'ADD':
+                                                    relation = "ADDED_AFTER"
+                                                else:
+                                                    relation = "REMOVED_AFTER"
                                                 self.engine.result.add_dependency(
                                                     "TASK", task_name,
                                                     "TASK", dep_name,
-                                                    relationship_type
+                                                    relation
                                                 )
-                                            elif param.type == 'REMOVE':
-                                                # Also track dependency removal
-                                                self.engine.result.add_dependency(
-                                                    "TASK", task_name,
-                                                    "TASK", dep_name,
-                                                    "REMOVED_" + relationship_type
-                                                )
-                        
+                                    j += 1
+        
         # If MODIFY AS, analyze the SQL statement 
         for child in tree.children:
             if isinstance(child, Tree) and child.data == 'alter_task_action':
@@ -1163,7 +1167,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                         if isinstance(child.children[i + 1], Token) and child.children[i + 1].type == 'AS':
                             # Find the SQL statement
                             for j in range(i + 2, len(child.children)):
-                                if isinstance(child.children[j], Tree) and child.children[j].data in ('call_procedure_stmt', '_statement'):
+                                if isinstance(child.children[j], Tree) and child.children[j].data in ('call_procedure_stmt', '_statement', '_statement_wrapper'):
                                     # Record current task name to track SQL dependencies
                                     old_context = getattr(self, 'current_context', None)
                                     self.current_context = {
@@ -1227,10 +1231,11 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         target_table_node = self._find_first_child_by_name(tree, 'qualified_name')
         if target_table_node:
             target_table = self._extract_qualified_name(target_table_node)
-            first_token = next((t for t in target_table_node.children if isinstance(t, Token)), None)
-            if target_table and first_token:
+            target_token = next((t for t in target_table_node.children if isinstance(t, Token)), None)
+            if target_table and target_token:
                 logger.debug(f"Found target table in MERGE: {target_table}")
-                self._record_object_reference(target_table, "TABLE", "UPDATE", first_token)
+                # Record UPDATE action before handling delete clauses
+                self._record_object_reference(target_table, "TABLE", "UPDATE", target_token)
         
         # Extract source table (USING <source_table>)
         # Find the base_table_ref after the USING keyword
@@ -1250,6 +1255,12 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                     logger.debug(f"Found source table in MERGE: {source_table}")
                     self._record_object_reference(source_table, "TABLE", "SELECT", first_token)
         
+        # Record DELETE action for MERGE WHEN MATCHED THEN DELETE clauses
+        for delete_clause in tree.find_data('merge_delete_clause'):
+            if target_table and target_token:
+                logger.debug(f"Recording DELETE action for target table in MERGE delete clause: {target_table}")
+                self._record_object_reference(target_table, "TABLE", "DELETE", target_token)
+
         # Visit child nodes to process any subqueries
         for child in tree.children:
             if isinstance(child, Tree):

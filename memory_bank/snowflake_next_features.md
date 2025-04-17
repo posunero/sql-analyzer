@@ -72,8 +72,8 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 - [x] Added tests to verify correct parsing and analysis of DROP TASK statements
 - [x] Basic dependency tracking between tasks (via AFTER clause) implemented (ADD/REMOVE AFTER)
 - [x] Basic analysis of SQL in the AS clause implemented (identifies table/proc references)
-- [ ] Further enhancement needed for complex dependency scenarios (AFTER clause)
-- [ ] Further enhancement needed for full dependency tracking within AS clause SQL
+- [x] Further enhancement needed for complex dependency scenarios (AFTER clause)
+- [x] Further enhancement needed for full dependency tracking within AS clause SQL
 
 **Goal:** Parse and analyze task creation and alteration for scheduled SQL execution.
 

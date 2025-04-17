@@ -524,5 +524,32 @@ def test_parse_drop_task():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing DROP TASK should return a Tree."
 
+def test_parse_task_multiple_after_dependencies():
+    """Test parsing ALTER TASK ADD AFTER with multiple dependencies."""
+    sql = "ALTER TASK multi_dep_task ADD AFTER base_task, another_task, schema2.third_task;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER TASK with multiple AFTER dependencies should return a Tree."
+
+def test_parse_task_cte_as_clause():
+    """Test parsing CREATE TASK with CTEs in AS clause."""
+    sql = (
+        "CREATE OR REPLACE TASK cte_task WAREHOUSE = wh_cte AS "
+        "WITH base AS (SELECT id, value FROM raw_data), "
+        "filtered AS (SELECT id, value FROM base WHERE value > 100) "
+        "INSERT INTO processed_data SELECT id, value FROM filtered;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TASK with CTE AS clause should return a Tree."
+
+def test_parse_task_merge_delete_as_clause():
+    """Test parsing CREATE TASK with MERGE DELETE in AS clause."""
+    sql = (
+        "CREATE OR REPLACE TASK delete_task WAREHOUSE = wh_del AS "
+        "MERGE INTO target_table t USING source_table s ON t.id = s.id "
+        "WHEN MATCHED THEN DELETE;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE TASK with MERGE DELETE AS clause should return a Tree."
+
 if __name__ == '__main__':
     pytest.main() 

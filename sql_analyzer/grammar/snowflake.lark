@@ -353,7 +353,7 @@ warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
                | AUTO_RESUME EQ boolean
                | INITIALLY_SUSPENDED EQ boolean
 
-create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS (call_procedure_stmt | _statement)
+create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS (call_procedure_stmt | _statement_wrapper)
 task_param: WAREHOUSE EQ qualified_name
           | SCHEDULE EQ SINGLE_QUOTED_STRING
           | AFTER (EQ)? qualified_name
@@ -462,9 +462,9 @@ alter_task_action: SET WAREHOUSE EQ qualified_name
                  | SET SCHEDULE EQ SINGLE_QUOTED_STRING
                  | SUSPEND
                  | RESUME
-                 | REMOVE AFTER (EQ)? qualified_name
-                 | ADD AFTER (EQ)? qualified_name
-                 | MODIFY AS (call_procedure_stmt | _statement)
+                 | REMOVE AFTER (EQ)? qualified_name ( COMMA qualified_name )*
+                 | ADD AFTER (EQ)? qualified_name ( COMMA qualified_name )*
+                 | MODIFY AS (call_procedure_stmt | _statement_wrapper)
 
 alter_stream_stmt: ALTER STREAM qualified_name SET APPEND_ONLY EQ boolean
 
