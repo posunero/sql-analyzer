@@ -99,7 +99,7 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 
 ---
 
-## 3. `STREAM`
+## 3. `STREAM` ✅
 
 **Goal:** Parse and analyze stream creation and alteration for CDC.
 
