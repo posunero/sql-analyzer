@@ -22,7 +22,7 @@ A command-line tool to analyze Snowflake SQL files, extracting metadata, statist
 *   Generates object interaction summaries showing all actions performed on each object.
 *   Flags objects with potentially conflicting actions (marked with `[!]` in reports).
 *   Aggregates statistics across multiple files.
-*   Supports different output formats (Text, JSON - more planned).
+*   Supports different output formats (Text, JSON, HTML). (CSV format is planned but not yet implemented.)
 *   Handles file and directory inputs.
 
 ## Snowflake SQL Coverage
@@ -104,10 +104,11 @@ python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
 
 **Options:**
 
-*   `--format {text,json}`: Specify the output format for the analysis results. (Default: `text`) (*Note: CSV format is planned but not yet implemented.*)
+*   `--format {text,json,html}`: Specify the output format for the analysis results. (Default: `text`) (*Note: CSV format is planned but not yet implemented.*)
 *   `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}` (alias: `--verbose`): Set the detail level for logging messages. (Default: `INFO`)
 *   `--verbose-report`: Generate a more detailed report. For the `text` format, this includes the line and column number for each object found.
 *   `--fail-fast`: Stop processing immediately if an error (like a parsing error) is encountered in any file. By default, the tool tries to process all specified files.
+*   `--output`, `--out` <file_path>: Optional path to write the output report file instead of printing to stdout.
 
 **Examples:**
 
@@ -131,17 +132,22 @@ python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
     python -m sql_analyzer.main --format json path/to/your/sql/directory/
     ```
 
-5.  **Run with detailed debug logging:**
+5.  **Output results in HTML format:**
+    ```bash
+    python -m sql_analyzer.main --format html path/to/your/sql/directory/
+    ```
+
+6.  **Run with detailed debug logging:**
     ```bash
     python -m sql_analyzer.main --verbose DEBUG path/to/your/script.sql
     ```
 
-6.  **Stop immediately if any file fails to parse:**
+7.  **Stop immediately if any file fails to parse:**
     ```bash
     python -m sql_analyzer.main --fail-fast path/to/your/sql/directory/
     ```
 
-7.  **Generate a verbose text report showing object locations:**
+8.  **Generate a verbose text report showing object locations:**
     ```bash
     python -m sql_analyzer.main --verbose-report path/to/your/sql/directory/
     ```
@@ -169,10 +175,11 @@ sql-analyzer/
 │   │   └── visitor.py       # AST visitor
 │   ├── reporting/           # Report generation
 │   │   ├── __init__.py
-│   │   ├── formats/         # Output formatters (text, json)
+│   │   ├── formats/         # Output formatters (text, json, html)
 │   │   │   ├── __init__.py
 │   │   │   ├── json.py
-│   │   │   └── text.py
+│   │   │   ├── text.py
+│   │   │   └── html.py
 │   │   └── manager.py       # Selects and runs the correct formatter
 │   ├── utils/               # Utility functions
 │   │   ├── __init__.py
