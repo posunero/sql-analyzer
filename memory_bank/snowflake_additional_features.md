@@ -7,7 +7,7 @@ This document describes an unambiguous, step-by-step plan to implement the next 
 A. Semi-Structured Data & Table Functions (LATERAL FLATTEN) [COMPLETED]
 B. Cortex Search (SEARCH optimization) [COMPLETED]
 C. Role Management (Application & Database Roles)
-D. Container Services & Job Features (Snowpark & Jobs)
+D. Container Services & Job Features (Snowpark & Jobs) [COMPLETED]
 E. Machine Learning Operations (MODEL PREDICT, ML functions)
 F. Apache Iceberg Table Support
 G. Snowpark Container Services
@@ -83,7 +83,7 @@ Documentation: https://docs.snowflake.com/en/sql-reference/sql/create-role.html,
 
 ---
 
-### D. Container Services & Job Features
+### D. Container Services & Job Features [COMPLETED]
 Documentation: https://docs.snowflake.com/en/sql-reference/sql/create-job.html
 
 1. Grammar

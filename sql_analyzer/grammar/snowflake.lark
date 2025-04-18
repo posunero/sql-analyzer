@@ -88,7 +88,8 @@ VIEW: "VIEW"i
 DATABASE: "DATABASE"i
 SCHEMA: "SCHEMA"i
 WAREHOUSE: "WAREHOUSE"i
-TASK: "TASK"i 
+TASK: "TASK"i
+JOB: "JOB"i
 STREAM: "STREAM"i
 STAGE: "STAGE"i
 PROCEDURE: "PROCEDURE"i
@@ -98,6 +99,11 @@ MATERIALIZED: "MATERIALIZED"i
 RESOURCE: "RESOURCE"i
 MONITOR: "MONITOR"i
 PIPE: "PIPE"i
+ICEBERG: "ICEBERG"i
+PACKAGE: "PACKAGE"i
+INSTALL: "INSTALL"i
+ALERT: "ALERT"i
+AUTHENTICATION: "AUTHENTICATION"i
 
 // Column constraints
 PRIMARY: "PRIMARY"i
@@ -137,6 +143,7 @@ LANGUAGE: "LANGUAGE"i
 AFTER: "AFTER"i
 ALLOW_OVERLAPPING_EXECUTION: "ALLOW_OVERLAPPING_EXECUTION"i
 USER_TASK_TIMEOUT_MS: "USER_TASK_TIMEOUT_MS"i
+MAX_CONCURRENCY: "MAX_CONCURRENCY"i
 AUTO_INGEST: "AUTO_INGEST"i
 AWS_SNS_TOPIC: "AWS_SNS_TOPIC"i
 AZURE_EVENT_GRID_TOPIC: "AZURE_EVENT_GRID_TOPIC"i
@@ -267,6 +274,23 @@ statement: select_stmt
          | set_stmt
          | execute_immediate_stmt
          | execute_task_stmt
+         | create_job_stmt
+         | alter_job_stmt
+         | create_iceberg_table_stmt
+         | alter_iceberg_table_stmt
+         | drop_iceberg_table_stmt
+         | create_package_stmt
+         | install_package_stmt
+         | remove_package_stmt
+         | create_alert_stmt
+         | alter_alert_stmt
+         | drop_alert_stmt
+         | alter_row_access_policy_stmt
+         | drop_row_access_policy_stmt
+         | alter_table_set_masking_policy_stmt
+         | create_authentication_policy_stmt
+         | alter_authentication_policy_stmt
+         | drop_authentication_policy_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
@@ -354,6 +378,11 @@ create_stmt: create_table_stmt
            | create_masking_policy_stmt
            | create_tag_stmt
            | create_row_access_policy_stmt
+           | create_job_stmt
+           | create_iceberg_table_stmt
+           | create_package_stmt
+           | create_alert_stmt
+           | create_authentication_policy_stmt
 
 create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)? | AS select_stmt)
 column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (COMMENT SINGLE_QUOTED_STRING)?
@@ -479,6 +508,11 @@ alter_stmt: alter_table_stmt
           | alter_stream_stmt
           | alter_pipe_stmt
           | alter_search_optimization_stmt
+          | alter_job_stmt
+          | alter_iceberg_table_stmt
+          | alter_row_access_policy_stmt
+          | alter_table_set_masking_policy_stmt
+          | alter_authentication_policy_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
 alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
@@ -645,7 +679,7 @@ file_format_option_kv: FIELD_DELIMITER EQ string
 
 FIELD_DELIMITER: "FIELD_DELIMITER"i
 
-create_role_stmt: CREATE (OR REPLACE)? ROLE qualified_name
+create_role_stmt: CREATE (OR REPLACE)? ROLE (IF NOT EXISTS)? qualified_name (MANAGED ACCESS)?
 
 MASKING: "MASKING"i
 POLICY: "POLICY"i
@@ -739,3 +773,38 @@ TIMESTAMP: "TIMESTAMP"i
 enable_search_optimization_stmt: ENABLE SEARCH OPTIMIZATION ON qualified_name
 disable_search_optimization_stmt: DISABLE SEARCH OPTIMIZATION ON qualified_name
 alter_search_optimization_stmt: ALTER SEARCH OPTIMIZATION ON qualified_name
+
+// New job statements
+create_job_stmt: CREATE (OR REPLACE)? JOB qualified_name job_param* AS _statement_wrapper
+alter_job_stmt: ALTER JOB qualified_name (SUSPEND | RESUME | REMOVE SCHEDULE | ADD SCHEDULE SINGLE_QUOTED_STRING)
+job_param: WAREHOUSE EQ qualified_name | SCHEDULE EQ SINGLE_QUOTED_STRING | MAX_CONCURRENCY EQ number
+
+// Apache Iceberg table support
+create_iceberg_table_stmt: CREATE ICEBERG TABLE qualified_name
+alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name
+drop_iceberg_table_stmt: DROP ICEBERG TABLE qualified_name
+
+// Snowpark package statements
+create_package_stmt: CREATE PACKAGE qualified_name
+install_package_stmt: INSTALL PACKAGE qualified_name
+remove_package_stmt: REMOVE PACKAGE qualified_name
+
+// Alert statements
+create_alert_stmt: CREATE ALERT qualified_name
+alter_alert_stmt: ALTER ALERT qualified_name
+drop_alert_stmt: DROP ALERT qualified_name
+
+// Row access policy enhancements
+alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name
+drop_row_access_policy_stmt: DROP ROW ACCESS POLICY qualified_name
+
+// Dynamic data masking enhancements
+alter_table_set_masking_policy_stmt: ALTER TABLE qualified_name MODIFY COLUMN IDENTIFIER SET MASKING POLICY qualified_name
+
+// Authentication policy statements
+create_authentication_policy_stmt: CREATE AUTHENTICATION POLICY qualified_name
+alter_authentication_policy_stmt: ALTER AUTHENTICATION POLICY qualified_name
+drop_authentication_policy_stmt: DROP AUTHENTICATION POLICY qualified_name
+
+MANAGED: "MANAGED"i
+

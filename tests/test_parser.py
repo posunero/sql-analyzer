@@ -603,5 +603,24 @@ def test_parse_alter_search_optimization():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing ALTER SEARCH OPTIMIZATION should return a Tree."
 
+# New tests for JOB statements
+
+def test_parse_create_job():
+    """Test parsing CREATE JOB statement."""
+    sql = "CREATE OR REPLACE JOB my_job WAREHOUSE = my_wh SCHEDULE = 'USING CRON 0 5 * * * UTC' MAX_CONCURRENCY = 5 AS SELECT * FROM my_table;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE JOB SQL should return a Tree."
+
+@pytest.mark.parametrize("sql", [
+    "ALTER JOB my_job SUSPEND;",
+    "ALTER JOB my_job RESUME;",
+    "ALTER JOB my_job REMOVE SCHEDULE;",
+    "ALTER JOB my_job ADD SCHEDULE 'USING CRON 0 5 * * * UTC';"
+])
+def test_parse_alter_job(sql):
+    """Test parsing ALTER JOB statements."""
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), f"Parsing ALTER JOB SQL should return a Tree: {sql}"  
+
 if __name__ == '__main__':
     pytest.main() 

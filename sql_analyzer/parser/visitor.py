@@ -249,6 +249,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 'CREATE_OR_REPLACE_TABLE': 'CREATE_OR_REPLACE_TABLE',
                 'CREATE_OR_REPLACE_VIEW': 'CREATE_OR_REPLACE_VIEW',
                 'CREATE_TASK_STMT': 'CREATE_TASK',
+                'CREATE_JOB_STMT': 'CREATE_JOB',
+                'ALTER_JOB_STMT': 'ALTER_JOB',
                 'ALTER_TASK_STMT': 'ALTER_TASK',
                 'EXECUTE_TASK_STMT': 'EXECUTE_TASK',
                 'SHOW_STMT': 'SHOW',
@@ -1479,6 +1481,87 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 self._record_object_reference(target_name, "ROLE", "REVOKE_ROLE", target_token)
                 self.engine.record_statement("REVOKE_ROLE", tree, self.current_file)
                 self.engine.result.add_dependency("ROLE", target_name, "ROLE", revoked_name, "REVOKE_ROLE")
+
+    def create_role_stmt(self, tree: Tree):
+        """Visits `create_role_stmt` nodes. Records role creation statements."""
+        self._debug_tree(tree, "Create Role Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            role_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                logger.debug(f"Found CREATE ROLE: {role_name}")
+                # Record creation of the role
+                self._record_object_reference(role_name, "ROLE", "CREATE_ROLE", first_token)
+                self.engine.record_statement("CREATE_ROLE", tree, self.current_file)
+
+    def create_job_stmt(self, tree: Tree):
+        """Visits `create_job_stmt` nodes. Records job creation statements."""
+        logger.debug(f"VISITOR: Entering create_job_stmt: {tree.pretty()[:100]}")
+        self._debug_tree(tree, "Create Job Statement")
+        # Extract job name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            job_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if job_name and first_token:
+                logger.debug(f"Found CREATE JOB: {job_name}")
+                self._record_object_reference(job_name, "JOB", "CREATE_JOB", first_token)
+                self.engine.record_statement("CREATE_JOB", tree, self.current_file)
+        # Process job parameters (warehouse, schedule, max_concurrency)
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == 'job_param':
+                param_token = child.children[0] if child.children else None
+                if isinstance(param_token, Token):
+                    if param_token.type == 'WAREHOUSE':
+                        # Next node is qualified_name at index 2
+                        if len(child.children) >= 3 and isinstance(child.children[2], Tree):
+                            wh_node = child.children[2]
+                            wh_name = self._extract_qualified_name(wh_node)
+                            wh_token = next((t for t in wh_node.children if isinstance(t, Token)), None)
+                            if wh_name and wh_token:
+                                self._record_object_reference(wh_name, "WAREHOUSE", "REFERENCE", wh_token)
+                    elif param_token.type == 'SCHEDULE':
+                        # Schedule value is the STRING token at index 2
+                        if len(child.children) >= 3 and isinstance(child.children[2], Token):
+                            sched_token = child.children[2]
+                            self._record_object_reference(job_name, "JOB", "SCHEDULE", sched_token)
+                    elif param_token.type == 'MAX_CONCURRENCY':
+                        if len(child.children) >= 3 and isinstance(child.children[2], Token):
+                            mc_token = child.children[2]
+                            self._record_object_reference(job_name, "JOB", "MAX_CONCURRENCY", mc_token)
+
+    def alter_job_stmt(self, tree: Tree):
+        """Visits `alter_job_stmt` nodes. Records job alteration statements."""
+        logger.debug(f"VISITOR: Entering alter_job_stmt: {tree.pretty()[:100]}")
+        self._debug_tree(tree, "Alter Job Statement")
+        # Extract job name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        job_name = None
+        if qual_name_node:
+            job_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if job_name and first_token:
+                self._record_object_reference(job_name, "JOB", "ALTER_JOB", first_token)
+        # Identify specific actions
+        for i, child in enumerate(tree.children):
+            if isinstance(child, Token):
+                if child.type == 'SUSPEND':
+                    self._record_object_reference(job_name, "JOB", "SUSPEND", child)
+                elif child.type == 'RESUME':
+                    self._record_object_reference(job_name, "JOB", "RESUME", child)
+                elif child.type == 'REMOVE':
+                    # REMOVE SCHEDULE
+                    self._record_object_reference(job_name, "JOB", "REMOVE_SCHEDULE", child)
+                elif child.type == 'ADD':
+                    # ADD SCHEDULE with STRING token
+                    sched_str = None
+                    for j in range(i+1, len(tree.children)):
+                        if isinstance(tree.children[j], Token) and tree.children[j].type == 'SINGLE_QUOTED_STRING':
+                            sched_str = tree.children[j]
+                            break
+                    if sched_str:
+                        self._record_object_reference(job_name, "JOB", "ADD_SCHEDULE", sched_str)
 
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.

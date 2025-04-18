@@ -267,34 +267,42 @@ def test_analyze_create_replace_view():
     # assert len(result.objects_found) == 2
 
 def test_analyze_database_ops():
-    """Test analysis of CREATE, USE, DROP DATABASE statements."""
+    """Test analysis of database operations (CREATE, USE, DROP DATABASE)."""
     result = analyze_sql(SQL_DATABASE_OPS)
     
-    # The analysis engine might classify database operations differently
-    # Look for any database-related statements without strict naming conventions
-    database_ops_found = 0
-    for stmt_type, count in result.statement_counts.items():
-        if 'DATABASE' in stmt_type and count > 0:
-            database_ops_found += count
-    
-    # We should find at least one database operation
-    assert database_ops_found > 0, "No database operation statements found"
-    
-    # Expect database objects even if statement counts have changed
-    db_objects = [o for o in result.objects_found if o.object_type == 'DATABASE']
-    assert len(db_objects) > 0, "No DATABASE objects found"
-    
-    # Check if 'new_db' is found at least once
-    assert any(o.name == 'new_db' for o in db_objects), "Specific database 'new_db' not found"
-    
-    # Check for presence of key operations without requiring all three
-    actions_on_db = {o.action for o in db_objects if o.name == 'new_db'}
-    assert len(actions_on_db) > 0, "No actions found on 'new_db'"
-    
-    # At least one of the three operations should be detected
-    important_actions = {'CREATE', 'USE', 'DROP'}
-    assert any(action in important_actions for action in actions_on_db), \
-           f"None of the expected actions {important_actions} found on 'new_db'"
+    assert result.statement_counts.get('CREATE_DATABASE', 0) == 1
+    assert result.statement_counts.get('USE_DATABASE', 0) == 1
+    assert result.statement_counts.get('DROP_DATABASE', 0) == 1
+
+# Tests for Job statements
+def test_analyze_create_job():
+    """Test analysis of CREATE JOB statement."""
+    sql = "CREATE OR REPLACE JOB my_job WAREHOUSE = my_wh SCHEDULE = 'USING CRON 0 5 * * * UTC' MAX_CONCURRENCY = 5 AS SELECT * FROM my_schema.my_table;"
+    result = analyze_sql(sql)
+    # Should record one CREATE_JOB statement
+    assert result.statement_counts.get('CREATE_JOB', 0) == 1
+    # Verify the job object was recorded with correct action
+    job_objs = [o for o in result.objects_found if o.object_type == 'JOB' and o.name == 'my_job']
+    assert any(o.action == 'CREATE_JOB' for o in job_objs)
+    # Verify that referenced table was recorded
+    assert any(o.object_type == 'TABLE' for o in result.objects_found)
+
+@pytest.mark.parametrize("sql,action", [
+    ("ALTER JOB my_job SUSPEND;", "SUSPEND"),
+    ("ALTER JOB my_job RESUME;", "RESUME"),
+    ("ALTER JOB my_job REMOVE SCHEDULE;", "REMOVE_SCHEDULE"),
+    ("ALTER JOB my_job ADD SCHEDULE 'USING CRON 0 5 * * * UTC';", "ADD_SCHEDULE")
+])
+def test_analyze_alter_job(sql, action):
+    """Test analysis of ALTER JOB statements."""
+    result = analyze_sql(sql)
+    # Should record one ALTER_JOB statement
+    assert result.statement_counts.get('ALTER_JOB', 0) == 1
+    # Basic verify job exists
+    job_objs = [o for o in result.objects_found if o.object_type == 'JOB' and o.name == 'my_job']
+    assert any(o.action == 'ALTER_JOB' for o in job_objs)
+    # Check that specific action token was recorded
+    assert any(o.action == action for o in result.objects_found if o.object_type == 'JOB')
 
 def test_analyze_create_stream():
     """Test analysis of CREATE STREAM statement."""

@@ -31,13 +31,12 @@ try:
     # Attempt to load the grammar file relative to this script's location
     # Using propagate_positions=True to get line/column info for errors/analysis
     # maybe_placeholders=False is generally safer for SQL
-    # parser='lalr' is a good balance of speed and power
     sql_parser = Lark.open(
         grammar_path,
         parser='earley',
         propagate_positions=True,
         maybe_placeholders=False,
-        start='start' # Corrected: Use the 'start' rule from snowflake.lark
+        start='start'
     )
 except FileNotFoundError:
     print(f"Error: Grammar file not found at {grammar_path}")
