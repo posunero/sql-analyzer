@@ -358,18 +358,16 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 if obj_type == "TABLE":
                      self._record_object_reference(ref_name, obj_type, "SELECT", first_token)
 
-            # Process base table/view in FROM clause
-            base_table_node = self._find_first_child_by_name(from_clause, 'base_table_ref')
-            if base_table_node:
-                if self._find_first_child_by_name(base_table_node, 'qualified_name'):
-                    record_ref(base_table_node)
+            # Record base table references excluding function table refs
+            for node in from_clause.find_data('base_table_ref'):
+                if not self._find_first_child_by_name(node, 'function_call'):
+                    record_ref(node)
 
-            # Process JOIN clauses
+            # Record joined table references excluding function table refs
             for join_node in from_clause.find_data('join_clause'):
                 join_table_node = self._find_first_child_by_name(join_node, 'base_table_ref')
-                if join_table_node:
-                    if self._find_first_child_by_name(join_table_node, 'qualified_name'):
-                        record_ref(join_table_node)
+                if join_table_node and not self._find_first_child_by_name(join_table_node, 'function_call'):
+                    record_ref(join_table_node)
         # --- END Process FROM and JOIN --- 
 
         # --- Manually visit other children (like select_list, where_clause) --- 
@@ -761,8 +759,30 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         Records the found function as 'REFERENCE', excluding common built-ins.
         Uses the function name node for location info.
         """
-        logger.debug(f"VISITOR: Entering function_call method for node: {tree.pretty()[:100]}...") # Added debug
+        logger.debug(f"VISITOR: Entering function_call method for node: {tree.pretty()[:100]}...")
         self._debug_tree(tree, "Function Call")
+        # Special handling for FLATTEN table function: record input and statement
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        func_name = self._extract_qualified_name(qual_name_node) if qual_name_node else None
+        if func_name and func_name.upper() == 'FLATTEN':
+            # Iterate named arguments to find INPUT => expression
+            for named_args in tree.find_data('named_arg_list'):
+                for named_arg in named_args.children:
+                    if isinstance(named_arg, Tree) and named_arg.data == 'named_arg':
+                        arg_name_token = next((t for t in named_arg.children if isinstance(t, Token) and t.type == 'IDENTIFIER'), None)
+                        if arg_name_token and arg_name_token.value.upper() == 'INPUT':
+                            expr_node = named_arg.children[-1]
+                            for col_node in expr_node.find_data('qualified_name'):
+                                col_name = self._extract_qualified_name(col_node)
+                                col_token = next((t for t in col_node.children if isinstance(t, Token)), None)
+                                if col_name and col_token:
+                                    obj_type = 'COLUMN' if '.' in col_name else 'TABLE'
+                                    logger.debug(f"Found FLATTEN input reference in function_call: {col_name}")
+                                    # Record flatten action on input
+                                    self._record_object_reference(col_name, obj_type, 'FLATTEN', col_token)
+            # Record FLATTEN statement count
+            self.engine.record_statement('FLATTEN', tree, self.current_file)
+            return
         # Function name is typically the qualified_name child
         qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
@@ -1262,7 +1282,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         for delete_clause in tree.find_data('merge_delete_clause'):
             if target_table and target_token:
                 logger.debug(f"Recording DELETE action for target table in MERGE delete clause: {target_table}")
+                # Record object interaction for DELETE
                 self._record_object_reference(target_table, "TABLE", "DELETE", target_token)
+                # Record DELETE statement for counting
+                self.engine.record_statement("DELETE", delete_clause, self.current_file)
 
         # Record INSERT action for MERGE WHEN NOT MATCHED THEN INSERT clauses
         for insert_clause in tree.find_data('merge_insert_clause'):
@@ -1383,6 +1406,79 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if isinstance(param_token, Token) and pipe_name:
                 param_name = param_token.type
                 self._record_object_reference(pipe_name, "PIPE", param_name, param_token)
+
+    def enable_search_optimization_stmt(self, tree: Tree):
+        """Visits `enable_search_optimization_stmt` nodes."""
+        logger.debug(f"VISITOR: Entering enable_search_optimization_stmt: {tree.pretty()[:100]}")
+        self._debug_tree(tree, "Enable Search Optimization Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            table_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if table_name and first_token:
+                logger.debug(f"Found ENABLE SEARCH OPTIMIZATION on table: {table_name}")
+                self._record_object_reference(table_name, "TABLE", "ENABLE_SEARCH_OPTIMIZATION", first_token)
+                self.engine.record_statement("ENABLE_SEARCH_OPTIMIZATION", tree, self.current_file)
+
+    def disable_search_optimization_stmt(self, tree: Tree):
+        """Visits `disable_search_optimization_stmt` nodes."""
+        logger.debug(f"VISITOR: Entering disable_search_optimization_stmt: {tree.pretty()[:100]}")
+        self._debug_tree(tree, "Disable Search Optimization Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            table_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if table_name and first_token:
+                logger.debug(f"Found DISABLE SEARCH OPTIMIZATION on table: {table_name}")
+                self._record_object_reference(table_name, "TABLE", "DISABLE_SEARCH_OPTIMIZATION", first_token)
+                self.engine.record_statement("DISABLE_SEARCH_OPTIMIZATION", tree, self.current_file)
+
+    def alter_search_optimization_stmt(self, tree: Tree):
+        """Visits `alter_search_optimization_stmt` nodes."""
+        logger.debug(f"VISITOR: Entering alter_search_optimization_stmt: {tree.pretty()[:100]}")
+        self._debug_tree(tree, "Alter Search Optimization Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            table_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if table_name and first_token:
+                logger.debug(f"Found ALTER SEARCH OPTIMIZATION on table: {table_name}")
+                self._record_object_reference(table_name, "TABLE", "ALTER_SEARCH_OPTIMIZATION", first_token)
+                self.engine.record_statement("ALTER_SEARCH_OPTIMIZATION", tree, self.current_file)
+
+    def grant_role_stmt(self, tree: Tree):
+        """Visits `grant_role_stmt` nodes. Records role grants between roles."""
+        self._debug_tree(tree, "Grant Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            granted_node, target_node = qnames[0], qnames[1]
+            granted_name = self._extract_qualified_name(granted_node)
+            target_name = self._extract_qualified_name(target_node)
+            granted_token = next((t for t in granted_node.children if isinstance(t, Token)), None)
+            target_token = next((t for t in target_node.children if isinstance(t, Token)), None)
+            if granted_name and target_name and granted_token and target_token:
+                logger.debug(f"Found GRANT ROLE: {granted_name} TO ROLE: {target_name}")
+                self._record_object_reference(granted_name, "ROLE", "GRANT_ROLE", granted_token)
+                self._record_object_reference(target_name, "ROLE", "GRANT_ROLE", target_token)
+                self.engine.record_statement("GRANT_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_name, "ROLE", granted_name, "GRANT_ROLE")
+
+    def revoke_role_stmt(self, tree: Tree):
+        """Visits `revoke_role_stmt` nodes. Records role revocations between roles."""
+        self._debug_tree(tree, "Revoke Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            revoked_node, target_node = qnames[0], qnames[1]
+            revoked_name = self._extract_qualified_name(revoked_node)
+            target_name = self._extract_qualified_name(target_node)
+            revoked_token = next((t for t in revoked_node.children if isinstance(t, Token)), None)
+            target_token = next((t for t in target_node.children if isinstance(t, Token)), None)
+            if revoked_name and target_name and revoked_token and target_token:
+                logger.debug(f"Found REVOKE ROLE: {revoked_name} FROM ROLE: {target_name}")
+                self._record_object_reference(revoked_name, "ROLE", "REVOKE_ROLE", revoked_token)
+                self._record_object_reference(target_name, "ROLE", "REVOKE_ROLE", target_token)
+                self.engine.record_statement("REVOKE_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_name, "ROLE", revoked_name, "REVOKE_ROLE")
 
     # Add more specific visitor methods here for other statements/constructs
     # E.g., insert_stmt, merge_stmt, function calls, etc.

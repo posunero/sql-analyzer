@@ -572,5 +572,36 @@ def test_parse_task_merge_delete_as_clause():
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), "Parsing CREATE TASK with MERGE DELETE AS clause should return a Tree."
 
+# --- Tests for Role Management and Search Optimization ---
+def test_parse_grant_role():
+    """Test parsing GRANT ROLE between roles."""
+    sql = "GRANT ROLE role1 TO ROLE role2;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing GRANT ROLE should return a Tree."
+
+def test_parse_revoke_role():
+    """Test parsing REVOKE ROLE between roles."""
+    sql = "REVOKE ROLE role1 FROM ROLE role2;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing REVOKE ROLE should return a Tree."
+
+def test_parse_enable_search_optimization():
+    """Test parsing ENABLE SEARCH OPTIMIZATION statement."""
+    sql = "ENABLE SEARCH OPTIMIZATION ON my_table;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ENABLE SEARCH OPTIMIZATION should return a Tree."
+
+def test_parse_disable_search_optimization():
+    """Test parsing DISABLE SEARCH OPTIMIZATION statement."""
+    sql = "DISABLE SEARCH OPTIMIZATION ON my_table;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing DISABLE SEARCH OPTIMIZATION should return a Tree."
+
+def test_parse_alter_search_optimization():
+    """Test parsing ALTER SEARCH OPTIMIZATION statement."""
+    sql = "ALTER SEARCH OPTIMIZATION ON my_table;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER SEARCH OPTIMIZATION should return a Tree."
+
 if __name__ == '__main__':
     pytest.main() 

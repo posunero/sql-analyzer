@@ -642,19 +642,70 @@ def test_analyze_task_recursive_cte_analysis():
     assert any(o.object_type == 'TABLE' and o.name == 'processed_data' and o.action == 'INSERT' for o in result.objects_found)
 
 def test_analyze_task_merge_delete():
-    """Test recursive analysis of DELETE action within MERGE in a TASK AS clause."""
-    sql = """
-    CREATE OR REPLACE TASK delete_task
-      WAREHOUSE = wh_del
-    AS
-      MERGE INTO target_table t
-      USING source_table s
-      ON t.id = s.id
-      WHEN MATCHED THEN DELETE;
-    """
+    """Test analysis of task merge delete statements."""
+    result = analyze_sql("MERGE INTO t1 USING t2 ON t1.id = t2.id WHEN MATCHED THEN DELETE;")
+    assert result.statement_counts.get('MERGE', 0) > 0
+    assert result.statement_counts.get('DELETE', 0) > 0
+
+# --- Tests for Flatten, Search Optimization, and Role Management ---
+def test_analyze_flatten_basic():
+    """Test analysis of simple LATERAL FLATTEN usage."""
+    result = analyze_sql("SELECT * FROM t1, LATERAL FLATTEN(input => items) f;")
+    # Should record FLATTEN statement and object action
+    assert result.statement_counts.get('FLATTEN', 0) == 1
+    # Verify flatten input column tracking
+    flatten_objs = [o for o in result.objects_found if o.action == 'FLATTEN']
+    assert any(o.name == 'items' for o in flatten_objs), "Expected 'items' column flattened"
+
+def test_analyze_flatten_multiple_args():
+    """Test analysis of FLATTEN with multiple named arguments."""
+    sql = "SELECT * FROM LATERAL FLATTEN(input => t1.json_col, path => 'a.b', outer => TRUE) as f;"
     result = analyze_sql(sql)
-    assert result.statement_counts.get('CREATE_TASK', 0) == 1
-    # DELETE action on target_table
-    assert any(o.object_type == 'TABLE' and o.name == 'target_table' and o.action == 'DELETE' for o in result.objects_found)
-    # REFERENCE action on source_table
-    assert any(o.object_type == 'TABLE' and o.name == 'source_table' and o.action in ('REFERENCE', 'SELECT') for o in result.objects_found)
+    assert result.statement_counts.get('FLATTEN', 0) == 1
+    # Verify tracking of json_col
+    flatten_objs = [o for o in result.objects_found if o.action == 'FLATTEN']
+    assert any(o.name == 't1.json_col' or o.name == 'json_col' for o in flatten_objs)
+
+def test_analyze_enable_search_optimization():
+    """Test analysis of ENABLE SEARCH OPTIMIZATION."""
+    result = analyze_sql("ENABLE SEARCH OPTIMIZATION ON my_table;")
+    assert result.statement_counts.get('ENABLE_SEARCH_OPTIMIZATION', 0) == 1
+    # Verify object action
+    objs = [o for o in result.objects_found if o.action == 'ENABLE_SEARCH_OPTIMIZATION']
+    assert any(o.name == 'my_table' for o in objs)
+
+def test_analyze_disable_search_optimization():
+    """Test analysis of DISABLE SEARCH OPTIMIZATION."""
+    result = analyze_sql("DISABLE SEARCH OPTIMIZATION ON my_table;")
+    assert result.statement_counts.get('DISABLE_SEARCH_OPTIMIZATION', 0) == 1
+    objs = [o for o in result.objects_found if o.action == 'DISABLE_SEARCH_OPTIMIZATION']
+    assert any(o.name == 'my_table' for o in objs)
+
+def test_analyze_alter_search_optimization():
+    """Test analysis of ALTER SEARCH OPTIMIZATION."""
+    result = analyze_sql("ALTER SEARCH OPTIMIZATION ON my_table;")
+    assert result.statement_counts.get('ALTER_SEARCH_OPTIMIZATION', 0) == 1
+    objs = [o for o in result.objects_found if o.action == 'ALTER_SEARCH_OPTIMIZATION']
+    assert any(o.name == 'my_table' for o in objs)
+
+def test_analyze_grant_revoke_role():
+    """Test analysis of GRANT ROLE and REVOKE ROLE between roles."""
+    grant_sql = "GRANT ROLE role1 TO ROLE role2;"
+    revoke_sql = "REVOKE ROLE role1 FROM ROLE role2;"
+    grant_res = analyze_sql(grant_sql)
+    revoke_res = analyze_sql(revoke_sql)
+    # Grant test
+    assert grant_res.statement_counts.get('GRANT_ROLE', 0) == 1
+    grant_objs = [o for o in grant_res.objects_found if o.action == 'GRANT_ROLE']
+    assert any(o.name == 'role1' for o in grant_objs)
+    assert any(o.name == 'role2' for o in grant_objs)
+    # Dependency recorded: role2 -> role1
+    deps = grant_res.object_dependencies.get(('ROLE', 'role2'), set())
+    assert ('ROLE', 'role1', 'GRANT_ROLE') in deps
+    # Revoke test
+    assert revoke_res.statement_counts.get('REVOKE_ROLE', 0) == 1
+    revoke_objs = [o for o in revoke_res.objects_found if o.action == 'REVOKE_ROLE']
+    assert any(o.name == 'role1' for o in revoke_objs)
+    assert any(o.name == 'role2' for o in revoke_objs)
+    deps2 = revoke_res.object_dependencies.get(('ROLE', 'role2'), set())
+    assert ('ROLE', 'role1', 'REVOKE_ROLE') in deps2

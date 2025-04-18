@@ -77,6 +77,10 @@ DESCRIBE: "DESCRIBE"i
 COMMENT: "COMMENT"i
 REPLACE: "REPLACE"i
 REFRESH: "REFRESH"i
+ENABLE: "ENABLE"i
+DISABLE: "DISABLE"i
+SEARCH: "SEARCH"i
+OPTIMIZATION: "OPTIMIZATION"i
 
 // Object types
 TABLE: "TABLE"i
@@ -245,6 +249,11 @@ statement: select_stmt
          | ddl_stmt
          | use_stmt
          | copy_into_stmt
+         | grant_role_stmt
+         | revoke_role_stmt
+         | enable_search_optimization_stmt
+         | disable_search_optimization_stmt
+         | alter_search_optimization_stmt
          | grant_stmt
          | revoke_stmt
          | call_procedure_stmt
@@ -284,7 +293,7 @@ from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 
 base_table_ref: qualified_name (AS? IDENTIFIER)?
                | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
-               | LATERAL function_call (AS? IDENTIFIER)?
+               | LATERAL? function_call (AS? IDENTIFIER)?
                | STAGE_PATH (AS? IDENTIFIER)?
 
 join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
@@ -469,6 +478,7 @@ alter_stmt: alter_table_stmt
           | alter_task_stmt
           | alter_stream_stmt
           | alter_pipe_stmt
+          | alter_search_optimization_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
 alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
@@ -539,6 +549,9 @@ file_format_clause: FILE_FORMAT EQ LPAREN file_format_option+ RPAREN // Reuses e
 on_error_clause: ON_ERROR EQ SINGLE_QUOTED_STRING
 
 // GRANT/REVOKE statements (Basic)
+grant_role_stmt: GRANT ROLE qualified_name TO ROLE qualified_name
+revoke_role_stmt: REVOKE ROLE qualified_name FROM ROLE qualified_name
+
 grant_stmt: GRANT privilege_list ON object_specification TO grantee_type qualified_name
 revoke_stmt: REVOKE privilege_list ON object_specification FROM grantee_type qualified_name
 
@@ -721,3 +734,8 @@ execute_task_stmt: EXECUTE TASK qualified_name
 stream_set_clause: stream_param ( COMMA stream_param )*
 
 TIMESTAMP: "TIMESTAMP"i
+
+// Insert search optimization statements
+enable_search_optimization_stmt: ENABLE SEARCH OPTIMIZATION ON qualified_name
+disable_search_optimization_stmt: DISABLE SEARCH OPTIMIZATION ON qualified_name
+alter_search_optimization_stmt: ALTER SEARCH OPTIMIZATION ON qualified_name

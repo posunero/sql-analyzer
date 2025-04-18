@@ -4,8 +4,8 @@ This document describes an unambiguous, step-by-step plan to implement the next 
 
 ## Feature Groups
 
-A. Semi-Structured Data & Table Functions (LATERAL FLATTEN)
-B. Cortex Search (SEARCH optimization)
+A. Semi-Structured Data & Table Functions (LATERAL FLATTEN) [COMPLETED]
+B. Cortex Search (SEARCH optimization) [COMPLETED]
 C. Role Management (Application & Database Roles)
 D. Container Services & Job Features (Snowpark & Jobs)
 E. Machine Learning Operations (MODEL PREDICT, ML functions)
@@ -18,7 +18,7 @@ K. Authentication Policies
 
 ---
 
-### A. Semi-Structured Data & Table Functions
+### A. Semi-Structured Data & Table Functions [COMPLETED]
 Documentation: https://docs.snowflake.com/en/sql-reference/functions/flatten.html
 
 1. Grammar (`snowflake.lark`)
@@ -46,7 +46,7 @@ Documentation: https://docs.snowflake.com/en/sql-reference/functions/flatten.htm
 
 ---
 
-### B. Snowflake Search Optimization
+### B. Snowflake Search Optimization [COMPLETED]
 Documentation: https://docs.snowflake.com/en/sql-reference/commands/search-optimization-enable-disable.html
 
 1. Grammar
