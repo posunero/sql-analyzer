@@ -309,15 +309,22 @@ update_stmt: UPDATE qualified_name SET qualified_name EQ expr ( COMMA qualified_
 // DELETE statement
 delete_stmt: DELETE FROM qualified_name where_clause?
 
-// MERGE statement (Basic structure)
-merge_stmt: MERGE INTO qualified_name (AS? IDENTIFIER)? USING base_table_ref (AS? IDENTIFIER)? ON expr (when_matched_clause | when_not_matched_clause)* // Target ... Source ... Join condition ... Clauses
+// MERGE statement
+merge_stmt: MERGE INTO qualified_name (AS? IDENTIFIER)? USING base_table_ref (AS? IDENTIFIER)? ON expr merge_clause+
 
-when_matched_clause: WHEN MATCHED (AND expr)? THEN (merge_update_clause | merge_delete_clause)
-when_not_matched_clause: WHEN NOT MATCHED (AND expr)? THEN merge_insert_clause
+merge_clause: when_matched_clause | when_not_matched_clause
 
-merge_update_clause: UPDATE SET qualified_name EQ expr ( COMMA qualified_name EQ expr)*
-merge_delete_clause: DELETE
-merge_insert_clause: INSERT (LPAREN qualified_name ( COMMA qualified_name)* RPAREN)? VALUES value_tuple
+when_matched_clause: WHEN MATCHED (AND expr)? THEN merge_matched_action
+when_not_matched_clause: WHEN NOT MATCHED (AND expr)? THEN (merge_insert_clause | merge_delete_clause)
+
+merge_matched_action: merge_update_clause | merge_delete_clause
+
+merge_update_clause: UPDATE SET assignment_list (WHERE expr)?
+merge_delete_clause: DELETE (WHERE expr)?
+merge_insert_clause: INSERT (LPAREN qualified_name ( COMMA qualified_name )* RPAREN)? (VALUES value_tuple | select_stmt)
+
+assignment_list: assignment (COMMA assignment)*
+assignment: qualified_name EQ expr
 
 // CREATE statements
 create_stmt: create_table_stmt

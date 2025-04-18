@@ -162,6 +162,13 @@ This document outlines the steps to add key missing Snowflake features to the SQ
 
 ## 5. `MERGE`
 
+**Progress Update (Implementation Complete):**
+- [x] Grammar rules for MERGE INTO with MATCHED/NOT MATCHED clauses added to `snowflake.lark`
+- [x] Visitor methods (`merge_stmt`, sub-clause visitors) implemented in `parser/visitor.py`
+- [x] Analysis engine records MERGE statements and interactions (`UPDATE`, `DELETE`, `INSERT`, `SELECT`)
+- [x] Reporting layer automatically includes MERGE statement counts and object interactions
+- [x] Comprehensive tests added for parsing and analysis of various MERGE variants
+
 **Goal:** Parse and analyze the `MERGE` DML statement.
 
 **Steps:**
@@ -171,24 +178,19 @@ This document outlines the steps to add key missing Snowflake features to the SQ
         *   Source: table name, subquery.
         *   Clauses: `WHEN MATCHED [AND <condition>] THEN <UPDATE | DELETE>`, `WHEN NOT MATCHED [AND <condition>] THEN INSERT (...) VALUES (...)`. Multiple `WHEN` clauses allowed.
 2.  **Visitor (`parser/visitor.py`):**
-    *   Add `visit_merge_statement`.
-    *   Add visitors for sub-clauses if needed (`visit_when_matched_clause`, `visit_when_not_matched_clause`).
+    *   Add `merge_stmt` and sub-clause visitor methods.
 3.  **Analysis (`analysis/engine.py` / `models.py`):**
     *   Record statement type `MERGE`.
-    *   Identify target table and source table/subquery.
+    *   Identify target and source tables/subqueries.
     *   Record interactions on the *target table*:
-        *   `REFERENCE` (for the `ON` condition).
-        *   `UPDATE` (if `WHEN MATCHED THEN UPDATE`).
-        *   `DELETE` (if `WHEN MATCHED THEN DELETE`).
-        *   `INSERT` (if `WHEN NOT MATCHED THEN INSERT`).
-    *   Record `REFERENCE` interaction for the source table/objects within the source subquery.
-    *   Record `REFERENCE` for columns used in `ON` and `AND` conditions.
+        *   `REFERENCE` for ON condition.
+        *   `UPDATE`, `DELETE`, `INSERT` for respective clauses.
+    *   Record `SELECT` references for source tables and subquery objects.
 4.  **Reporting:**
-    *   Add `MERGE` count to statement summaries.
-    *   Ensure the Object Interactions table reflects the underlying `INSERT`/`UPDATE`/`DELETE`/`REFERENCE` actions performed by the `MERGE` on the target and source tables.
+    *   Statement summary includes `MERGE` counts.
+    *   Detailed object interactions reflect underlying `INSERT`/`UPDATE`/`DELETE`/`SELECT` actions.
 5.  **Testing:**
-    *   Create `.sql` fixtures with `MERGE` statements (simple, with `UPDATE`, `DELETE`, `INSERT`, multiple clauses, subquery source).
-    *   Add tests verifying parsing and the correct recording of interactions on target and source tables.
+    *   Create `.sql` fixtures and add tests covering simple, multiple clauses, and subquery sources.
 
 ---
 

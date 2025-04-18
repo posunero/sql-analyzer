@@ -1264,6 +1264,12 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 logger.debug(f"Recording DELETE action for target table in MERGE delete clause: {target_table}")
                 self._record_object_reference(target_table, "TABLE", "DELETE", target_token)
 
+        # Record INSERT action for MERGE WHEN NOT MATCHED THEN INSERT clauses
+        for insert_clause in tree.find_data('merge_insert_clause'):
+            if target_table and target_token:
+                logger.debug(f"Recording INSERT action for target table in MERGE insert clause: {target_table}")
+                self._record_object_reference(target_table, "TABLE", "INSERT", target_token)
+
         # Visit child nodes to process any subqueries
         for child in tree.children:
             if isinstance(child, Tree):
