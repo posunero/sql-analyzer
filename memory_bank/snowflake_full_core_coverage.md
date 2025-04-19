@@ -53,43 +53,50 @@ For each feature below, perform these general steps:
     // after existing helper rules
     clone_clause: CLONE qualified_name
     ```
-2. Extend existing `create_<object>_stmt` rules:
-    ```diff
-    create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (
-      LPAREN ... RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)?
-      | AS select_stmt
-    + | clone_clause
-    )
-    ```
-3. Apply the same pattern to:
-   - `create_database_stmt`
-   - `create_schema_stmt`
+2. Integrate:
+   - In `sql_analyzer/grammar/snowflake.lark`:
+     * Line 386: modify `create_table_stmt` to include `| clone_clause` after the `| AS select_stmt` alternative.
+     * Line 446: modify `create_database_stmt` to include `| clone_clause` as an alternative.
+     * Line 448: modify `create_schema_stmt` to include `| clone_clause` as an alternative.
+   - No changes to `create_stmt` union are needed, since `clone_clause` is scoped inside individual create_* rules.
 
-**Test file:** `tests/grammar/clone.sql`:
-```sql
-CREATE TABLE new_tbl CLONE old_db.old_schema.old_tbl;
-CREATE SCHEMA new_schema CLONE old_db.old_schema;
-CREATE DATABASE new_db CLONE production_db;
-```
+**Test file:** `tests/grammar/clone.sql`
 
 ### 5.2 SHARE Commands
 1. Add rules:
     ```lark
     create_share_stmt: CREATE (OR REPLACE)? SHARE (IF NOT EXISTS)? qualified_name
-    alter_share_stmt: ALTER SHARE qualified_name (ADD DATA? | DROP DATA?)? // refine per docs
-    drop_share_stmt: DROP SHARE (IF EXISTS)? qualified_name
+    alter_share_stmt: ALTER SHARE qualified_name (ADD DATA? | DROP DATA?)?
     ```
 2. Integrate:
-    ```lark
-    create_stmt: ... | create_share_stmt
-    alter_stmt: ... | alter_share_stmt
-    drop_stmt: ...   | drop_share_stmt
-    ```
+   - In `sql_analyzer/grammar/snowflake.lark`:
+     * Lines 362–370 (the `create_stmt` union): insert `| create_share_stmt` after `create_authentication_policy_stmt`.
+     * Lines 504–513 (the `alter_stmt` union): insert `| alter_share_stmt` after `alter_authentication_policy_stmt`.
+     * Line 553 (the `drop_stmt` rule): extend to
+       ```lark
+       drop_stmt: DROP object_type (IF EXISTS)? qualified_name
+                | drop_share_stmt
+       ```
+     * Line 557 (the `object_type` rule): add `| SHARE` after `SEQUENCE`.
+
 **Test:** `tests/grammar/share.sql`
 
 ### 5.3 INTEGRATION Objects
-1. Define `create_integration_stmt`, `alter_integration_stmt`, `drop_integration_stmt` with appropriate clauses (e.g. TYPE = ...).
-2. Add into `create_stmt`, `alter_stmt`, `drop_stmt`.
+**Minimal BNF sketch:**
+```lark
+create_integration_stmt: CREATE (OR REPLACE)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
+integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
+                 | ENABLED EQ boolean
+                 | COMMENT EQ SINGLE_QUOTED_STRING
+                 | SECRETS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+```
+1. Define `create_integration_stmt`, `alter_integration_stmt`, `drop_integration_stmt`.
+2. Integrate:
+   - Lines 362–370: add `| create_integration_stmt` to the `create_stmt` union.
+   - Lines 504–513: add `| alter_integration_stmt` to the `alter_stmt` union.
+   - Line 553: extend `drop_stmt` to include `| drop_integration_stmt`.
+   - Line 557: in `object_type`, add `| INTEGRATION` after `SHARE`.
+
 **Test:** `tests/grammar/integration.sql`
 
 ### 5.4 External Tables
@@ -188,7 +195,10 @@ CREATE DATABASE new_db CLONE production_db;
 ## 9. Analyzer & Engine Integration
 To wire up new grammar rules into our semantic analysis pass, update the `SQLVisitor` and confirm the `AnalysisEngine` supports the new action types.
 
+**Note:** Apply all visitor updates in a single patch *after* completing all grammar changes. This allows one end‑to‑end run of parser + visitor tests, ensuring the whole pipeline is correct.
+
 ### 9.1 SQLVisitor Updates
+0. Bundle and apply all changes below in one commit once all grammar edits are in place.
 1. In `sql_analyzer/parser/visitor.py`, locate the `stmt_type_mapping` inside the `statement(self, tree)` method and add entries for each new statement:
 ```python
 stmt_type_mapping.update({
@@ -233,7 +243,36 @@ SIMPLE_QN_METHODS += [
     ('create_share_stmt', 'SHARE', 'CREATE_SHARE', 'Create Share'),
     ('alter_share_stmt',  'SHARE', 'ALTER_SHARE',  'Alter Share'),
     ('drop_share_stmt',   'SHARE', 'DROP_SHARE',   'Drop Share'),
-    # Repeat for integration, external_table, materialized_view, external_function, network_policy, replication, account
+    ('create_integration_stmt', 'INTEGRATION', 'CREATE_INTEGRATION', 'Create Integration'),
+    ('alter_integration_stmt',  'INTEGRATION', 'ALTER_INTEGRATION',  'Alter Integration'),
+    ('drop_integration_stmt',   'INTEGRATION', 'DROP_INTEGRATION',   'Drop Integration'),
+    ('create_external_table_stmt', 'EXTERNAL TABLE', 'CREATE_EXTERNAL_TABLE', 'Create External Table'),
+    ('alter_external_table_stmt',  'EXTERNAL TABLE', 'ALTER_EXTERNAL_TABLE',  'Alter External Table'),
+    ('drop_external_table_stmt',   'EXTERNAL TABLE', 'DROP_EXTERNAL_TABLE',   'Drop External Table'),
+    ('create_materialized_view_stmt', 'MATERIALIZED VIEW', 'CREATE_MATERIALIZED_VIEW', 'Create Materialized View'),
+    ('alter_materialized_view_stmt',  'MATERIALIZED VIEW', 'ALTER_MATERIALIZED_VIEW',  'Alter Materialized View'),
+    ('drop_materialized_view_stmt',   'MATERIALIZED VIEW', 'DROP_MATERIALIZED_VIEW',   'Drop Materialized View'),
+    ('create_external_function_stmt', 'EXTERNAL FUNCTION', 'CREATE_EXTERNAL_FUNCTION', 'Create External Function'),
+    ('alter_external_function_stmt',  'EXTERNAL FUNCTION', 'ALTER_EXTERNAL_FUNCTION',  'Alter External Function'),
+    ('drop_external_function_stmt',   'EXTERNAL FUNCTION', 'DROP_EXTERNAL_FUNCTION',   'Drop External Function'),
+    ('create_network_policy_stmt', 'NETWORK POLICY', 'CREATE_NETWORK_POLICY', 'Create Network Policy'),
+    ('alter_network_policy_stmt',  'NETWORK POLICY', 'ALTER_NETWORK_POLICY',  'Alter Network Policy'),
+    ('drop_network_policy_stmt',   'NETWORK POLICY', 'DROP_NETWORK_POLICY',   'Drop Network Policy'),
+    ('create_replication_stmt', 'REPLICATION', 'CREATE_REPLICATION', 'Create Replication'),
+    ('alter_replication_stmt',  'REPLICATION', 'ALTER_REPLICATION',  'Alter Replication'),
+    ('show_replication_stmt',   'REPLICATION', 'SHOW_REPLICATION',   'Show Replication'),
+    ('failover_stmt', 'REPLICATION', 'FAILOVER', 'Failover'),
+    ('create_account_stmt', 'ACCOUNT', 'CREATE_ACCOUNT', 'Create Account'),
+    ('alter_account_stmt',  'ACCOUNT', 'ALTER_ACCOUNT',  'Alter Account'),
+    ('drop_account_stmt',   'ACCOUNT', 'DROP_ACCOUNT',   'Drop Account'),
+    ('show_accounts_stmt', 'ACCOUNT', 'SHOW_ACCOUNTS', 'Show Accounts'),
+    ('failover_recovery_stmt', 'ACCOUNT', 'FAILOVER_RECOVERY', 'Failover Recovery'),
+    ('alter_session_stmt', 'SESSION', 'ALTER_SESSION', 'Alter Session'),
+    ('show_parameters_stmt', 'SESSION', 'SHOW_PARAMETERS', 'Show Parameters'),
+    ('list_stmt', 'STAGE', 'LIST_STAGE', 'List Stage'),
+    ('get_stmt', 'STAGE', 'GET_STAGE', 'Get Stage'),
+    ('remove_stmt', 'STAGE', 'REMOVE_STAGE', 'Remove Stage'),
+    ('alter_stage_stmt', 'STAGE', 'ALTER_STAGE', 'Alter Stage'),
 ]
 ```
 3. In the `create_table_stmt(self, tree)` visitor method, after recording the CREATE action, detect any `clone_clause` children and emit a CLONE reference:
