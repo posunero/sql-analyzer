@@ -492,6 +492,7 @@ def test_analyze_task_statements_fixture():
     """Test analysis of TASK statements in the complex_mix.sql fixture."""
     result = analyze_fixture_file("tests/fixtures/valid/complex_mix.sql")
     # Check for statement types
+    logger.debug(f"Statement counts: {result.statement_counts}")
     assert result.statement_counts.get('CREATE_TASK', 0) > 0, "Should detect CREATE_TASK statement"
     assert result.statement_counts.get('ALTER_TASK', 0) > 0, "Should detect ALTER_TASK statement"
     assert result.statement_counts.get('DROP_TASK', 0) > 0, "Should detect DROP_TASK statement"
@@ -553,10 +554,18 @@ def test_analyze_task_dependencies():
         assert wh in wh_names, f"Warehouse '{wh}' reference not found"
     
     # Verify task dependencies are recorded
-    # Check for dependencies in object_interactions
-    task_dependencies = [o for o in result.objects_found if o.object_type == 'TASK' and o.action == 'DEPENDENCY']
-    assert len(task_dependencies) >= 3, "Should have at least 3 task dependencies (AFTER clauses)"
+    # Check for dependencies in object_dependencies dictionary, not objects_found list
     
+    # Check dependencies FOR second_task
+    second_task_deps = result.object_dependencies.get(('TASK', 'second_task'), set())
+    assert ('TASK', 'first_task', 'ADDED_AFTER') in second_task_deps, "second_task should depend on first_task (ADDED_AFTER)"
+    
+    # Check dependencies FOR third_task
+    third_task_deps = result.object_dependencies.get(('TASK', 'third_task'), set())
+    assert ('TASK', 'second_task', 'ADDED_AFTER') in third_task_deps, "third_task should initially depend on second_task (ADDED_AFTER)"
+    assert ('TASK', 'second_task', 'REMOVED_AFTER') in third_task_deps, "Dependency on second_task should be marked REMOVED_AFTER for third_task"
+    assert ('TASK', 'complex_etl_task', 'ADDED_AFTER') in third_task_deps, "third_task should have complex_etl_task added as dependency (ADDED_AFTER)"
+
     # Verify table references from SQL in AS clauses
     # Now check for both REFERENCE and SELECT actions since tables can be referenced either way
     table_refs = [o for o in result.objects_found if o.object_type == 'TABLE' and o.action in ('REFERENCE', 'SELECT', 'UPDATE')]
@@ -596,7 +605,7 @@ def test_analyze_task_dependency_removal():
     dependencies = result.object_dependencies.get(task_b_key, set())
     
     # Verify AFTER dependency was recorded from CREATE TASK
-    assert ('TASK', 'task_a', 'AFTER') in dependencies, "AFTER dependency from CREATE TASK not found"
+    assert ('TASK', 'task_a', 'ADDED_AFTER') in dependencies, "Initial dependency from CREATE TASK should be ADDED_AFTER"
     
     # Verify REMOVED_AFTER dependency was recorded from ALTER TASK
     assert ('TASK', 'task_a', 'REMOVED_AFTER') in dependencies, "REMOVED_AFTER dependency from ALTER TASK not found"
@@ -621,6 +630,7 @@ def test_analyze_task_multiple_after_dependencies():
     """
     result = analyze_sql(sql)
     deps = result.object_dependencies.get(('TASK', 'multi_dep_task'), set())
+    logger.debug(f"Result: {result}")
     assert ('TASK', 'base_task', 'ADDED_AFTER') in deps
     assert ('TASK', 'another_task', 'ADDED_AFTER') in deps
     assert ('TASK', 'schema2.third_task', 'ADDED_AFTER') in deps
@@ -653,7 +663,13 @@ def test_analyze_task_merge_delete():
     """Test analysis of task merge delete statements."""
     result = analyze_sql("MERGE INTO t1 USING t2 ON t1.id = t2.id WHEN MATCHED THEN DELETE;")
     assert result.statement_counts.get('MERGE', 0) > 0
-    assert result.statement_counts.get('DELETE', 0) > 0
+    # Removed incorrect assertion for DELETE statement count
+    # Verify DELETE action on the target table t1
+    merge_delete_action_found = any(
+        o.object_type == 'TABLE' and o.name == 't1' and o.action == 'DELETE'
+        for o in result.objects_found
+    )
+    assert merge_delete_action_found, "DELETE action on table 't1' not found within MERGE"
 
 # --- Tests for Flatten, Search Optimization, and Role Management ---
 def test_analyze_flatten_basic():

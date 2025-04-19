@@ -64,7 +64,9 @@ def test_analyze_embedded_copy(pipe_result):
     # The embedded COPY INTO should record COPY_INTO_TABLE and references
     assert pipe_result.statement_counts.get('COPY_INTO_TABLE', 0) >= 1
     assert any(o for o in pipe_result.objects_found if o.object_type == 'TABLE' and o.action == 'COPY_INTO_TABLE' and o.name == 'my_table')
-    assert any(o for o in pipe_result.objects_found if o.object_type == 'STAGE' and o.action == 'REFERENCE' and o.name == '@my_stage')
+    # Check object_interactions for the COPY_FROM_STAGE action
+    stage_interactions = pipe_result.object_interactions.get(('STAGE', '@my_stage'), set())
+    assert 'COPY_FROM_STAGE' in stage_interactions
     assert any(o for o in pipe_result.objects_found if o.object_type == 'FILE_FORMAT' and o.action == 'REFERENCE' and o.name == 'fmt')
 
 
