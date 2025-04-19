@@ -412,7 +412,7 @@ warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
 create_task_stmt: CREATE (OR REPLACE)? TASK qualified_name task_param* AS (call_procedure_stmt | _statement_wrapper)
 task_param: WAREHOUSE EQ qualified_name
           | SCHEDULE EQ SINGLE_QUOTED_STRING
-          | AFTER (EQ)? qualified_name
+          | AFTER qualified_name ( COMMA qualified_name )*
           | ALLOW_OVERLAPPING_EXECUTION
           | USER_TASK_TIMEOUT_MS EQ number
           | COMMENT EQ SINGLE_QUOTED_STRING

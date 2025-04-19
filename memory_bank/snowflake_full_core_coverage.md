@@ -185,5 +185,70 @@ CREATE DATABASE new_db CLONE production_db;
 - **Phase 4 (2d):** ACCOUNT/SESSION, STAGE UTILS, SHOW VARIANTS
 - **Phase 5 (2d):** COPY INTO, ALTER enhancements, testing & docs
 
+## 9. Analyzer & Engine Integration
+To wire up new grammar rules into our semantic analysis pass, update the `SQLVisitor` and confirm the `AnalysisEngine` supports the new action types.
+
+### 9.1 SQLVisitor Updates
+1. In `sql_analyzer/parser/visitor.py`, locate the `stmt_type_mapping` inside the `statement(self, tree)` method and add entries for each new statement:
+```python
+stmt_type_mapping.update({
+    'CREATE_SHARE_STMT':           'CREATE_SHARE',
+    'ALTER_SHARE_STMT':            'ALTER_SHARE',
+    'DROP_SHARE_STMT':             'DROP_SHARE',
+    'CREATE_INTEGRATION_STMT':     'CREATE_INTEGRATION',
+    'ALTER_INTEGRATION_STMT':      'ALTER_INTEGRATION',
+    'DROP_INTEGRATION_STMT':       'DROP_INTEGRATION',
+    'CREATE_EXTERNAL_TABLE_STMT':  'CREATE_EXTERNAL_TABLE',
+    'ALTER_EXTERNAL_TABLE_STMT':   'ALTER_EXTERNAL_TABLE',
+    'DROP_EXTERNAL_TABLE_STMT':    'DROP_EXTERNAL_TABLE',
+    'CREATE_MATERIALIZED_VIEW_STMT':'CREATE_MATERIALIZED_VIEW',
+    'ALTER_MATERIALIZED_VIEW_STMT': 'ALTER_MATERIALIZED_VIEW',
+    'DROP_MATERIALIZED_VIEW_STMT':  'DROP_MATERIALIZED_VIEW',
+    'CREATE_EXTERNAL_FUNCTION_STMT':'CREATE_EXTERNAL_FUNCTION',
+    'ALTER_EXTERNAL_FUNCTION_STMT': 'ALTER_EXTERNAL_FUNCTION',
+    'DROP_EXTERNAL_FUNCTION_STMT':  'DROP_EXTERNAL_FUNCTION',
+    'CREATE_NETWORK_POLICY_STMT':   'CREATE_NETWORK_POLICY',
+    'ALTER_NETWORK_POLICY_STMT':    'ALTER_NETWORK_POLICY',
+    'DROP_NETWORK_POLICY_STMT':     'DROP_NETWORK_POLICY',
+    'CREATE_REPLICATION_STMT':      'CREATE_REPLICATION',
+    'ALTER_REPLICATION_STMT':       'ALTER_REPLICATION',
+    'SHOW_REPLICATION_STMT':        'SHOW_REPLICATION',
+    'FAILOVER_STMT':                'FAILOVER',
+    'CREATE_ACCOUNT_STMT':          'CREATE_ACCOUNT',
+    'ALTER_ACCOUNT_STMT':           'ALTER_ACCOUNT',
+    'DROP_ACCOUNT_STMT':            'DROP_ACCOUNT',
+    'SHOW_ACCOUNTS_STMT':           'SHOW_ACCOUNTS',
+    'FAILOVER_RECOVERY_STMT':       'FAILOVER_RECOVERY',
+    'ALTER_SESSION_STMT':           'ALTER_SESSION',
+    'SHOW_PARAMETERS_STMT':         'SHOW_PARAMETERS',
+    'LIST_STMT':                    'LIST_STAGE',
+    'GET_STMT':                     'GET_STAGE',
+    'REMOVE_STMT':                  'REMOVE_STAGE',
+    'ALTER_STAGE_STMT':             'ALTER_STAGE',
+})
+```
+2. Extend the `SIMPLE_QN_METHODS` list at the bottom of the same file to include simple, single‐qualified‐name statements:
+```python
+SIMPLE_QN_METHODS += [
+    ('create_share_stmt', 'SHARE', 'CREATE_SHARE', 'Create Share'),
+    ('alter_share_stmt',  'SHARE', 'ALTER_SHARE',  'Alter Share'),
+    ('drop_share_stmt',   'SHARE', 'DROP_SHARE',   'Drop Share'),
+    # Repeat for integration, external_table, materialized_view, external_function, network_policy, replication, account
+]
+```
+3. In the `create_table_stmt(self, tree)` visitor method, after recording the CREATE action, detect any `clone_clause` children and emit a CLONE reference:
+```python
+# inside create_table_stmt(self, tree), after existing logic
+for clone in tree.find_data('clone_clause'):
+    qn_node = clone.children[0]
+    source   = self._extract_qualified_name(qn_node)
+    tok      = next((t for t in clone.children if isinstance(t, Token)), None)
+    if source and tok:
+        self._record_object_reference(source, 'TABLE', 'CLONE', tok)
+```
+
+### 9.2 AnalysisEngine Updates
+No code changes are strictly required in `AnalysisEngine`, since it already accepts arbitrary action labels via `record_statement` and `record_object`. However, review `sql_analyzer/analysis/models.py` to ensure new action types (e.g. `'CREATE_SHARE'`, `'CLONE'`) are accounted for in any enums or downstream filters.
+
 ---
 _End of Snowflake Full Core Coverage Implementation Plan._ 
