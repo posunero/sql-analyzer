@@ -6,15 +6,15 @@ This document describes an unambiguous, step-by-step plan to implement the next 
 
 A. Semi-Structured Data & Table Functions (LATERAL FLATTEN) [COMPLETED]
 B. Cortex Search (SEARCH optimization) [COMPLETED]
-C. Role Management (Application & Database Roles)
+C. Role Management (Application & Database Roles) [COMPLETED]
 D. Container Services & Job Features (Snowpark & Jobs) [COMPLETED]
-E. Machine Learning Operations (MODEL PREDICT, ML functions)
-F. Apache Iceberg Table Support
-G. Snowpark Container Services
-H. Advanced Monitoring & Alerting (Resource Monitors, Alerts)
-I. Row Access Policies (enhanced)
-J. Column-Level Security & Dynamic Data Masking
-K. Authentication Policies
+E. Machine Learning Operations (MODEL PREDICT, ML functions) [COMPLETED]
+F. Apache Iceberg Table Support [COMPLETED]
+G. Snowpark Container Services [COMPLETED]
+H. Advanced Monitoring & Alerting (Resource Monitors, Alerts) [COMPLETED]
+I. Row Access Policies (enhanced) [COMPLETED]
+J. Column-Level Security & Dynamic Data Masking [COMPLETED]
+K. Authentication Policies [COMPLETED]
 
 ---
 
