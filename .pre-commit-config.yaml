@@ -1,0 +1,9 @@
+# this is used to demo the pre-commit hook
+repos:
+  - repo: local
+    hooks:
+      - id: sql-analyzer
+        name: Run SQL Analyzer
+        entry: sql-analyzer
+        language: system
+        files: "\\.sql$" 

@@ -72,6 +72,14 @@ Current implementation covers approximately **70-75%** of the Snowflake SQL spec
 
 ## Installation
 
+### Install from PyPI
+
+```bash
+pip install sql-analyzer
+```
+
+### Developer Installation (from source)
+
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/posunero/sql-analyzer.git
@@ -85,9 +93,18 @@ Current implementation covers approximately **70-75%** of the Snowflake SQL spec
     # On macOS/Linux
     source venv/bin/activate
     ```
-3.  **Install dependencies:**
+3.  **Install the package:**
+    ```bash
+    pip install .
+    ```
+4.  **Install development dependencies (for testing and building):**
     ```bash
     pip install -r requirements.txt
+    ```
+5.  **Set up pre-commit hooks:**
+    ```bash
+    pip install pre-commit
+    pre-commit install
     ```
 
 ## Usage
