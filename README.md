@@ -72,7 +72,7 @@ Current implementation covers approximately **70-75%** of the Snowflake SQL spec
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
+    git clone https://github.com/posunero/sql-analyzer.git
     cd sql-analyzer
     ```
 2.  **Set up a virtual environment (recommended):**
@@ -98,19 +98,16 @@ The SQL Analyzer is run from the command line.
 python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
 ```
 
-**Arguments:**
+### Command-line Options
 
 *   `input_path`: One or more required paths to SQL files or directories containing `.sql` files. The tool will search directories recursively.
-
-**Options:**
-
-*   `--format {text,json,html}`: Specify the output format for the analysis results. (Default: `text`) (*Note: CSV format is planned but not yet implemented.*)
+*   `--format {text,json,html}`: Specify the output format for the analysis results. (Default: `text`)
 *   `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}` (alias: `--verbose`): Set the detail level for logging messages. (Default: `INFO`)
 *   `--verbose-report`: Generate a more detailed report. For the `text` format, this includes the line and column number for each object found.
 *   `--fail-fast`: Stop processing immediately if an error (like a parsing error) is encountered in any file. By default, the tool tries to process all specified files.
 *   `--output`, `--out` <file_path>: Optional path to write the output report file instead of printing to stdout.
 
-**Examples:**
+### Examples
 
 1.  **Analyze a single SQL file:**
     ```bash
@@ -152,6 +149,11 @@ python -m sql_analyzer.main [OPTIONS] <input_path1> [input_path2 ...]
     python -m sql_analyzer.main --verbose-report path/to/your/sql/directory/
     ```
 
+9.  **Save the output to a file:**
+    ```bash
+    python -m sql_analyzer.main --output report.html --format html path/to/your/sql/directory/
+    ```
+
 ## Project Structure
 
 ```
@@ -159,6 +161,10 @@ sql-analyzer/
 ├── .venv/                   # Virtual environment
 ├── memory_bank/             # AI Memory/Implementation Plan (optional)
 ├── sample_sql/              # Sample SQL files for testing/examples
+│   ├── simple_select.sql
+│   ├── create_objects.sql
+│   ├── comprehensive_snowflake.sql
+│   └── extensive_snowflake.sql 
 ├── sql_analyzer/            # Main application source code
 │   ├── __init__.py
 │   ├── analysis/            # Core analysis logic and data models
@@ -189,10 +195,13 @@ sql-analyzer/
 ├── tests/                   # Unit and integration tests
 │   ├── __init__.py
 │   ├── fixtures/            # Test data (SQL files, etc.)
+│   │   ├── valid/           # Valid SQL examples for testing
+│   │   └── invalid/         # Invalid SQL examples for testing errors
 │   ├── test_analysis.py
 │   ├── test_cli.py
 │   ├── test_parser.py
-│   └── test_reporting.py
+│   ├── test_reporting.py
+│   └── test_snowflake_*.py  # Feature-specific tests
 ├── .gitignore
 ├── LICENSE                  # Project license file
 ├── README.md                # This file
@@ -376,6 +385,22 @@ Total errors encountered: 1
 
 --- End Report ---
 ```
+
+## HTML Output
+
+Running the tool with `--format html` produces a beautiful, interactive HTML report with collapsible sections and color-coding for better visualization of the results.
+
+```bash
+python -m sql_analyzer.main --format html --output report.html path/to/sql/files/
+```
+
+## Requirements
+
+- Python 3.8+
+- lark>=1.0.0
+- sqlglot
+- Jinja2 (for HTML output)
+- pytest>=7.0.0 (for development/testing)
 
 ## Contributing
 
