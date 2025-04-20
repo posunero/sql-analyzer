@@ -60,6 +60,63 @@ def main():
     args = cli.parse_arguments()
     setup_logging(args.verbose) # Use verbose as log-level arg name
 
+    if args.validate:
+        # Run in validation-only mode
+        from sql_analyzer.validation import validate_multiple_files
+
+        all_files = []
+        for input_path_str in args.input_paths:
+            logger.info(f"Processing path: {input_path_str}")
+            sql_files = list(file_system.find_sql_files(input_path_str))
+            if not sql_files:
+                logger.warning(f"No .sql files found in path: {input_path_str}")
+                continue
+            all_files.extend(sql_files)
+
+        if not all_files:
+            logger.error("No SQL files found in specified paths.")
+            sys.exit(1)
+        
+        # Validate all files
+        validation_results = validate_multiple_files(all_files)
+
+        # Print results based on format
+        if args.format == 'json':
+            import json
+            result_dict = {
+                "files": len(validation_results),
+                "valid": sum(1 for result in validation_results.values() if result[0]),
+                "invalid": sum(1 for result in validation_results.values() if not result[0]),
+                "results": {
+                    file_path: {
+                        "valid": is_valid,
+                        "error": error_msg if not is_valid else None
+                    } for file_path, (is_valid, error_msg) in validation_results.items()
+                }
+            }
+            print(json.dumps(result_dict, indent=2))
+        elif args.format == 'html':
+            # HTML output for validation
+            from sql_analyzer.reporting.formats.html import format_validation_results
+            html_output = format_validation_results(validation_results)
+            print(html_output)
+        else:
+            # Default text output
+            print(f"--- Snowflake SQL Validation Report ---")
+            print(f"Files processed: {len(validation_results)}")
+            print(f"Valid files: {sum(1 for result in validation_results.values() if result[0])}")
+            print(f"Invalid files: {sum(1 for result in validation_results.values() if not result[0])}")
+            print("")
+            if sum(1 for result in validation_results.values() if not result[0]) > 0:
+                print("Invalid files:")
+                for file_path, (is_valid, error_msg) in validation_results.items():
+                    if not is_valid:
+                        print(f"  - {file_path}: {error_msg}")
+
+        # Exit with appropriate status code
+        has_invalid = any(not result[0] for result in validation_results.values())
+        sys.exit(1 if has_invalid else 0)
+
     overall_result = analysis_models.AnalysisResult() # Use actual AnalysisResult
 
     exit_code = 0 # Track if any errors occurred

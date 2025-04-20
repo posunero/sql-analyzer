@@ -6,6 +6,8 @@
 
 A command-line tool to analyze Snowflake SQL files, extracting metadata, statistics, and identifying potential issues or patterns.
 
+This project was almost entirely built using LLMs.
+
 ## Features
 
 *   Parses Snowflake SQL syntax using a Lark grammar. Key supported constructs include:

@@ -15,6 +15,14 @@ This document outlines the implementation plan for adding a simple Snowflake SQL
 3. Support validating multiple files with summary reporting
 4. Make validation errors clear and actionable
 
+## Progress
+
+- [x] CLI Enhancement (Add validation option to CLI)
+- [x] Core Validation Logic (Create validation module and implement functions)
+- [x] Reporting for Validation (Extend reporting system)
+- [x] Integration (Connect validation to main entry point)
+- [x] Documentation (Update README and docstrings)
+
 ## Implementation Steps
 
 ### 1. Update CLI Module

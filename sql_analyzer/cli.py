@@ -62,6 +62,12 @@ def parse_arguments() -> argparse.Namespace:
         help='Optional path to write the output report file instead of printing to stdout.'
     )
 
+    parser.add_argument(
+        '--validate',
+        action='store_true',
+        help='Only validate SQL syntax without performing analysis.'
+    )
+
     # Add more arguments here as needed, e.g., output file
     # parser.add_argument(
     #     '--output',

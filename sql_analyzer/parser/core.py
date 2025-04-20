@@ -74,8 +74,7 @@ def parse_sql(sql_text: str) -> Optional[Tree]:
         tree = sql_parser.parse(sql_text)
         return tree
     except LarkError as e:
-        # Log the error or handle it as needed
-        # For now, re-raise it so the caller (main loop or test) knows about it.
-        print(f"Error parsing SQL: {e}") # Keep logging for visibility
-        raise e # Re-raise the exception
+        # Log the error and re-raise without printing to stdout
+        logger.error(f"Error parsing SQL: {e}")
+        raise e
         # return None # Don't return None anymore 

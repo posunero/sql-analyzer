@@ -80,4 +80,18 @@ def test_missing_input_path():
             with patch('sys.stderr'):
                 cli.parse_arguments()
 
+def test_validate_flag_default():
+    """Tests default value for --validate flag."""
+    test_args = ['prog', 'some/path']
+    with patch.object(sys, 'argv', test_args):
+        args = cli.parse_arguments()
+        assert not args.validate
+
+def test_set_validate_flag():
+    """Tests setting the --validate flag."""
+    test_args = ['prog', '--validate', 'some/path']
+    with patch.object(sys, 'argv', test_args):
+        args = cli.parse_arguments()
+        assert args.validate
+
 # Remove the if __name__ == '__main__': unittest.main() block 
