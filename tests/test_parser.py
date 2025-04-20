@@ -622,5 +622,23 @@ def test_parse_alter_job(sql):
     tree = parse_sql(sql)
     assert isinstance(tree, Tree), f"Parsing ALTER JOB SQL should return a Tree: {sql}"  
 
+# New test for RENAME in ALTER WAREHOUSE
+def test_parse_alter_warehouse_rename():
+    sql = "ALTER WAREHOUSE wh1 RENAME TO wh2;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER WAREHOUSE RENAME should return a Tree."
+
+# New test for CLUSTER BY in ALTER TABLE
+def test_parse_alter_table_cluster_by():
+    sql = "ALTER TABLE tbl1 CLUSTER BY (col1, col2);"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing ALTER TABLE CLUSTER BY should return a Tree."
+
+# New test for ALTER RESOURCE MONITOR
+def test_parse_alter_resource_monitor():
+    for sql in ["ALTER RESOURCE MONITOR rm1 SUSPEND;", "ALTER RESOURCE MONITOR rm1 RESUME;"]:
+        tree = parse_sql(sql)
+        assert isinstance(tree, Tree), f"Parsing ALTER RESOURCE MONITOR should return a Tree. SQL: {sql}"
+
 if __name__ == '__main__':
     pytest.main() 

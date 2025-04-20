@@ -72,6 +72,9 @@ ALTER: "ALTER"i
 DROP: "DROP"i
 TRUNCATE: "TRUNCATE"i
 SHOW: "SHOW"i
+PARAMETERS: "PARAMETERS"i
+FAILOVER: "FAILOVER"i
+RECOVERY: "RECOVERY"i
 DESC: "DESC"i
 DESCRIBE: "DESCRIBE"i
 COMMENT: "COMMENT"i
@@ -87,6 +90,7 @@ TABLE: "TABLE"i
 VIEW: "VIEW"i
 DATABASE: "DATABASE"i
 SCHEMA: "SCHEMA"i
+ACCOUNT: "ACCOUNT"i
 WAREHOUSE: "WAREHOUSE"i
 TASK: "TASK"i
 JOB: "JOB"i
@@ -116,6 +120,8 @@ COLUMN: "COLUMN"i
 ADD: "ADD"i
 MODIFY: "MODIFY"i
 REMOVE: "REMOVE"i
+DATA: "DATA"i
+ENABLED: "ENABLED"i
 
 RENAME: "RENAME"i
 TO: "TO"i
@@ -175,6 +181,14 @@ SOME: "SOME"i
 DISTINCT: "DISTINCT"i
 CASE: "CASE"i
 COPY: "COPY"i
+SHARES: "SHARES"i
+INTEGRATIONS: "INTEGRATIONS"i
+REPLICATIONS: "REPLICATIONS"i
+USERS: "USERS"i
+ROLES: "ROLES"i
+ACCOUNTS: "ACCOUNTS"i
+SESSION: "SESSION"i
+
 
 // CREATE FUNCTION specific
 TEMP: "TEMP"i
@@ -291,6 +305,24 @@ statement: select_stmt
          | create_authentication_policy_stmt
          | alter_authentication_policy_stmt
          | drop_authentication_policy_stmt
+         | create_share_stmt
+         | alter_share_stmt
+         | drop_share_stmt
+         | create_external_table_stmt
+         | create_materialized_view_stmt
+         | create_network_policy_stmt
+         | create_replication_stmt
+         | alter_replication_stmt
+         | create_account_stmt
+         | alter_account_stmt
+         | drop_account_stmt
+         | show_accounts_stmt
+         | alter_session_stmt
+         | show_parameters_stmt
+         | list_stmt
+         | get_stmt
+         | remove_stmt
+         | alter_stage_stmt
 
 // DML Statements
 dml_stmt: insert_stmt
@@ -383,8 +415,15 @@ create_stmt: create_table_stmt
            | create_package_stmt
            | create_alert_stmt
            | create_authentication_policy_stmt
+           | create_share_stmt
+           | create_integration_stmt
+           | create_external_table_stmt
+           | create_materialized_view_stmt
+           | create_external_function_stmt
+           | create_network_policy_stmt
+           | create_replication_stmt
 
-create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)? | AS select_stmt)
+create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)? | AS select_stmt | clone_clause)
 column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (COMMENT SINGLE_QUOTED_STRING)?
 data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)?
 
@@ -444,9 +483,9 @@ stage_param: URL EQ SINGLE_QUOTED_STRING
 // Helper rule for file format options within parentheses
 file_format_option: IDENTIFIER EQ (SINGLE_QUOTED_STRING | IDENTIFIER | boolean | number)
 
-create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name (COMMENT EQ SINGLE_QUOTED_STRING)?
+create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name (COMMENT EQ SINGLE_QUOTED_STRING)? clone_clause?
 
-create_schema_stmt: CREATE (OR REPLACE)? SCHEMA (IF NOT EXISTS)? qualified_name
+create_schema_stmt: CREATE (OR REPLACE)? SCHEMA (IF NOT EXISTS)? qualified_name clone_clause?
 
 // Dedicated rules for the RETURNS clause structure
 returns_clause: RETURNS (data_type | returns_table)
@@ -504,6 +543,7 @@ argument_def: IDENTIFIER data_type [DEFAULT expr]
 // ALTER statements
 alter_stmt: alter_table_stmt
           | alter_warehouse_stmt
+          | alter_resource_monitor_stmt
           | alter_task_stmt
           | alter_stream_stmt
           | alter_pipe_stmt
@@ -513,6 +553,14 @@ alter_stmt: alter_table_stmt
           | alter_row_access_policy_stmt
           | alter_table_set_masking_policy_stmt
           | alter_authentication_policy_stmt
+          | alter_share_stmt
+          | alter_integration_stmt
+          | alter_external_table_stmt
+          | alter_materialized_view_stmt
+          | alter_external_function_stmt
+          | alter_network_policy_stmt
+          | alter_replication_stmt
+          | alter_session_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
 alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
@@ -520,6 +568,7 @@ alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
                   | MODIFY COLUMN qualified_name data_type
                   | RENAME COLUMN qualified_name TO qualified_name
                   | RENAME TO qualified_name
+                  | CLUSTER BY LPAREN expr (COMMA expr)* RPAREN
                   | ADD ROW ACCESS POLICY qualified_name ON LPAREN qualified_name (COMMA qualified_name)* RPAREN
                   | DROP ROW ACCESS POLICY
                   | RENAME ROW ACCESS POLICY TO qualified_name
@@ -528,6 +577,7 @@ alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
                       | SUSPEND
                       | RESUME
+                      | RENAME TO qualified_name
 
 // Helper rule for SET items in ALTER WAREHOUSE
 warehouse_set_item: warehouse_param_key EQ warehouse_param_value
@@ -552,7 +602,13 @@ alter_pipe_stmt: ALTER PIPE qualified_name (REFRESH | SET pipe_param ( COMMA pip
 
 // DROP statements
 drop_stmt: DROP object_type (IF EXISTS)? qualified_name
-object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE
+        | drop_share_stmt
+        | drop_integration_stmt
+        | drop_external_table_stmt
+        | drop_materialized_view_stmt
+        | drop_external_function_stmt
+        | drop_network_policy_stmt
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION
 
 // TRUNCATE statement
 truncate_stmt: TRUNCATE TABLE qualified_name
@@ -560,6 +616,7 @@ truncate_stmt: TRUNCATE TABLE qualified_name
 // SHOW statement
 show_stmt: SHOW object_types like_clause? scope_clause?
 object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
+            | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS
 like_clause: LIKE SINGLE_QUOTED_STRING
 scope_clause: IN (DATABASE | SCHEMA) qualified_name
 
@@ -576,7 +633,13 @@ copy_into_stmt: COPY INTO copy_target FROM copy_source copy_option*
 copy_target: qualified_name | STAGE_PATH
 copy_source: STAGE_PATH | qualified_name | LPAREN select_stmt RPAREN
 
-copy_option: file_format_clause | on_error_clause
+copy_option: file_format_clause
+           | on_error_clause
+           | FORCE
+           | PATTERN SINGLE_QUOTED_STRING
+           | HEADER number
+           | VALIDATE boolean
+           | PURGE boolean
 
 file_format_clause: FILE_FORMAT EQ LPAREN file_format_option+ RPAREN // Reuses existing option rule
 
@@ -659,6 +722,7 @@ DO: "DO"i
 NOTIFY: "NOTIFY"i
 
 create_resource_monitor_stmt: CREATE (OR REPLACE)? RESOURCE MONITOR qualified_name WITH CREDIT_QUOTA EQ number triggers_clause?
+alter_resource_monitor_stmt: ALTER RESOURCE MONITOR qualified_name (SUSPEND | RESUME)
 
 triggers_clause: TRIGGERS trigger_def+
 trigger_def: ON number PERCENT DO NOTIFY
@@ -711,6 +775,7 @@ rollback_to_savepoint_stmt: ROLLBACK TO SAVEPOINT IDENTIFIER
 
 declare_stmt: DECLARE IDENTIFIER data_type
 set_stmt: SET IDENTIFIER EQ expr
+        | UNSET IDENTIFIER
 
 DECLARE: "DECLARE"i
 
@@ -806,5 +871,80 @@ create_authentication_policy_stmt: CREATE AUTHENTICATION POLICY qualified_name
 alter_authentication_policy_stmt: ALTER AUTHENTICATION POLICY qualified_name
 drop_authentication_policy_stmt: DROP AUTHENTICATION POLICY qualified_name
 
+// SHARE statements
+create_share_stmt: CREATE (OR REPLACE)? SHARE (IF NOT EXISTS)? qualified_name
+alter_share_stmt: ALTER SHARE qualified_name (ADD DATA? | DROP DATA?)?
+drop_share_stmt: DROP SHARE qualified_name
+
 MANAGED: "MANAGED"i
+
+// Added new Snowflake DDL keywords for full core coverage
+CLONE: "CLONE"i
+EXTERNAL: "EXTERNAL"i
+FORCE: "FORCE"i
+GET: "GET"i
+HEADER: "HEADER"i
+INTEGRATION: "INTEGRATION"i
+LIST: "LIST"i
+NETWORK: "NETWORK"i
+PATTERN: "PATTERN"i
+PURGE: "PURGE"i
+REPLICATION: "REPLICATION"i
+SHARE: "SHARE"i
+UNSET: "UNSET"i
+VALIDATE: "VALIDATE"i
+
+// Helper for CLONE statements
+clone_clause: CLONE qualified_name
+
+// INTEGRATION statements
+create_integration_stmt: CREATE (OR REPLACE)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
+alter_integration_stmt: ALTER INTEGRATION qualified_name integration_param*
+drop_integration_stmt: DROP INTEGRATION qualified_name
+
+// Parameters for INTEGRATION
+integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
+                 | ENABLED EQ boolean
+                 | COMMENT EQ SINGLE_QUOTED_STRING
+                 | SECRETS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+
+// External Table statements
+create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name
+alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name
+drop_external_table_stmt: DROP EXTERNAL TABLE qualified_name
+
+// Materialized View statements
+create_materialized_view_stmt: CREATE (OR REPLACE)? MATERIALIZED VIEW (IF NOT EXISTS)? qualified_name AS select_stmt
+alter_materialized_view_stmt: ALTER MATERIALIZED VIEW qualified_name
+drop_materialized_view_stmt: DROP MATERIALIZED VIEW qualified_name
+
+// External Function statements
+create_external_function_stmt: CREATE (OR REPLACE)? EXTERNAL FUNCTION (IF NOT EXISTS)? qualified_name
+alter_external_function_stmt: ALTER EXTERNAL FUNCTION qualified_name
+drop_external_function_stmt: DROP EXTERNAL FUNCTION qualified_name
+
+// Network Policy statements
+create_network_policy_stmt: CREATE (OR REPLACE)? NETWORK POLICY qualified_name
+alter_network_policy_stmt: ALTER NETWORK POLICY qualified_name
+drop_network_policy_stmt: DROP NETWORK POLICY qualified_name
+
+// Replication statements
+create_replication_stmt: CREATE (OR REPLACE)? REPLICATION (IF NOT EXISTS)? qualified_name
+alter_replication_stmt: ALTER REPLICATION qualified_name
+
+// Account-level statements
+create_account_stmt: CREATE (OR REPLACE)? ACCOUNT (IF NOT EXISTS)? qualified_name
+alter_account_stmt: ALTER ACCOUNT qualified_name
+drop_account_stmt: DROP ACCOUNT qualified_name
+show_accounts_stmt: SHOW ACCOUNTS
+
+// Session management statements
+alter_session_stmt: ALTER SESSION SET IDENTIFIER EQ expr
+show_parameters_stmt: SHOW PARAMETERS
+
+// Stage file utilities
+list_stmt: LIST STAGE_PATH (PATTERN SINGLE_QUOTED_STRING)?
+get_stmt: GET file_path STAGE_PATH (PURGE | VALIDATE)?
+remove_stmt: REMOVE STAGE_PATH (PATTERN SINGLE_QUOTED_STRING)?
+alter_stage_stmt: ALTER STAGE qualified_name SET (FILE_FORMAT EQ qualified_name | URL EQ SINGLE_QUOTED_STRING)
 

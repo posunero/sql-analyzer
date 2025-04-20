@@ -18,8 +18,9 @@ logger = logging.getLogger(__name__) # Module-level logger
 # List of destructive statement types to track
 DESTRUCTIVE_STATEMENTS = {
     'DELETE', 'DROP_TABLE', 'DROP_VIEW', 'DROP_DATABASE', 'DROP_SCHEMA', 
-    'TRUNCATE_TABLE', 'TRUNCATE', 'CREATE_OR_REPLACE_TABLE', 'CREATE_OR_REPLACE_VIEW',
-    'ALTER_TABLE_DROP_COLUMN', 'UPDATE', 'DROP',
+    'DROP_TASK', 'TRUNCATE_TABLE', 'TRUNCATE', 'CREATE_OR_REPLACE_TABLE', 'CREATE_OR_REPLACE_VIEW',
+    'ALTER_TABLE_DROP_COLUMN', 'UPDATE', 'DROP', 'DROP_SHARE', 'DROP_INTEGRATION',
+    'DROP_EXTERNAL_TABLE', 'DROP_MATERIALIZED_VIEW', 'DROP_EXTERNAL_FUNCTION',
     # Add specific replacements
     'REPLACE'
 }
@@ -181,117 +182,232 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         Lark automatically proceeds to visit the specific statement child node afterwards.
         """
         self._debug_tree(tree, "Statement")
-        # The statement node usually contains one child: the specific statement type node
+        
+        # --- Determine the specific statement node and its type ---
+        specific_stmt_node = None
+        raw_node_data = None # The '.data' attribute of the specific stmt node
+
         if tree.children and isinstance(tree.children[0], Tree):
-            stmt_node = tree.children[0]
+            specific_stmt_node = tree.children[0]
+            raw_node_data = specific_stmt_node.data.upper()
+
+            # Special handling for DML/DDL wrappers
+            if raw_node_data == 'DML_STMT' and isinstance(specific_stmt_node.children[0], Tree):
+                specific_stmt_node = specific_stmt_node.children[0]
+                raw_node_data = specific_stmt_node.data.upper()
+            elif raw_node_data == 'DDL_STMT' and isinstance(specific_stmt_node.children[0], Tree):
+                 ddl_child_node = specific_stmt_node.children[0]
+                 ddl_child_type = ddl_child_node.data.upper()
+                 
+                 # If it's a CREATE, ALTER, or DROP statement, look one more level
+                 if ddl_child_type in ('CREATE_STMT', 'ALTER_STMT', 'DROP_STMT') and ddl_child_node.children:
+                     if isinstance(ddl_child_node.children[0], Tree):
+                         final_stmt_node = ddl_child_node.children[0]
+                         final_node_data = final_stmt_node.data.upper()
+
+                         # Check for CREATE OR REPLACE patterns - PREFER this if found
+                         is_replace = any(isinstance(child, Token) and child.type == 'REPLACE' for child in final_stmt_node.children)
+                         if final_node_data.startswith('CREATE_') and is_replace:
+                             object_type = final_node_data.replace('CREATE_', '').replace('_STMT', '')
+                             raw_node_data = f'CREATE_OR_REPLACE_{object_type}'
+                             specific_stmt_node = final_stmt_node # Point to the actual node
+                         else:
+                            raw_node_data = final_node_data
+                            specific_stmt_node = final_stmt_node
+                     else: # e.g., DROP ROLE <name>; might have ROLE token instead of Tree
+                         raw_node_data = ddl_child_type # Use CREATE/ALTER/DROP_STMT
+                         specific_stmt_node = ddl_child_node
+                 else:
+                     # Use the DDL child type directly (e.g., TRUNCATE_TABLE_STMT)
+                     raw_node_data = ddl_child_type
+                     specific_stmt_node = ddl_child_node
+
+        if not specific_stmt_node or not raw_node_data:
+             logger.warning(f"Unexpected structure for statement node: {tree.pretty()}")
+             self.visit_children(tree) # Still visit children
+             return
+
+        # --- Map grammar node type to canonical statement type ---
+        stmt_type_mapping = {
+            # DML
+            'SELECT_STMT': 'SELECT',
+            'UPDATE_STMT': 'UPDATE',
+            'INSERT_STMT': 'INSERT',
+            'DELETE_STMT': 'DELETE',
+            'MERGE_STMT': 'MERGE',
+            'TRUNCATE_TABLE_STMT': 'TRUNCATE_TABLE', # Often considered DDL but acts like DML
+            'TRUNCATE_STMT': 'TRUNCATE', # Generic truncate if grammar has it
+
+            # DDL - Create
+            'CREATE_TABLE_STMT': 'CREATE_TABLE',
+            'CREATE_VIEW_STMT': 'CREATE_VIEW',
+            'CREATE_DATABASE_STMT': 'CREATE_DATABASE',
+            'CREATE_SCHEMA_STMT': 'CREATE_SCHEMA',
+            'CREATE_STAGE_STMT': 'CREATE_STAGE',
+            'CREATE_FILE_FORMAT_STMT': 'CREATE_FILE_FORMAT',
+            'CREATE_FUNCTION_STMT': 'CREATE_FUNCTION',
+            'CREATE_TASK_STMT': 'CREATE_TASK',
+            'CREATE_JOB_STMT': 'CREATE_JOB', # Assuming JOB exists
+            'CREATE_INTEGRATION_STMT': 'CREATE_INTEGRATION',
+            'CREATE_EXTERNAL_TABLE_STMT': 'CREATE_EXTERNAL_TABLE',
+            'CREATE_MATERIALIZED_VIEW_STMT': 'CREATE_MATERIALIZED_VIEW',
+            'CREATE_EXTERNAL_FUNCTION_STMT': 'CREATE_EXTERNAL_FUNCTION',
+            'CREATE_NETWORK_POLICY_STMT': 'CREATE_NETWORK_POLICY',
+            'CREATE_REPLICATION_STMT': 'CREATE_REPLICATION',
+            'CREATE_ACCOUNT_STMT': 'CREATE_ACCOUNT',
+            'CREATE_ROW_ACCESS_POLICY_STMT': 'CREATE_ROW_ACCESS_POLICY',
+            'CREATE_MASKING_POLICY_STMT': 'CREATE_MASKING_POLICY',
+            'CREATE_ALERT_STMT': 'CREATE_ALERT',
+            'CREATE_ICEBERG_TABLE_STMT': 'CREATE_ICEBERG_TABLE',
+            'CREATE_PACKAGE_STMT': 'CREATE_PACKAGE',
+            'CREATE_AUTHENTICATION_POLICY_STMT': 'CREATE_AUTHENTICATION_POLICY',
+            'CREATE_RESOURCE_MONITOR_STMT': 'CREATE_RESOURCE_MONITOR',
+            'CREATE_ROLE_STMT': 'CREATE_ROLE',
+            'CREATE_SHARE_STMT': 'CREATE_SHARE',
+            'CREATE_STREAM_STMT': 'CREATE_STREAM',
+            'CREATE_PIPE_STMT': 'CREATE_PIPE',
+
+            # DDL - Create or Replace (Use raw_node_data directly for these)
+            'CREATE_OR_REPLACE_TABLE': 'CREATE_OR_REPLACE_TABLE',
+            'CREATE_OR_REPLACE_VIEW': 'CREATE_OR_REPLACE_VIEW',
+            'CREATE_OR_REPLACE_TASK': 'CREATE_TASK', # Map CREATE_OR_REPLACE_TASK back to CREATE_TASK for counting? Or keep separate? Let's map for now.
+            # Add other CREATE_OR_REPLACE types if needed, ensuring raw_node_data handles them
+
+            # DDL - Alter
+            'ALTER_TABLE_STMT': 'ALTER_TABLE',
+            'ALTER_VIEW_STMT': 'ALTER_VIEW', # If exists
+            'ALTER_DATABASE_STMT': 'ALTER_DATABASE', # If exists
+            'ALTER_SCHEMA_STMT': 'ALTER_SCHEMA', # If exists
+            'ALTER_WAREHOUSE_STMT': 'ALTER_WAREHOUSE',
+            'ALTER_TASK_STMT': 'ALTER_TASK',
+            'ALTER_JOB_STMT': 'ALTER_JOB', # If exists
+            'ALTER_SESSION_STMT': 'ALTER_SESSION',
+            'ALTER_INTEGRATION_STMT': 'ALTER_INTEGRATION',
+            'ALTER_EXTERNAL_TABLE_STMT': 'ALTER_EXTERNAL_TABLE',
+            'ALTER_MATERIALIZED_VIEW_STMT': 'ALTER_MATERIALIZED_VIEW',
+            'ALTER_EXTERNAL_FUNCTION_STMT': 'ALTER_EXTERNAL_FUNCTION',
+            'ALTER_NETWORK_POLICY_STMT': 'ALTER_NETWORK_POLICY',
+            'ALTER_REPLICATION_STMT': 'ALTER_REPLICATION',
+            'ALTER_ACCOUNT_STMT': 'ALTER_ACCOUNT',
+            'ALTER_STAGE_STMT': 'ALTER_STAGE',
+            'ALTER_ROW_ACCESS_POLICY_STMT': 'ALTER_ROW_ACCESS_POLICY',
+            'ALTER_ALERT_STMT': 'ALTER_ALERT',
+            'ALTER_ICEBERG_TABLE_STMT': 'ALTER_ICEBERG_TABLE',
+            'ALTER_AUTHENTICATION_POLICY_STMT': 'ALTER_AUTHENTICATION_POLICY',
+            'ALTER_SHARE_STMT': 'ALTER_SHARE',
+            'ALTER_STREAM_STMT': 'ALTER_STREAM',
+            'ALTER_PIPE_STMT': 'ALTER_PIPE',
+
+            # DDL - Drop
+            'DROP_TABLE_STMT': 'DROP_TABLE',
+            'DROP_VIEW_STMT': 'DROP_VIEW',
+            'DROP_DATABASE_STMT': 'DROP_DATABASE',
+            'DROP_SCHEMA_STMT': 'DROP_SCHEMA',
+            'DROP_TASK_STMT': 'DROP_TASK',
+            'DROP_INTEGRATION_STMT': 'DROP_INTEGRATION',
+            'DROP_EXTERNAL_TABLE_STMT': 'DROP_EXTERNAL_TABLE',
+            'DROP_MATERIALIZED_VIEW_STMT': 'DROP_MATERIALIZED_VIEW',
+            'DROP_EXTERNAL_FUNCTION_STMT': 'DROP_EXTERNAL_FUNCTION',
+            'DROP_NETWORK_POLICY_STMT': 'DROP_NETWORK_POLICY',
+            'DROP_ACCOUNT_STMT': 'DROP_ACCOUNT',
+            'DROP_SHARE_STMT': 'DROP_SHARE',
+            'DROP_STMT': 'DROP', # Generic DROP needs refinement in drop_stmt visitor
+
+            # DCL
+            'GRANT_ROLE_STMT': 'GRANT_ROLE',
+            'REVOKE_ROLE_STMT': 'REVOKE_ROLE',
+
+            # TCL
+            'BEGIN_STMT': 'BEGIN',
+            'COMMIT_STMT': 'COMMIT',
+            'ROLLBACK_STMT': 'ROLLBACK',
+            'SAVEPOINT_STMT': 'SAVEPOINT',
+            'ROLLBACK_TO_SAVEPOINT_STMT': 'ROLLBACK_TO_SAVEPOINT',
+
+            # Session/Scripting
+            'USE_STMT': 'USE', # Refined in use_stmt visitor
+            'DECLARE_STMT': 'DECLARE',
+            'SET_STMT': 'SET',
+            'EXECUTE_IMMEDIATE_STMT': 'EXECUTE_IMMEDIATE',
+            'EXECUTE_TASK_STMT': 'EXECUTE_TASK',
+            'CALL_PROCEDURE_STMT': 'CALL',
+
+            # Stage/File Ops
+            'COPY_INTO_STMT': 'COPY_INTO', # Base type, specific types recorded elsewhere
+            'PUT_STMT': 'PUT',
+            'GET_STMT': 'GET_STAGE',
+            'LIST_STMT': 'LIST_STAGE',
+            'REMOVE_STMT': 'REMOVE_STAGE',
+
+            # Other
+            'SHOW_STMT': 'SHOW', # Needs refinement based on object type shown
+            'DESCRIBE_STMT': 'DESCRIBE', # Needs refinement
+            'SHOW_ACCOUNTS_STMT': 'SHOW_ACCOUNTS',
+            'SHOW_PARAMETERS_STMT': 'SHOW_PARAMETERS',
+            'INSTALL_PACKAGE_STMT': 'INSTALL_PACKAGE',
+            'REMOVE_PACKAGE_STMT': 'REMOVE_PACKAGE',
+            'ENABLE_SEARCH_OPTIMIZATION_STMT': 'ENABLE_SEARCH_OPTIMIZATION',
+            'DISABLE_SEARCH_OPTIMIZATION_STMT': 'DISABLE_SEARCH_OPTIMIZATION',
+            'ALTER_SEARCH_OPTIMIZATION_STMT': 'ALTER_SEARCH_OPTIMIZATION',
             
-            # Map grammar node names to expected statement types
-            node_data = stmt_node.data.upper()
-            
-            # Special handling for DML statements - inspect one level deeper
-            # to get more specific statement type
-            if node_data == 'DML_STMT' and isinstance(stmt_node.children[0], Tree):
-                dml_child = stmt_node.children[0]
-                dml_type = dml_child.data.upper()
-                node_data = dml_type
-            
-            # Special handling for DDL statements - inspect one level deeper
-            # to get more specific statement type
-            if node_data == 'DDL_STMT' and isinstance(stmt_node.children[0], Tree):
-                ddl_child = stmt_node.children[0]
-                ddl_type = ddl_child.data.upper()
-                
-                # If it's a CREATE, ALTER, or DROP statement, look one more level
-                # to get the specific object type
-                if ddl_type in ('CREATE_STMT', 'ALTER_STMT', 'DROP_STMT') and ddl_child.children:
-                    if isinstance(ddl_child.children[0], Tree):
-                        specific_stmt = ddl_child.children[0]
-                        node_data = specific_stmt.data.upper()
-                        
-                        # Check for CREATE OR REPLACE patterns
-                        if node_data.startswith('CREATE_') and ddl_child.children[0].children:
-                            for child in ddl_child.children[0].children:
-                                if isinstance(child, Token) and child.type == 'REPLACE':
-                                    # Convert CREATE_TABLE_STMT to CREATE_OR_REPLACE_TABLE
-                                    object_type = node_data.replace('CREATE_', '').replace('_STMT', '')
-                                    node_data = f'CREATE_OR_REPLACE_{object_type}'
-                                    break
-                    else:
-                        node_data = ddl_type
-                else:
-                    # Use the DDL child type directly
-                    node_data = ddl_type
-            
-            # Map grammar node types to expected statement types
-            stmt_type_mapping = {
-                'SELECT_STMT': 'SELECT',
-                'CREATE_TABLE_STMT': 'CREATE_TABLE',
-                'USE_STMT': 'USE',  # Will be refined by engine.record_statement for specific object type
-                'ALTER_TABLE_STMT': 'ALTER_TABLE',
-                'DROP_STMT': 'DROP',  # Refined later by object type
-                'DROP_TABLE_STMT': 'DROP_TABLE',
-                'DROP_VIEW_STMT': 'DROP_VIEW',
-                'DROP_DATABASE_STMT': 'DROP_DATABASE',
-                'DROP_SCHEMA_STMT': 'DROP_SCHEMA',
-                'DROP_TASK_STMT': 'DROP_TASK',
-                'CREATE_VIEW_STMT': 'CREATE_VIEW',
-                'CREATE_DATABASE_STMT': 'CREATE_DATABASE',
-                'CREATE_STAGE_STMT': 'CREATE_STAGE',
-                'CREATE_FILE_FORMAT_STMT': 'CREATE_FILE_FORMAT',
-                'COPY_INTO_STMT': 'COPY_INTO', # Base type, specific types recorded elsewhere
-                'ALTER_WAREHOUSE_STMT': 'ALTER_WAREHOUSE',
-                'UPDATE_STMT': 'UPDATE',
-                'INSERT_STMT': 'INSERT',
-                'DELETE_STMT': 'DELETE',
-                'MERGE_STMT': 'MERGE',
-                'CREATE_FUNCTION_STMT': 'CREATE_FUNCTION',
-                'TRUNCATE_TABLE_STMT': 'TRUNCATE_TABLE',
-                'CREATE_OR_REPLACE_TABLE': 'CREATE_OR_REPLACE_TABLE',
-                'CREATE_OR_REPLACE_VIEW': 'CREATE_OR_REPLACE_VIEW',
-                'CREATE_OR_REPLACE_TASK': 'CREATE_TASK',
-                'CREATE_TASK_STMT': 'CREATE_TASK',
-                'CREATE_JOB_STMT': 'CREATE_JOB',
-                'ALTER_JOB_STMT': 'ALTER_JOB',
-                'ALTER_TASK_STMT': 'ALTER_TASK',
-                'EXECUTE_TASK_STMT': 'EXECUTE_TASK',
-                'SHOW_STMT': 'SHOW',
-                'DESCRIBE_STMT': 'DESCRIBE',
-                'CALL_PROCEDURE_STMT': 'CALL',
-                'PUT_STMT': 'PUT',
-                'BEGIN_STMT': 'BEGIN',
-                'COMMIT_STMT': 'COMMIT',
-                'ROLLBACK_STMT': 'ROLLBACK',
-                'SAVEPOINT_STMT': 'SAVEPOINT',
-                'ROLLBACK_TO_SAVEPOINT_STMT': 'ROLLBACK_TO_SAVEPOINT',
-                'DECLARE_STMT': 'DECLARE',
-                'SET_STMT': 'SET',
-                'EXECUTE_IMMEDIATE_STMT': 'EXECUTE_IMMEDIATE',
-                # Add more mappings as needed
-            }
-            
-            # Get the mapped statement type or use the original if not found
-            stmt_type = stmt_type_mapping.get(node_data, node_data)
-            
-            # Debug the statement type determination
-            logger.debug(f"Statement type mapping: {node_data} -> {stmt_type}")
-            
-            # Record the mapped statement type in normal counts, skipping any raw _STMT entries
-            # Specific visitors handle USE, DROP, and full PIPE DDL
-            # Skip generic counts for grammar nodes ending in '_STMT'
-            # Also skip CREATE_TASK, ALTER_TASK, EXECUTE_TASK, CREATE_JOB, ALTER_JOB, etc. (handled by dedicated visitors)
-            skip_dedicated = {"CREATE_TASK", "ALTER_TASK", "EXECUTE_TASK", "CREATE_JOB", "ALTER_JOB", "MERGE"}
-            if stmt_type not in ("USE", "DROP") and not stmt_type.endswith('_STMT') and stmt_type not in skip_dedicated:
-                self.engine.record_statement(stmt_type, stmt_node, self.current_file)
-            
-            # Check if this is a destructive statement and record it
-            # Note: Destructive recording for DROP_X is handled in the drop_stmt visitor now
-            if stmt_type in DESTRUCTIVE_STATEMENTS and not stmt_type.startswith("DROP_"):
-                logger.debug(f"Recording destructive statement: {stmt_type}")
-                self.engine.record_destructive_statement(stmt_type, stmt_node, self.current_file)
+            # Add mappings derived from SIMPLE_QN_METHODS if not covered above
+            # (This ensures consistency if a node exists in both places)
+            **{method_details[0].upper(): method_details[2] for method_details in SQLVisitor.SIMPLE_QN_METHODS}
+        }
+
+        # Get the mapped statement type or use the original node data if not found
+        stmt_type = stmt_type_mapping.get(raw_node_data, raw_node_data)
+        logger.debug(f"Statement raw node data: '{raw_node_data}' -> mapped stmt_type: '{stmt_type}'")
+
+        # --- Record Statement Count (ONLY if no dedicated visitor exists) ---
+        # Heuristic: Check if a method exists in the visitor matching the raw node name
+        # (e.g., 'create_table_stmt' method for 'CREATE_TABLE_STMT' node)
+        # Convert raw_node_data (like CREATE_TABLE_STMT) to expected method name format (create_table_stmt)
+        expected_method_name = raw_node_data.lower()
+
+        # Check against known dedicated methods (more reliable than just endswith('_stmt'))
+        # Use the sets defined earlier (assuming they are available in this scope or passed/recalculated)
+        # Placeholder for actual implementation:
+        # dedicated_visitor_node_uppers = self._get_dedicated_visitor_nodes() # Assume this method exists
+
+        # TEMPORARY HARDCODED LIST FOR DEMONSTRATION - REPLACE WITH DYNAMIC CHECK
+        # This set should contain the *Lark node data names* (UPPERCASE) that have dedicated visitors.
+        _nodes_with_dedicated_visitors_upper = {
+            'SELECT_STMT', 'INSERT_STMT', 'CREATE_TABLE_STMT', 'ALTER_TABLE_STMT',
+            'CREATE_VIEW_STMT', 'CREATE_DATABASE_STMT', 'ALTER_WAREHOUSE_STMT',
+            'UPDATE_STMT', 'DROP_STMT', 'USE_STMT', 'CREATE_FUNCTION_STMT',
+            'FUNCTION_CALL', 'DELETE_STMT', 'TRUNCATE_TABLE_STMT', 'TRUNCATE_STMT', 
+            'CREATE_STAGE_STMT', 'CREATE_FILE_FORMAT_STMT', 'COPY_INTO_STMT',
+            'CREATE_STREAM_STMT', 'ALTER_STREAM_STMT', 'CREATE_PIPE_STMT',
+            'ALTER_PIPE_STMT', 'ENABLE_SEARCH_OPTIMIZATION_STMT',
+            'DISABLE_SEARCH_OPTIMIZATION_STMT', 'ALTER_SEARCH_OPTIMIZATION_STMT',
+            'GRANT_ROLE_STMT', 'REVOKE_ROLE_STMT', 'CREATE_ROLE_STMT',
+            'CREATE_JOB_STMT', 'ALTER_JOB_STMT', 'CREATE_TASK_STMT',
+            'ALTER_TASK_STMT', 'MERGE_STMT', 
+            'ALTER_TABLE_SET_MASKING_POLICY_STMT', # Explicit method name doesn't end in _stmt
+            'EXECUTE_TASK_STMT', 'CALL_PROCEDURE_STMT', 'CREATE_SCHEMA_STMT',
+            # Add nodes corresponding to SIMPLE_QN_METHODS
+            *[m[0].upper() for m in SQLVisitor.SIMPLE_QN_METHODS]
+        }
+        
+        # Record statement count in the *generic* visitor only if there isn't a specific one
+        if raw_node_data not in _nodes_with_dedicated_visitors_upper:
+             logger.debug(f"Recording statement count '{stmt_type}' from generic 'statement' visitor (no dedicated visitor for '{raw_node_data}').")
+             self.engine.record_statement(stmt_type, specific_stmt_node, self.current_file)
         else:
-            logger.warning(f"Unexpected structure for statement node: {tree}")
-        # Proceed to visit the specific statement node (e.g., select_stmt)
-        # Lark's default behavior handles this, no need for self.visit(stmt_node)
+             logger.debug(f"Skipping statement count for '{stmt_type}' in generic 'statement' visitor (dedicated visitor exists for '{raw_node_data}').")
+
+        # --- Record Destructive Statement ---
+        # Check the *mapped* stmt_type against the destructive list
+        # Let dedicated visitors handle their specific destructive counts (e.g., DROP_TABLE in drop_stmt)
+        # Only record generic ones like UPDATE, DELETE here.
+        if stmt_type in DESTRUCTIVE_STATEMENTS and not stmt_type.startswith("DROP_") and stmt_type != "CREATE_OR_REPLACE_TABLE" and stmt_type != "CREATE_OR_REPLACE_VIEW":
+            logger.debug(f"Recording destructive statement '{stmt_type}' from generic 'statement' visitor.")
+            self.engine.record_destructive_statement(stmt_type, specific_stmt_node, self.current_file)
+
+        # --- Proceed with visiting the specific statement node ---
+        # Lark's default behavior handles this - *no need* for explicit self.visit(specific_stmt_node) here
+        # self.visit(specific_stmt_node) # DO NOT UNCOMMENT - Lark handles descent automatically
 
     def select_stmt(self, tree: Tree):
         """Visits `select_stmt` nodes. Extracts table references from the `from_clause`.
@@ -301,6 +417,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         Then, manually visits other children (like select_list) to find nested objects.
         """
         self._debug_tree(tree, "Select Statement")
+        # Record the SELECT statement count
+        self.engine.record_statement("SELECT", tree, self.current_file)
+        
         from_clause = self._find_first_child_by_name(tree, 'from_clause')
         
         # --- Process FROM and JOIN first --- 
@@ -409,31 +528,51 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
     def create_table_stmt(self, tree: Tree):
         """Visits `create_table_stmt` nodes. Extracts the `qualified_name` of the table.
 
-        Records the found table as 'CREATE' or as 'REPLACE' if it's a CREATE OR REPLACE statement.
+        Records the found table as \'CREATE\' or as \'REPLACE\' if it\'s a CREATE OR REPLACE statement.
         Also ensures CREATE OR REPLACE is tracked as a destructive operation.
         """
         self._debug_tree(tree, "Create Table Statement")
-        
+        table_name = None
+        first_token = None
+        action = "CREATE_TABLE" # Default action for statement count
+
         # Check if this is a CREATE OR REPLACE statement
-        is_replace = False
-        for child in tree.children:
-            if isinstance(child, Token) and child.type == 'REPLACE':
-                is_replace = True
-                break
-        
+        is_replace = any(isinstance(child, Token) and child.type == 'REPLACE' for child in tree.children)
+
         qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
             table_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if table_name and first_token:
-                # If it's a REPLACE operation, record as such
-                action = "REPLACE" if is_replace else "CREATE"
-                logger.debug(f"Found table {action}: {table_name}")
-                self._record_object_reference(table_name, "TABLE", action, first_token)
-                
+                # Determine action for object recording vs statement counting
+                obj_action = "REPLACE" if is_replace else "CREATE"
+                action = "CREATE_OR_REPLACE_TABLE" if is_replace else "CREATE_TABLE"
+
+                logger.debug(f"Found table {obj_action}: {table_name} (Stmt Action: {action})")
+                self._record_object_reference(table_name, "TABLE", obj_action, first_token)
+
+                # Record the specific statement count
+                self.engine.record_statement(action, tree, self.current_file) # ADDED
+
                 # If it's a REPLACE operation, record as destructive
                 if is_replace:
                     self.engine.record_destructive_statement("CREATE_OR_REPLACE_TABLE", tree, self.current_file)
+            else:
+                logger.warning(f"Create Table: Failed to extract name/token from {qual_name_node.pretty()}")
+                # Attempt to record statement count even if object recording fails
+                self.engine.record_statement(action, tree, self.current_file)
+
+        # Added: record CLONE source tables
+        for clone in tree.find_data('clone_clause'):
+            # Extract qualified_name node within the clone clause
+            qual_name_node = self._find_first_child_by_name(clone, 'qualified_name')
+            if qual_name_node:
+                source = self._extract_qualified_name(qual_name_node)
+                # Use first identifier token for location
+                tok = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+                if source and tok:
+                    self._record_object_reference(source, 'TABLE', 'CLONE', tok)
+            # Ensure statement count happens even with CLONE (should occur above)
 
     def alter_table_stmt(self, tree: Tree):
         """Visits `alter_table_stmt` nodes. Identifies table alterations.
@@ -445,73 +584,95 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         # First find the table being altered
         table_ref = self._find_first_child_by_name(tree, 'qualified_name')
         table_name = None
-        
+        first_token = None # Token for the table name
+
         if table_ref:
             table_name = self._extract_qualified_name(table_ref)
             first_token = next((t for t in table_ref.children if isinstance(t, Token)), None)
             if table_name and first_token:
                 # Record the basic ALTER action on the table
                 self._record_object_reference(table_name, "TABLE", "ALTER", first_token)
-        
+                # Record the ALTER_TABLE statement
+                self.engine.record_statement("ALTER_TABLE", tree, self.current_file)
+            # Statement count for ALTER_TABLE handled by specific visitors or _handle_simple_qn_stmt if applicable
+            # Or potentially in the main 'statement' visitor if no specific handler matches.
+
         # Check for DROP COLUMN operations - using a more flexible approach
         is_drop_column = False
         column_name = None
-        
+        drop_column_token_location = None # Token to use for recording location of drop
+
         # Look for a DROP token followed by a COLUMN token anywhere in the statement
         drop_token_index = None
         for i, child in enumerate(tree.children):
             if isinstance(child, Token) and child.type == 'DROP':
                 drop_token_index = i
                 break
-                
+
         if drop_token_index is not None and drop_token_index + 1 < len(tree.children):
             # Check if the next token is COLUMN
             next_token = tree.children[drop_token_index + 1]
             if isinstance(next_token, Token) and next_token.type == 'COLUMN':
                 is_drop_column = True
-                
+                drop_column_token_location = next_token # Use COLUMN token location
+
                 # Try to get column name (usually the next token after COLUMN)
                 if drop_token_index + 2 < len(tree.children):
                     column_token = tree.children[drop_token_index + 2]
                     if isinstance(column_token, Token):
                         column_name = column_token.value
-        
+                        # Potentially update location token to the column name itself
+                        # drop_column_token_location = column_token
+
         # Also look for a possible 'drop_column_clause' node which might be present in some grammars
         drop_column_node = None
         for child in tree.children:
             if isinstance(child, Tree) and child.data == 'drop_column_clause':
                 drop_column_node = child
                 is_drop_column = True
+                # Use the node itself or its first token for location
+                drop_column_token_location = next((t for t in child.scan_values(lambda v: isinstance(v, Token))), child)
                 # Try to extract column name
                 for subchild in child.children:
                     if isinstance(subchild, Token) and subchild.type == 'IDENTIFIER':
                         column_name = subchild.value
+                        # Update location token if preferred
+                        # drop_column_token_location = subchild
                         break
                 break
-        
+
         if is_drop_column and table_name:
-            # Record the DROP_COLUMN action and the column name if found
-            action = "DROP_COLUMN"
-            if column_name:
-                logger.debug(f"Found DROP COLUMN operation on {table_name}.{column_name}")
-                # Record specific column drop
-                self._record_object_reference(f"{table_name}.{column_name}", "TABLE", action, first_token if first_token else tree.children[0])
-                
-                # Also record DROP_COLUMN action on the table itself for easier querying
-                self._record_object_reference(table_name, "TABLE", action, first_token if first_token else tree.children[0])
-                
-                # Always record that this is a destructive action
-                self.engine.record_destructive_statement("ALTER_TABLE_DROP_COLUMN", tree, self.current_file)
+            # Use a valid token for recording (column drop location, or table token as fallback)
+            record_token = drop_column_token_location if isinstance(drop_column_token_location, Token) else first_token
+            if record_token:
+                # Record the DROP_COLUMN action and the column name if found
+                action = "DROP_COLUMN"
+                if column_name:
+                    logger.debug(f"Found DROP COLUMN operation on {table_name}.{column_name}")
+                    # Record specific column drop
+                    # Note: Recording "TABLE" type here might be debatable, could be "COLUMN"
+                    # Let's stick to TABLE for consistency with previous logic unless tests require COLUMN
+                    self._record_object_reference(f"{table_name}.{column_name}", "TABLE", action, record_token)
+
+                    # Also record DROP_COLUMN action on the table itself for easier querying
+                    self._record_object_reference(table_name, "TABLE", action, record_token)
+
+                    # Always record that this is a destructive action
+                    self.engine.record_destructive_statement("ALTER_TABLE_DROP_COLUMN", tree, self.current_file)
+                    # Statement count for ALTER_TABLE_DROP_COLUMN? Handled by simple qn? Let's assume so.
+                else:
+                    logger.debug(f"Found DROP COLUMN operation on {table_name} but couldn't identify column name")
+                    # Still record as destructive even if we can't identify the column
+                    self._record_object_reference(table_name, "TABLE", action, record_token)
+                    self.engine.record_destructive_statement("ALTER_TABLE_DROP_COLUMN", tree, self.current_file)
             else:
-                logger.debug(f"Found DROP COLUMN operation on {table_name} but couldn't identify column name")
-                # Still record as destructive even if we can't identify the column
-                self._record_object_reference(table_name, "TABLE", action, first_token if first_token else tree.children[0])
+                 logger.warning(f"ALTER TABLE DROP COLUMN on {table_name}: Could not determine a valid location token.")
 
         # Recurse into specific ALTER TABLE actions like MODIFY COLUMN
         for child in tree.children:
             if isinstance(child, Tree):
                 # Check for common alter column clause names (adjust if grammar differs)
-                if child.data in ('modify_column_clause', 'alter_column_clause', 'column_alteration'):
+                if child.data in ('modify_column_clause', 'alter_column_clause', 'column_alteration', 'alter_table_set_masking_policy_stmt'):
                     # Pass the table context down to the specific clause visitor
                     # Store table_name and token on the child node temporarily, or pass via context
                     # Using context is cleaner if multiple clauses need it
@@ -532,47 +693,80 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
     def create_view_stmt(self, tree: Tree):
         """Visits `create_view_stmt` nodes. Extracts the `qualified_name` of the view.
 
-        Records the found view as 'CREATE' or as 'REPLACE' if it's a CREATE OR REPLACE statement.
+        Records the found view as \'CREATE\' or as \'REPLACE\' if it\'s a CREATE OR REPLACE statement.
         Also ensures CREATE OR REPLACE is tracked as a destructive operation.
         The underlying SELECT statement (and its references) are visited automatically by Lark.
         """
         # The underlying SELECT statement (and its references) will be visited automatically.
         self._debug_tree(tree, "Create View Statement")
-        
+        view_name = None
+        first_token = None
+        action = "CREATE_VIEW" # Default action name
+
         # Check if this is a CREATE OR REPLACE statement
-        is_replace = False
-        for child in tree.children:
-            if isinstance(child, Token) and child.type == 'REPLACE':
-                is_replace = True
-                break
-                
+        is_replace = any(isinstance(child, Token) and child.type == 'REPLACE' for child in tree.children)
+
         qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
             view_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if view_name and first_token:
-                # If it's a REPLACE operation, record as such
-                action = "REPLACE" if is_replace else "CREATE"
-                logger.debug(f"Found view {action}: {view_name}")
-                self._record_object_reference(view_name, "VIEW", action, first_token)
-                
+                # Determine action for object recording vs statement counting
+                obj_action = "REPLACE" if is_replace else "CREATE"
+                action = "CREATE_OR_REPLACE_VIEW" if is_replace else "CREATE_VIEW"
+
+                logger.debug(f"Found view {obj_action}: {view_name} (Stmt Action: {action})")
+                self._record_object_reference(view_name, "VIEW", obj_action, first_token)
+                # Record the statement count - Handled by statement visitor logic or specific if needed
+                # self.engine.record_statement(action, tree, self.current_file) # Let generic handler do it
+
                 # If it's a REPLACE operation, record as destructive
                 if is_replace:
                     self.engine.record_destructive_statement("CREATE_OR_REPLACE_VIEW", tree, self.current_file)
+            else:
+                 logger.warning(f"Create View: Failed to extract name or token from {qual_name_node.pretty()}")
+                 # self.engine.record_statement(action, tree, self.current_file)
+
+        # No need to manually visit children, Lark handles the SELECT statement visit.
 
     def create_database_stmt(self, tree: Tree):
         """Visits `create_database_stmt` nodes. Extracts the `qualified_name` of the database.
 
-        Records the found database as 'CREATE'.
+        Records the found database as \'CREATE\'.
         """
         self._debug_tree(tree, "Create Database Statement")
+        db_name = None
+        first_token = None
+        action = "CREATE_DATABASE" # Default action name for statement count
+
         qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
             db_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if db_name and first_token:
-                logger.debug(f"Found database creation: {db_name}")
-                self._record_object_reference(db_name, "DATABASE", "CREATE", first_token)
+                # Check for OR REPLACE
+                is_replace = any(isinstance(child, Token) and child.type == 'REPLACE' for child in tree.children)
+                obj_action = "CREATE_OR_REPLACE_DATABASE" if is_replace else "CREATE" # For object map
+                action = "CREATE_OR_REPLACE_DATABASE" if is_replace else "CREATE_DATABASE" # For statement count
+
+                logger.debug(f"Found database creation: {db_name} (Action: {action}, ObjAction: {obj_action})")
+                self._record_object_reference(db_name, "DATABASE", obj_action, first_token)
+                # Record the specific statement count - ADDED
+                self.engine.record_statement(action, tree, self.current_file)
+            else:
+                 logger.warning(f"Create Database: Failed to extract name or token from {qual_name_node.pretty()}")
+                 # Attempt to record statement count even if object recording fails
+                 self.engine.record_statement(action, tree, self.current_file)
+
+        # Added: record CLONE source databases
+        for clone in tree.find_data('clone_clause'):
+            qual_name_node = self._find_first_child_by_name(clone, 'qualified_name')
+            if qual_name_node:
+                source = self._extract_qualified_name(qual_name_node)
+                tok = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+                if source and tok:
+                    self._record_object_reference(source, "DATABASE", "CLONE", tok)
+            # Ensure statement count happens even with CLONE (should occur above)
 
     def alter_warehouse_stmt(self, tree: Tree):
         """Visits `alter_warehouse_stmt` nodes. Extracts the `qualified_name` of the warehouse.
@@ -587,6 +781,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if wh_name and first_token:
                 logger.debug(f"Found warehouse alteration: {wh_name}")
                 self._record_object_reference(wh_name, "WAREHOUSE", "ALTER", first_token)
+                # Record the ALTER_WAREHOUSE statement
+                self.engine.record_statement("ALTER_WAREHOUSE", tree, self.current_file)
 
     def update_stmt(self, tree: Tree):
         """Visits `update_stmt` nodes. Extracts table references.
@@ -612,6 +808,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 # Record in the current context (e.g., task context)
                 self._record_object_reference(table_name, "TABLE", "UPDATE", first_token)
                 
+                # Record the UPDATE statement
+                self.engine.record_statement("UPDATE", tree, self.current_file)
+                
                 # Make sure to record the UPDATE destructive statement
                 self.engine.record_destructive_statement("UPDATE", tree, self.current_file)
                 # Recurse into nested SQL (expressions, where clauses) to capture dependencies
@@ -628,73 +827,145 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         """
         self._debug_tree(tree, "Drop Statement")
         
-        # Determine the object type being dropped by finding the relevant token
+        # Simplified approach: Check for specific patterns directly
+        children = list(tree.children)
         obj_type = None
-        obj_type_token = None
+        obj_name = None
+        first_token = None
+        compound_obj_type = None  # For types like "EXTERNAL TABLE", "MATERIALIZED VIEW"
         
-        # Get all valid object type strings from the grammar's object_type rule
-        # These should match the TOKEN TYPES (not values) in the grammar
-        valid_object_types = {
-            'TABLE', 'VIEW', 'WAREHOUSE', 'TASK', 'STREAM', 'PIPE', 'STAGE',
-            'DATABASE', 'SCHEMA', 'PROCEDURE', 'FUNCTION', 'SEQUENCE'
-        }
-        
-        for child in tree.children:
+        # First look for object_type node containing the type token
+        for child in children:
             if isinstance(child, Tree) and child.data == 'object_type':
-                # Look inside the object_type node for the actual object type token
-                for subchild in child.children:
-                    if isinstance(subchild, Token) and subchild.type in valid_object_types:
-                        obj_type = subchild.type
-                        obj_type_token = subchild
-                        break
-                if obj_type:
+                # Check children of object_type for specific tokens
+                obj_type_tokens = []
+                for type_token in child.children:
+                    if isinstance(type_token, Token):
+                        obj_type_tokens.append(type_token.type)
+                
+                # Check for single token types first
+                if len(obj_type_tokens) == 1 and obj_type_tokens[0] in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                    obj_type = obj_type_tokens[0]
+                    logger.debug(f"Found object type token: {obj_type}")
                     break
-            # Direct token child (older grammar style)
-            elif isinstance(child, Token) and child.type in valid_object_types:
-                obj_type = child.type
-                obj_type_token = child
+                
+                # Check for compound types
+                elif len(obj_type_tokens) > 1:
+                    # Handle known compound types
+                    if "EXTERNAL" in obj_type_tokens and "TABLE" in obj_type_tokens:
+                        obj_type = "TABLE"  # Base type is still TABLE
+                        compound_obj_type = "EXTERNAL_TABLE"
+                    elif "MATERIALIZED" in obj_type_tokens and "VIEW" in obj_type_tokens:
+                        obj_type = "VIEW"  # Base type is still VIEW
+                        compound_obj_type = "MATERIALIZED_VIEW"
+                    elif "EXTERNAL" in obj_type_tokens and "FUNCTION" in obj_type_tokens:
+                        obj_type = "FUNCTION"  # Base type is still FUNCTION
+                        compound_obj_type = "EXTERNAL_FUNCTION"
+                    
+                    if obj_type:
+                        logger.debug(f"Found compound object type: {compound_obj_type} (base: {obj_type})")
+                        break
+                
+        # If no object_type node, fallback to direct token search
+        if not obj_type:
+            # Check for direct object type tokens like TABLE, VIEW, etc. as direct children
+            for i, child in enumerate(children):
+                if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                    obj_type = child.type
+                    logger.debug(f"Found direct object type token: {obj_type}")
+                    break
+
+            # If still not found, look for DROP followed by object type tokens
+            if not obj_type:
+                found_drop = False
+                obj_type_tokens = []
+                
+                for i, child in enumerate(children):
+                    if isinstance(child, Token):
+                        if child.type == 'DROP':
+                            found_drop = True
+                        # If we found DROP, collect potential object type tokens
+                        elif found_drop:
+                            obj_type_tokens.append(child.type)
+                            
+                            # Try to determine the type based on collected tokens
+                            if child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                                if len(obj_type_tokens) == 1:
+                                    # Simple case: DROP followed by single type
+                                    obj_type = child.type
+                                    break
+                                else:
+                                    # Check for compound types
+                                    # Flatten the compound type detection to avoid nested breaks
+                                    compound_found = False
+                                    
+                                    if "EXTERNAL" in obj_type_tokens and "TABLE" in obj_type_tokens:
+                                        obj_type = "TABLE"
+                                        compound_obj_type = "EXTERNAL_TABLE"
+                                        compound_found = True
+                                    elif "MATERIALIZED" in obj_type_tokens and "VIEW" in obj_type_tokens:
+                                        obj_type = "VIEW"
+                                        compound_obj_type = "MATERIALIZED_VIEW"
+                                        compound_found = True
+                                    elif "EXTERNAL" in obj_type_tokens and "FUNCTION" in obj_type_tokens:
+                                        obj_type = "FUNCTION"
+                                        compound_obj_type = "EXTERNAL_FUNCTION"
+                                        compound_found = True
+                                    
+                                    if compound_found:
+                                        break
+
+        logger.debug(f"Drop statement object type identified: {obj_type}, compound: {compound_obj_type}")
+        
+        # Find qualified_name node for object name
+        qual_name_node = None
+        for child in children:
+            if isinstance(child, Tree) and child.data == 'qualified_name':
+                qual_name_node = child
                 break
         
-        if not obj_type:
-            logger.warning(f"Could not determine object type in DROP statement: {tree.pretty()}")
-            # Attempt to infer from the node data if possible (less reliable)
-            if tree.data.startswith('drop_') and tree.data.endswith('_stmt'):
-                 inferred_type = tree.data.replace('drop_', '').replace('_stmt', '').upper()
-                 if inferred_type in valid_object_types:
-                      obj_type = inferred_type
-                      logger.info(f"Inferred object type '{obj_type}' from node data in DROP statement.")
-                 else:
-                     return # Still couldn't determine type
-            else:
-                 return # Exit if type unknown
-        
-        # Find the object name
-        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
         if qual_name_node:
             obj_name = self._extract_qualified_name(qual_name_node)
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
-            # Use the object type token for location if name token isn't found (e.g., only obj type present)
-            node_for_loc = first_token if first_token else obj_type_token 
+            logger.debug(f"Found object name: {obj_name}")
+        
+        # Record the object reference and statement
+        if obj_type and obj_name and first_token:
+            # Set last_drop_object_type for special handling in engine
+            self.engine.last_drop_object_type = obj_type
+            logger.debug(f"Setting engine.last_drop_object_type to {obj_type}")
             
-            if obj_name and node_for_loc:
-                action = "DROP"
-                logger.debug(f"Found {obj_type} being dropped: {obj_name}")
-                self._record_object_reference(obj_name, obj_type, action, node_for_loc)
-                
-                # Make sure to record the specific DROP_X destructive statement
-                specific_stmt_type = f"DROP_{obj_type}"
-                self.engine.record_destructive_statement(specific_stmt_type, tree, self.current_file)
-                # Also record the specific statement count here
-                logger.debug(f"VISITOR: Recording specific statement type: {specific_stmt_type}")
-                self.engine.record_statement(specific_stmt_type, tree, self.current_file)
+            # Determine the appropriate action based on object type
+            if compound_obj_type:
+                action = f"DROP_{compound_obj_type}"
+            elif obj_type == "SHARE":
+                action = "DROP_SHARE"
+            elif obj_type == "INTEGRATION":
+                action = "DROP_INTEGRATION"
+            elif obj_type == "PIPE":
+                action = "DROP_PIPE"
             else:
-                 logger.warning(f"Could not extract name or location token for DROP {obj_type} statement: {tree.pretty()}")
+                action = "DROP"
+                
+            # Record the object reference
+            self._record_object_reference(obj_name, obj_type, action, first_token)
+            
+            # Record the specific DROP_X statement
+            if compound_obj_type:
+                specific_stmt_type = f"DROP_{compound_obj_type}"
+            else:
+                specific_stmt_type = f"DROP_{obj_type}"
+            
+            logger.debug(f"Recording statement count for {specific_stmt_type}")
+            self.engine.record_statement(specific_stmt_type, tree, self.current_file)
+            
+            # Record it as a destructive statement
+            logger.debug(f"Recording destructive statement for {specific_stmt_type}")
+            self.engine.record_destructive_statement(specific_stmt_type, tree, self.current_file)
         else:
-             logger.warning(f"Could not find qualified_name node in DROP {obj_type} statement: {tree.pretty()}")
-        # Recurse into nested SQL (expressions, where clauses) to capture dependencies
-        for child in tree.children:
-            if isinstance(child, Tree):
-                self.visit(child)
+            logger.warning(f"Could not extract all required information from DROP statement. Type={obj_type}, Name={obj_name}, Token found={first_token is not None}")
+            # Default to generic DROP statement
+            self.engine.record_destructive_statement("DROP", tree, self.current_file)
 
     def use_stmt(self, tree: Tree):
         """Visits `use_stmt` nodes. Extracts the `object_type` and name.
@@ -776,8 +1047,16 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             if func_name and first_token:
                 logger.debug(f"Found function creation: {func_name}")
                 self._record_object_reference(func_name, "FUNCTION", "CREATE", first_token)
+                # Record the statement count
+                self.engine.record_statement("CREATE_FUNCTION", tree, self.current_file)
+            else:
+                logger.warning(f"Create Function: Failed to extract name or token from {func_name_node.pretty()}")
+                # Attempt to record statement count even if object recording fails
+                self.engine.record_statement("CREATE_FUNCTION", tree, self.current_file)
         else:
-             logger.warning(f"Could not reliably determine function name in create_function_stmt: {tree.pretty()}")
+            logger.warning(f"Could not reliably determine function name in create_function_stmt: {tree.pretty()}")
+            # Still record the statement count even if we couldn't extract the function name
+            self.engine.record_statement("CREATE_FUNCTION", tree, self.current_file)
 
     def function_call(self, tree: Tree):
         """Visits `function_call` nodes. Extracts the function name.
@@ -919,6 +1198,17 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if stage_name and first_token:
                 self._record_object_reference(stage_name, "STAGE", "CREATE", first_token)
+                # Record the statement count
+                self.engine.record_statement("CREATE_STAGE", tree, self.current_file)
+            else:
+                logger.warning(f"Create Stage: Failed to extract name or token from {qual_name_node.pretty()}")
+                # Attempt to record statement count even if object recording fails
+                self.engine.record_statement("CREATE_STAGE", tree, self.current_file)
+        else:
+            # If no qualified name was found at all, still record the statement
+            logger.warning("Create Stage: No qualified_name node found in tree")
+            self.engine.record_statement("CREATE_STAGE", tree, self.current_file)
+            
         # Extract FILE_FORMAT and URL references if present
         for child in tree.children:
             if isinstance(child, Tree) and child.data == 'stage_param':
@@ -977,6 +1267,17 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
             if format_name and first_token:
                 self._record_object_reference(format_name, "FILE_FORMAT", "CREATE", first_token)
+                # Record the statement count
+                self.engine.record_statement("CREATE_FILE_FORMAT", tree, self.current_file)
+            else:
+                logger.warning(f"Create File Format: Failed to extract name or token from {qual_name_node.pretty()}")
+                # Attempt to record statement count even if object recording fails
+                self.engine.record_statement("CREATE_FILE_FORMAT", tree, self.current_file)
+        else:
+            # If no qualified name was found at all, still record the statement
+            logger.warning("Create File Format: No qualified_name node found in tree")
+            self.engine.record_statement("CREATE_FILE_FORMAT", tree, self.current_file)
+            
         # Extract TYPE and file format options
         type_value = None
         for child in tree.children:
@@ -1346,21 +1647,88 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
 
     # Generic handler for simple qualified_name-based statement visitors
     def _handle_simple_qn_stmt(self, tree: Tree, obj_type: str, action: str, prefix: str):
-        """Generic handler for simple qualified_name-based statements."""
+        """Generic handler for simple qualified_name-based statements.
+
+        Prioritizes finding a qualified_name node. If found, uses its last
+        identifier token. If not found, falls back to the last direct
+        IDENTIFIER token child of the statement node.
+        """
         self._debug_tree(tree, prefix)
-        # Find the qualified_name node
+        name = None
+        token = None
+
+        # 1. Try finding a qualified_name node first
         qual_node = self._find_first_child_by_name(tree, 'qualified_name')
-        if not qual_node:
-            return
-        # Extract the object name and its first token for location
-        name = self._extract_qualified_name(qual_node)
-        token = next((t for t in qual_node.children if isinstance(t, Token)), None)
-        # Skip if name or token missing
+        if qual_node:
+            name = self._extract_qualified_name(qual_node)
+            # Try to get the *last* identifier token from the qualified name
+            token = next(reversed([t for t in qual_node.children if isinstance(t, Token) and t.type == 'IDENTIFIER']), None)
+            if name and token:
+                logger.debug(f"{prefix}: Found qualified_name '{name}', using last token '{token.value}'.")
+            elif name:
+                # If name extracted but no suitable token, try first token as fallback
+                token = next((t for t in qual_node.children if isinstance(t, Token)), None)
+                if token:
+                    logger.warning(f"{prefix}: Found qualified_name '{name}', but no IDENTIFIER token inside. Using first token '{token.value}' as fallback.")
+                else:
+                    logger.warning(f"{prefix}: Found qualified_name '{name}' but could not extract any token.")
+                    name = None # Invalidate if no token found
+            else:
+                logger.warning(f"{prefix}: Found qualified_name node but failed to extract name.")
+                name = None # Ensure name is None if extraction failed
+
+        # 2. If no qualified_name found or extraction failed, find the last direct IDENTIFIER token
         if not name or not token:
-            return
-        # Record the object reference and statement count
-        self._record_object_reference(name, obj_type, action, token)
-        self.engine.record_statement(action, tree, self.current_file)
+            logger.debug(f"{prefix}: No valid qualified_name found or extracted. Searching for last direct IDENTIFIER.")
+            direct_children = list(tree.children)
+            meaningful_identifiers = []
+            keywords_to_skip = {'IF', 'EXISTS', 'NOT'} # Add more SQL keywords if necessary
+
+            # Find all direct IDENTIFIER children, filtering keywords
+            for child in direct_children:
+                if isinstance(child, Token) and child.type == 'IDENTIFIER':
+                    if child.value.upper() not in keywords_to_skip:
+                        meaningful_identifiers.append(child)
+            
+            logger.debug(f"{prefix}: Found direct meaningful IDENTIFIERs: {[t.value for t in meaningful_identifiers]}")
+
+            if meaningful_identifiers:
+                last_identifier_token = meaningful_identifiers[-1]
+                # Check if we already found a name from qual_node but just lacked a token
+                if name and not token:
+                     token = last_identifier_token
+                     logger.debug(f"{prefix}: Using last IDENTIFIER '{token.value}' as token for previously found name '{name}'.")
+                # Otherwise, use this identifier as both name and token
+                elif not name:
+                     name = last_identifier_token.value
+                     token = last_identifier_token
+                     logger.debug(f"{prefix}: Fallback - Using last direct IDENTIFIER '{name}'.")
+            else:
+                 logger.warning(f"{prefix}: Fallback - Could not find any suitable direct IDENTIFIER token either.")
+
+
+        # 3. Recording
+        if name and token:
+            # Ensure the token is valid
+            if not isinstance(token, Token):
+                logger.error(f"{prefix}: Invalid token type ({type(token)}) for recording. Aborting object record.")
+                name = None # Prevent recording
+
+            if name: # Check name again
+                 logger.debug(f"{prefix}: Recording object reference: Name='{name}', Type='{obj_type}', Action='{action}' using token '{token.value}' ({token.type})")
+                 self._record_object_reference(name, obj_type, action, token)
+                 # Record the statement count using the specific action
+                 # This assumes the calling method (dynamic or explicit) passes the correct final action name
+                 logger.debug(f"{prefix}: Recording statement count: '{action}'") # Added specific log
+                 self.engine.record_statement(action, tree, self.current_file)
+            # else: The error log for invalid token handles this case
+
+        else:
+            logger.error(f"{prefix}: Failed to find valid object name or location token. Name='{name}', Token found: {token is not None}. Node: {tree.pretty()}")
+            # Still record the statement count even if object identification fails, using the provided action.
+            # Check if action is valid before recording?
+            logger.debug(f"{prefix}: Recording statement count '{action}' despite object failure.") # Added specific log
+            self.engine.record_statement(action, tree, self.current_file)
 
     # Dynamically register simple qualified_name statement visitors
     SIMPLE_QN_METHODS = [
@@ -1381,11 +1749,42 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         ('alter_authentication_policy_stmt', 'AUTHENTICATION_POLICY', 'ALTER_AUTHENTICATION_POLICY', 'Alter Authentication Policy'),
         ('drop_authentication_policy_stmt', 'AUTHENTICATION_POLICY', 'DROP_AUTHENTICATION_POLICY', 'Drop Authentication Policy'),
         ('create_resource_monitor_stmt', 'RESOURCE_MONITOR', 'CREATE_RESOURCE_MONITOR', 'Create Resource Monitor'),
+        ('create_share_stmt', 'SHARE', 'CREATE_SHARE', 'Create Share'),
+        ('alter_share_stmt', 'SHARE', 'ALTER_SHARE', 'Alter Share'),
+        ('drop_share_stmt', 'SHARE', 'DROP_SHARE', 'Drop Share'),
+        ('create_integration_stmt', 'INTEGRATION', 'CREATE_INTEGRATION', 'Create Integration'),
+        ('alter_integration_stmt', 'INTEGRATION', 'ALTER_INTEGRATION', 'Alter Integration'),
+        ('drop_integration_stmt', 'INTEGRATION', 'DROP_INTEGRATION', 'Drop Integration'),
+        ('create_external_table_stmt', 'EXTERNAL TABLE', 'CREATE_EXTERNAL_TABLE', 'Create External Table'),
+        ('alter_external_table_stmt', 'EXTERNAL TABLE', 'ALTER_EXTERNAL_TABLE', 'Alter External Table'),
+        ('drop_external_table_stmt', 'EXTERNAL TABLE', 'DROP_EXTERNAL_TABLE', 'Drop External Table'),
+        ('create_materialized_view_stmt', 'MATERIALIZED VIEW', 'CREATE_MATERIALIZED_VIEW', 'Create Materialized View'),
+        ('alter_materialized_view_stmt', 'MATERIALIZED VIEW', 'ALTER_MATERIALIZED_VIEW', 'Alter Materialized View'),
+        ('drop_materialized_view_stmt', 'MATERIALIZED VIEW', 'DROP_MATERIALIZED_VIEW', 'Drop Materialized View'),
+        ('create_external_function_stmt', 'EXTERNAL FUNCTION', 'CREATE_EXTERNAL_FUNCTION', 'Create External Function'),
+        ('alter_external_function_stmt', 'EXTERNAL FUNCTION', 'ALTER_EXTERNAL_FUNCTION', 'Alter External Function'),
+        ('drop_external_function_stmt', 'EXTERNAL FUNCTION', 'DROP_EXTERNAL_FUNCTION', 'Drop External Function'),
+        ('create_network_policy_stmt', 'NETWORK POLICY', 'CREATE_NETWORK_POLICY', 'Create Network Policy'),
+        ('alter_network_policy_stmt', 'NETWORK POLICY', 'ALTER_NETWORK_POLICY', 'Alter Network Policy'),
+        ('drop_network_policy_stmt', 'NETWORK POLICY', 'DROP_NETWORK_POLICY', 'Drop Network Policy'),
+        ('CREATE_REPLICATION_STMT', 'REPLICATION', 'CREATE_REPLICATION', 'Create Replication'),
+        ('ALTER_REPLICATION_STMT', 'REPLICATION', 'ALTER_REPLICATION', 'Alter Replication'),
+        ('CREATE_ACCOUNT_STMT', 'ACCOUNT', 'CREATE_ACCOUNT', 'Create Account'),
+        ('ALTER_ACCOUNT_STMT', 'ACCOUNT', 'ALTER_ACCOUNT', 'Alter Account'),
+        ('DROP_ACCOUNT_STMT', 'ACCOUNT', 'DROP_ACCOUNT', 'Drop Account'),
+        ('SHOW_ACCOUNTS_STMT', 'ACCOUNT', 'SHOW_ACCOUNTS', 'Show Accounts'),
+        ('ALTER_SESSION_STMT', 'SESSION', 'ALTER_SESSION', 'Alter Session'),
+        ('SHOW_PARAMETERS_STMT', 'SESSION', 'SHOW_PARAMETERS', 'Show Parameters'),
+        ('LIST_STMT', 'STAGE', 'LIST_STAGE', 'List Stage'),
+        ('GET_STMT', 'STAGE', 'GET_STAGE', 'Get Stage'),
+        ('REMOVE_STMT', 'STAGE', 'REMOVE_STAGE', 'Remove Stage'),
+        ('ALTER_STAGE_STMT', 'STAGE', 'ALTER_STAGE', 'Alter Stage'),
     ]
     for _name, _obj_type, _action, _label in SIMPLE_QN_METHODS:
         # Use locals() to define methods in class namespace without referencing SQLVisitor
-        locals()[_name] = (lambda obj_type, action, label: \
-            (lambda self, tree: self._handle_simple_qn_stmt(tree, obj_type, action, f"{label} Statement"))
+        locals()[_name.lower()] = (
+            lambda obj_type, action, label: 
+                (lambda self, tree: self._handle_simple_qn_stmt(tree, obj_type, action, f"{label} Statement"))
         )(_obj_type, _action, _label)
 
     def create_task_stmt(self, tree: Tree):
@@ -1971,3 +2370,56 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         arg_list_node = self._find_first_child_by_name(tree, 'expr_list')
         if arg_list_node:
             self.visit(arg_list_node)
+
+    def create_schema_stmt(self, tree: Tree):
+        """Visits `create_schema_stmt` nodes. Extracts the `qualified_name` of the schema and handles CLONE."""
+        self._debug_tree(tree, "Create Schema Statement")
+        # Record schema creation
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            schema_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if schema_name and first_token:
+                logger.debug(f"Found schema creation: {schema_name}")
+                self._record_object_reference(schema_name, "SCHEMA", "CREATE", first_token)
+                # Record the CREATE_SCHEMA statement count
+                self.engine.record_statement("CREATE_SCHEMA", tree, self.current_file)
+        # Record CLONE source schemas
+        for clone in tree.find_data('clone_clause'):
+            qn = self._find_first_child_by_name(clone, 'qualified_name')
+            if qn:
+                source = self._extract_qualified_name(qn)
+                tok = next((t for t in qn.children if isinstance(t, Token)), None)
+                if source and tok:
+                    self._record_object_reference(source, "SCHEMA", "CLONE", tok)
+
+    def drop_share_stmt(self, tree: Tree):
+        """Visits `drop_share_stmt` nodes. Extracts the share being dropped.
+
+        Identifies the share object being dropped.
+        Records found objects under 'DROP_SHARE' action.
+        Also ensures the destructive statement is recorded.
+        """
+        self._debug_tree(tree, "Drop Share Statement")
+        
+        # Find qualified_name node for share name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        
+        if qual_name_node:
+            share_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            
+            if share_name and first_token:
+                logger.debug(f"Found share to drop: {share_name}")
+                # Record the object reference with action "DROP_SHARE" instead of "DROP"
+                self._record_object_reference(share_name, "SHARE", "DROP_SHARE", first_token)
+                
+                # Record the specific DROP_SHARE statement
+                self.engine.record_statement("DROP_SHARE", tree, self.current_file)
+                
+                # Record it as a destructive statement
+                self.engine.record_destructive_statement("DROP_SHARE", tree, self.current_file)
+            else:
+                logger.warning(f"Could not extract share name from DROP SHARE statement")
+                # Default to generic DROP statement
+                self.engine.record_destructive_statement("DROP", tree, self.current_file)

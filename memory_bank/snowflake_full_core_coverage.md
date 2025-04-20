@@ -120,12 +120,12 @@ integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
 **Test:** `tests/grammar/network_policy.sql`
 
 ### 5.8 Replication
-1. Add `create_replication_stmt`, `alter_replication_stmt`, `show_replication_stmt`, `failover_stmt`.
+1. Add `create_replication_stmt`, `alter_replication_stmt`, `show_replication_stmt`.
 2. Integrate under `statement`.
 **Test:** `tests/grammar/replication.sql`
 
 ### 5.9 Account-Level Commands
-1. Define `create_account_stmt`, `alter_account_stmt`, `drop_account_stmt`, `show_accounts_stmt`, `failover_recovery_stmt`.
+1. Define `create_account_stmt`, `alter_account_stmt`, `drop_account_stmt`, `show_accounts_stmt`
 2. Integrate.
 **Test:** `tests/grammar/account.sql`
 
@@ -223,12 +223,10 @@ stmt_type_mapping.update({
     'CREATE_REPLICATION_STMT':      'CREATE_REPLICATION',
     'ALTER_REPLICATION_STMT':       'ALTER_REPLICATION',
     'SHOW_REPLICATION_STMT':        'SHOW_REPLICATION',
-    'FAILOVER_STMT':                'FAILOVER',
     'CREATE_ACCOUNT_STMT':          'CREATE_ACCOUNT',
     'ALTER_ACCOUNT_STMT':           'ALTER_ACCOUNT',
     'DROP_ACCOUNT_STMT':            'DROP_ACCOUNT',
     'SHOW_ACCOUNTS_STMT':           'SHOW_ACCOUNTS',
-    'FAILOVER_RECOVERY_STMT':       'FAILOVER_RECOVERY',
     'ALTER_SESSION_STMT':           'ALTER_SESSION',
     'SHOW_PARAMETERS_STMT':         'SHOW_PARAMETERS',
     'LIST_STMT':                    'LIST_STAGE',
@@ -261,12 +259,10 @@ SIMPLE_QN_METHODS += [
     ('create_replication_stmt', 'REPLICATION', 'CREATE_REPLICATION', 'Create Replication'),
     ('alter_replication_stmt',  'REPLICATION', 'ALTER_REPLICATION',  'Alter Replication'),
     ('show_replication_stmt',   'REPLICATION', 'SHOW_REPLICATION',   'Show Replication'),
-    ('failover_stmt', 'REPLICATION', 'FAILOVER', 'Failover'),
     ('create_account_stmt', 'ACCOUNT', 'CREATE_ACCOUNT', 'Create Account'),
     ('alter_account_stmt',  'ACCOUNT', 'ALTER_ACCOUNT',  'Alter Account'),
     ('drop_account_stmt',   'ACCOUNT', 'DROP_ACCOUNT',   'Drop Account'),
     ('show_accounts_stmt', 'ACCOUNT', 'SHOW_ACCOUNTS', 'Show Accounts'),
-    ('failover_recovery_stmt', 'ACCOUNT', 'FAILOVER_RECOVERY', 'Failover Recovery'),
     ('alter_session_stmt', 'SESSION', 'ALTER_SESSION', 'Alter Session'),
     ('show_parameters_stmt', 'SESSION', 'SHOW_PARAMETERS', 'Show Parameters'),
     ('list_stmt', 'STAGE', 'LIST_STAGE', 'List Stage'),
