@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Formats analysis results into JSON.
 """
@@ -6,10 +7,11 @@ import json
 from dataclasses import asdict, is_dataclass
 from sql_analyzer.analysis.models import AnalysisResult
 from collections import defaultdict
+from typing import Any, Dict, List, Optional
 
 class DataclassJSONEncoder(json.JSONEncoder):
     """A JSON encoder that handles dataclasses and specific nested structures."""
-    def default(self, o):
+    def default(self, o: Any) -> Any:
         if is_dataclass(o):
             # 1. Convert dataclass to dict first
             data = asdict(o)
@@ -20,7 +22,7 @@ class DataclassJSONEncoder(json.JSONEncoder):
             if 'object_interactions' in data and isinstance(data['object_interactions'], dict):
                  # Check keys/values to be safe, handle defaultdict converted by asdict
                  if all(isinstance(k, tuple) for k in data['object_interactions'].keys()):
-                    new_interactions = {}
+                    new_interactions: Dict[str, List[Any]] = {}
                     for key_tuple, value_set in data['object_interactions'].items():
                         str_key = f"{key_tuple[0]}:{key_tuple[1]}"
                         # Ensure value is processed (asdict might leave sets)
@@ -39,10 +41,10 @@ class DataclassJSONEncoder(json.JSONEncoder):
             # Process object_dependencies: Convert tuple keys to strings and values to list of dicts
             if 'object_dependencies' in data and isinstance(data['object_dependencies'], dict):
                 if all(isinstance(k, tuple) for k in data['object_dependencies'].keys()):
-                    new_dependencies = {}
+                    new_dependencies: Dict[str, List[Dict[str, str]]] = {}
                     for key_tuple, deps in data['object_dependencies'].items():
                         parent_key = f"{key_tuple[0]}:{key_tuple[1]}"
-                        dep_list = []
+                        dep_list: List[Dict[str, str]] = []
                         for dep in deps:
                             # Each dep is (dependent_type, dependent_name, relationship_type)
                             dep_list.append({
@@ -71,23 +73,20 @@ def format_json(result: AnalysisResult) -> str:
     """Formats the analysis result into a JSON string by constructing a pure-Python dict."""
     from dataclasses import asdict
 
-    # Convert counts
-    statement_counts = dict(result.statement_counts)
-    destructive_counts = dict(result.destructive_counts)
-    # Objects found
-    objects_found = [asdict(obj) for obj in result.objects_found]
-    # Errors
-    errors = result.errors
-    # Object interactions: convert tuple keys
-    object_interactions = {
+    # Typed variables for JSON serialization
+    statement_counts: Dict[str, int] = dict(result.statement_counts)
+    destructive_counts: Dict[str, int] = dict(result.destructive_counts)
+    objects_found: List[Dict[str, Any]] = [asdict(obj) for obj in result.objects_found]
+    errors: List[Dict[str, Any]] = result.errors
+    object_interactions: Dict[str, List[str]] = {
         f"{obj_type}:{name}": sorted(list(actions))
         for (obj_type, name), actions in result.object_interactions.items()
     }
-    # Object dependencies: convert tuple keys and tuples to dicts
-    object_dependencies = {}
+    object_dependencies: Dict[str, List[Dict[str, str]]] = {}
+
     for (obj_type, name), deps in result.object_dependencies.items():
-        key = f"{obj_type}:{name}"
-        dep_list = []
+        key: str = f"{obj_type}:{name}"
+        dep_list: List[Dict[str, str]] = []
         for dep in deps:
             dep_list.append({
                 "dependent_type": dep[0],
@@ -97,7 +96,7 @@ def format_json(result: AnalysisResult) -> str:
         object_dependencies[key] = dep_list
 
     # Build final dict
-    result_dict = {
+    result_dict: Dict[str, Any] = {
         "statement_counts": statement_counts,
         "destructive_counts": destructive_counts,
         "objects_found": objects_found,

@@ -4,6 +4,8 @@ setup(
     name="sql-analyzer",
     version="0.1.0",
     packages=find_packages(),
+    package_data={"sql_analyzer": ["py.typed"]},
+    include_package_data=True,
     install_requires=[
         "lark>=1.0.0",
         "sqlglot",

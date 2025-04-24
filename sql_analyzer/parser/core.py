@@ -6,17 +6,17 @@ and providing a function to parse SQL text into an Abstract Syntax Tree (AST).
 It handles grammar loading errors and basic validation of input text.
 """
 
-import os
+from __future__ import annotations
 import logging
 from pathlib import Path
 from lark import Lark, Tree, LarkError
-from typing import Optional
+from typing import Optional, Any
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 # Determine the absolute path to the grammar file
 # Assumes grammar/ is in the parent directory of this file's directory (parser/)
-grammar_path = Path(__file__).parent.parent / "grammar" / "snowflake.lark"
+grammar_path: Path = Path(__file__).parent.parent / "grammar" / "snowflake.lark"
 
 # --- Lark Parser Configuration ---
 # parser='earley': Chosen for its ability to handle ambiguities, which can be common
@@ -31,8 +31,8 @@ try:
     # Attempt to load the grammar file relative to this script's location
     # Using propagate_positions=True to get line/column info for errors/analysis
     # maybe_placeholders=False is generally safer for SQL
-    sql_parser = Lark.open(
-        grammar_path,
+    sql_parser: Optional[Lark] = Lark.open(  # type: ignore
+        str(grammar_path),
         parser='earley',
         propagate_positions=True,
         maybe_placeholders=False,
@@ -46,7 +46,7 @@ except Exception as e:
     print(f"Error loading grammar: {e}")
     sql_parser = None
 
-def parse_sql(sql_text: str) -> Optional[Tree]:
+def parse_sql(sql_text: str) -> Optional[Tree[Any]]:
     """
     Parses the given SQL text using the loaded Lark grammar.
 
@@ -71,7 +71,8 @@ def parse_sql(sql_text: str) -> Optional[Tree]:
         return None
 
     try:
-        tree = sql_parser.parse(sql_text)
+        # Lark.parse returns a Tree[Any]
+        tree: Tree[Any] = sql_parser.parse(sql_text)
         return tree
     except LarkError as e:
         # Log the error and re-raise without printing to stdout

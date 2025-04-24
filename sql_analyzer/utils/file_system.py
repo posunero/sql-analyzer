@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 File system utilities.
 
@@ -10,7 +12,7 @@ from pathlib import Path
 import logging
 from typing import Iterator, Optional
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 def find_sql_files(start_path: str) -> Iterator[Path]:
     """Finds all files with the `.sql` extension within a given path.
@@ -28,7 +30,7 @@ def find_sql_files(start_path: str) -> Iterator[Path]:
     Raises:
         FileNotFoundError: If the `start_path` does not exist.
     """
-    path = Path(start_path)
+    path: Path = Path(start_path)
     if not path.exists():
         logger.error(f"Starting path does not exist: {start_path}")
         raise FileNotFoundError(f"The specified path does not exist: {start_path}")
@@ -41,7 +43,7 @@ def find_sql_files(start_path: str) -> Iterator[Path]:
             logger.warning(f"Input file is not a .sql file, skipping: {path}")
     elif path.is_dir():
         logger.info(f"Searching for .sql files recursively in directory: {path}")
-        count = 0
+        count: int = 0
         for item in path.rglob('*.sql'):
             if item.is_file():
                 logger.debug(f"Found SQL file: {item}")
@@ -65,7 +67,7 @@ def read_file_content(file_path: Path) -> Optional[str]:
     """
     try:
         logger.debug(f"Reading content from: {file_path}")
-        content = file_path.read_text(encoding='utf-8')
+        content: str = file_path.read_text(encoding='utf-8')
         logger.debug(f"Successfully read {len(content)} characters from {file_path}")
         return content
     except IOError as e:

@@ -2,11 +2,13 @@
 Manages the generation of reports in different formats.
 """
 
+from __future__ import annotations
 from ..analysis.models import AnalysisResult
 from .formats import text, json, html # Add html import
+from typing import Callable, Dict, Optional
 
 # Map format strings to formatter functions
-_FORMATTERS = {
+_FORMATTERS: Dict[str, Callable[..., str]] = {
     'text': text.format_text,
     'json': json.format_json,
     'html': html.format_html,
@@ -33,7 +35,7 @@ def generate_report(result: AnalysisResult, format_name: str, verbose: bool = Fa
     Raises:
         ValueError: If the requested format_name is not supported.
     """
-    formatter = _FORMATTERS.get(format_name.lower())
+    formatter: Optional[Callable[..., str]] = _FORMATTERS.get(format_name.lower())
 
     if formatter:
         # Pass verbose flag only if the formatter accepts it (currently only text)

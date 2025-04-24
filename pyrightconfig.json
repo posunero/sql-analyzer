@@ -1,0 +1,7 @@
+{
+  "include": ["sql_analyzer"],
+  "exclude": ["sql_analyzer/tests", "tests", ".venv", "__pycache__", "sql_analyzer.egg-info", ".git", ".pytest_cache", "sql_analyzer/parser/visitor.py"],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "strict",
+  "reportMissingImports": false
+} 

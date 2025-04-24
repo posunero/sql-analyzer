@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Handles command-line argument parsing.
 """
@@ -5,7 +7,7 @@ Handles command-line argument parsing.
 import argparse
 import logging
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 def parse_arguments() -> argparse.Namespace:
     """Parses and validates command-line arguments for the SQL analyzer.
@@ -13,7 +15,7 @@ def parse_arguments() -> argparse.Namespace:
     Returns:
         An argparse.Namespace object containing the parsed arguments.
     """
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Analyzes Snowflake SQL files to extract metadata, statistics, and object references.",
     )
 
@@ -77,6 +79,6 @@ def parse_arguments() -> argparse.Namespace:
     #     help='Optional path to write the output report file instead of printing to stdout.'
     # )
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
     logger.debug(f"Arguments parsed: {args}")
     return args 

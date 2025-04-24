@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Formats analysis results into a human-readable text summary.
 """
@@ -5,6 +7,7 @@ Formats analysis results into a human-readable text summary.
 import io
 from collections import Counter
 from sql_analyzer.analysis.models import AnalysisResult, ObjectInfo
+from typing import List, Tuple, Dict, Set
 
 def format_text(result: AnalysisResult, verbose: bool = False) -> str:
     """Formats the analysis result into a plain text string.
@@ -55,16 +58,16 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
     if result.objects_found:
         output.write(f"Total objects found: {len(result.objects_found)}\n")
         # Group by type and action
-        objects_by_type_action = Counter((obj.object_type, obj.action) for obj in result.objects_found)
-        sorted_obj_summary = sorted(objects_by_type_action.items())
+        objects_by_type_action: Counter[Tuple[str, str], int] = Counter((obj.object_type, obj.action) for obj in result.objects_found)
+        sorted_obj_summary: List[Tuple[Tuple[str, str], int]] = sorted(objects_by_type_action.items())
 
         output.write("Summary by Type and Action:\n")
         for (obj_type, action), count in sorted_obj_summary:
              output.write(f"  - {action} {obj_type}: {count}\n")
 
         # Highlight STAGE, FILE_FORMAT, WAREHOUSE, and TASK objects
-        important_obj_types = ["STAGE", "FILE_FORMAT", "WAREHOUSE", "TASK", "FUNCTION", "DATABASE"]
-        special_objs = [obj for obj in result.objects_found if obj.object_type in important_obj_types]
+        important_obj_types: List[str] = ["STAGE", "FILE_FORMAT", "WAREHOUSE", "TASK", "FUNCTION", "DATABASE"]
+        special_objs: List[ObjectInfo] = [obj for obj in result.objects_found if obj.object_type in important_obj_types]
         if special_objs:
             output.write("\nSpecial Object Types:\n")
             # Group by object type
@@ -73,7 +76,7 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
                 if type_objs:
                     output.write(f"  {obj_type} Objects:\n")
                     # Group by action within type
-                    by_action = {}
+                    by_action: Dict[str, List[ObjectInfo]] = {}
                     for obj in type_objs:
                         if obj.action not in by_action:
                             by_action[obj.action] = []
@@ -100,7 +103,9 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
         output.write(f"Total objects with interactions: {len(result.object_interactions)}\n")
         
         # Sort by object type, then by name
-        sorted_interactions = sorted(result.object_interactions.items(), key=lambda item: (item[0][0], item[0][1]))
+        sorted_interactions: List[Tuple[Tuple[str, str], Set[str]]] = sorted(
+            result.object_interactions.items(), key=lambda item: (item[0][0], item[0][1])
+        )
         
         for (obj_type, obj_name), actions in sorted_interactions:
             # Sort actions alphabetically, but place destructive actions first
@@ -126,13 +131,15 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
         output.write(f"Total objects with dependencies: {len(result.object_dependencies)}\n")
         
         # Sort by object type, then by name
-        sorted_dependencies = sorted(result.object_dependencies.items(), key=lambda item: (item[0][0], item[0][1]))
+        sorted_dependencies: List[Tuple[Tuple[str, str], Set[Tuple[str, str, str]]]] = sorted(
+            result.object_dependencies.items(), key=lambda item: (item[0][0], item[0][1])
+        )
         
         for (obj_type, obj_name), dependencies in sorted_dependencies:
             output.write(f"  - {obj_type}: {obj_name}\n")
             
             # Group dependencies by relationship type
-            by_relationship = {}
+            by_relationship: Dict[str, List[Tuple[str, str]]] = {}
             for dep_type, dep_name, rel_type in dependencies:
                 if rel_type not in by_relationship:
                     by_relationship[rel_type] = []

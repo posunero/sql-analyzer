@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Centralized functions for reporting specific types of errors via logging.
 
@@ -10,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-logger = logging.getLogger(__name__) # Logger specific to this module
+logger: logging.Logger = logging.getLogger(__name__)  # Logger specific to this module
 
 def report_parsing_error(file_path: Path | str, line: Optional[int], message: str) -> None:
     """Logs a parsing error encountered in a specific file and line.

@@ -5,6 +5,7 @@ This module contains the primary classes for storing information extracted
 from SQL files, such as statement counts, object details, and errors.
 """
 
+from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Set, DefaultDict, Optional, Tuple
 from collections import defaultdict
