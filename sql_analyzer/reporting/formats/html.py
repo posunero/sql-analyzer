@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 from ...analysis.models import AnalysisResult
 from jinja2 import Environment, FileSystemLoader, select_autoescape, PackageLoader
 import datetime
@@ -28,7 +28,7 @@ def format_html(result: AnalysisResult, **kwargs: Any) -> str:
     html_output: str = template.render(context)
     return html_output
 
-def format_validation_results(validation_results: Dict[str, Tuple[bool, str]]) -> str:
+def format_validation_results(validation_results: Dict[str, Tuple[bool, Optional[str]]]) -> str:
     """Format validation results as HTML."""
     # Use package loader to find templates in reporting/templates
     env = Environment(

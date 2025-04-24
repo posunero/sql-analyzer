@@ -19,7 +19,7 @@ def test_validate_sql_file_valid():
     valid_file = VALID_DIR / 'simple_select.sql'
     is_valid, error_msg = validate_sql_file(valid_file)
     assert is_valid
-    assert error_msg == ''
+    assert error_msg is None
 
 
 def test_validate_sql_file_invalid():

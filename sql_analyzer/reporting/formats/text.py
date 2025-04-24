@@ -58,7 +58,7 @@ def format_text(result: AnalysisResult, verbose: bool = False) -> str:
     if result.objects_found:
         output.write(f"Total objects found: {len(result.objects_found)}\n")
         # Group by type and action
-        objects_by_type_action: Counter[Tuple[str, str], int] = Counter((obj.object_type, obj.action) for obj in result.objects_found)
+        objects_by_type_action: Counter[Tuple[str, str]] = Counter((obj.object_type, obj.action) for obj in result.objects_found)
         sorted_obj_summary: List[Tuple[Tuple[str, str], int]] = sorted(objects_by_type_action.items())
 
         output.write("Summary by Type and Action:\n")

@@ -55,12 +55,12 @@ class AnalysisResult:
             recording dependencies between objects.
         current_file: The path of the current file being processed.
     """
-    statement_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
-    objects_found: List[ObjectInfo] = field(default_factory=list)
-    errors: List[Dict[str, object]] = field(default_factory=list) # Keys: 'file', 'line', 'message'
-    destructive_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))
-    object_interactions: DefaultDict[Tuple[str, str], Set[str]] = field(default_factory=lambda: defaultdict(set))
-    object_dependencies: DefaultDict[Tuple[str, str], Set[Tuple[str, str, str]]] = field(default_factory=lambda: defaultdict(set))
+    statement_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))  # type: ignore[reportAssignmentType]
+    objects_found: List[ObjectInfo] = field(default_factory=list)  # type: ignore[reportAssignmentType]
+    errors: List[Dict[str, object]] = field(default_factory=list)  # type: ignore[reportAssignmentType]
+    destructive_counts: DefaultDict[str, int] = field(default_factory=lambda: defaultdict(int))  # type: ignore[reportAssignmentType]
+    object_interactions: DefaultDict[Tuple[str, str], Set[str]] = field(default_factory=lambda: defaultdict(set))  # type: ignore[reportAssignmentType]
+    object_dependencies: DefaultDict[Tuple[str, str], Set[Tuple[str, str, str]]] = field(default_factory=lambda: defaultdict(set))  # type: ignore[reportAssignmentType]
     current_file: str = ""
 
     def merge(self, other_result: 'AnalysisResult') -> None:
@@ -133,7 +133,6 @@ class AnalysisResult:
 
         # Check if this specific object info instance already exists in objects_found
         # This list might become less primary compared to object_interactions
-        obj_key = (name, object_type, action, file_path)
         if any(
             (obj.name == name and
              obj.object_type == object_type and

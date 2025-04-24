@@ -16,7 +16,6 @@ from sql_analyzer.parser import core as parser_core
 from lark import LarkError, Tree # Import specific Lark error
 from sql_analyzer.analysis import models as analysis_models
 from sql_analyzer.analysis import engine as analysis_engine
-from sql_analyzer.parser import visitor as parser_visitor
 from sql_analyzer.reporting import manager as reporting_manager
 from typing import List, Dict, Any, Optional, Tuple
 from sql_analyzer.analysis.engine import AnalysisEngine
@@ -152,11 +151,11 @@ def main() -> None:
                 try:
                     # --- Actual Parsing ---
                     # parse_sql returns Optional[Tree]; handle None for empty or uninitialized parser
-                    parse_tree_opt: Optional[Tree] = parser_core.parse_sql(content)
+                    parse_tree_opt: Optional[Tree[Any]] = parser_core.parse_sql(content)
                     if parse_tree_opt is None:
                         logger.warning(f"No parse tree generated for empty or invalid content: {file_path}")
                         continue
-                    parse_tree: Tree = parse_tree_opt
+                    parse_tree: Tree[Any] = parse_tree_opt
                     logger.debug(f"Successfully parsed {file_path}")
                     # --- End Actual Parsing ---
 

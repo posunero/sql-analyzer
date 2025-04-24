@@ -7,105 +7,63 @@ import json
 from dataclasses import asdict, is_dataclass
 from sql_analyzer.analysis.models import AnalysisResult
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
-
-class DataclassJSONEncoder(json.JSONEncoder):
-    """A JSON encoder that handles dataclasses and specific nested structures."""
-    def default(self, o: Any) -> Any:
-        if is_dataclass(o):
-            # 1. Convert dataclass to dict first
-            data = asdict(o)
-            
-            # 2. Manually process specific fields within the dict *after* asdict
-            
-            # Process object_interactions: Convert tuple keys to strings, set values to lists
-            if 'object_interactions' in data and isinstance(data['object_interactions'], dict):
-                 # Check keys/values to be safe, handle defaultdict converted by asdict
-                 if all(isinstance(k, tuple) for k in data['object_interactions'].keys()):
-                    new_interactions: Dict[str, List[Any]] = {}
-                    for key_tuple, value_set in data['object_interactions'].items():
-                        str_key = f"{key_tuple[0]}:{key_tuple[1]}"
-                        # Ensure value is processed (asdict might leave sets)
-                        processed_value = sorted(list(value_set)) if isinstance(value_set, set) else value_set
-                        new_interactions[str_key] = processed_value
-                    data['object_interactions'] = new_interactions # Replace with the processed dict
-
-            # Process statement_counts: Convert defaultdict to dict (if asdict didn't already)
-            if 'statement_counts' in data and isinstance(data['statement_counts'], defaultdict):
-                 data['statement_counts'] = dict(data['statement_counts'])
-                 
-            # Process destructive_counts: Convert defaultdict to dict
-            if 'destructive_counts' in data and isinstance(data['destructive_counts'], defaultdict):
-                 data['destructive_counts'] = dict(data['destructive_counts'])
-
-            # Process object_dependencies: Convert tuple keys to strings and values to list of dicts
-            if 'object_dependencies' in data and isinstance(data['object_dependencies'], dict):
-                if all(isinstance(k, tuple) for k in data['object_dependencies'].keys()):
-                    new_dependencies: Dict[str, List[Dict[str, str]]] = {}
-                    for key_tuple, deps in data['object_dependencies'].items():
-                        parent_key = f"{key_tuple[0]}:{key_tuple[1]}"
-                        dep_list: List[Dict[str, str]] = []
-                        for dep in deps:
-                            # Each dep is (dependent_type, dependent_name, relationship_type)
-                            dep_list.append({
-                                'dependent_type': dep[0],
-                                'dependent_name': dep[1],
-                                'relationship_type': dep[2]
-                            })
-                        new_dependencies[parent_key] = dep_list
-                    data['object_dependencies'] = new_dependencies
-
-            # 3. Return the modified dictionary for the base encoder to handle
-            return data 
-
-        # Fallback for non-dataclass types (e.g., if default is called on a raw set/defaultdict initially)
-        # This might not be strictly necessary if only AnalysisResult is passed initially,
-        # but kept for robustness.
-        if isinstance(o, defaultdict):
-            return dict(o)
-        if isinstance(o, set):
-            return sorted(list(o))
-            
-        # Let the base class handle standard types or raise errors for unknown ones
-        return super().default(o)
+from typing import Any, Dict, cast, Mapping, Set
 
 def format_json(result: AnalysisResult) -> str:
     """Formats the analysis result into a JSON string by constructing a pure-Python dict."""
-    from dataclasses import asdict
-
-    # Typed variables for JSON serialization
-    statement_counts: Dict[str, int] = dict(result.statement_counts)
-    destructive_counts: Dict[str, int] = dict(result.destructive_counts)
-    objects_found: List[Dict[str, Any]] = [asdict(obj) for obj in result.objects_found]
-    errors: List[Dict[str, Any]] = result.errors
-    object_interactions: Dict[str, List[str]] = {
-        f"{obj_type}:{name}": sorted(list(actions))
-        for (obj_type, name), actions in result.object_interactions.items()
-    }
-    object_dependencies: Dict[str, List[Dict[str, str]]] = {}
-
-    for (obj_type, name), deps in result.object_dependencies.items():
-        key: str = f"{obj_type}:{name}"
-        dep_list: List[Dict[str, str]] = []
-        for dep in deps:
-            dep_list.append({
-                "dependent_type": dep[0],
-                "dependent_name": dep[1],
-                "relationship_type": dep[2]
-            })
-        object_dependencies[key] = dep_list
-
-    # Build final dict
+    # Create a JSON-safe dict directly
     result_dict: Dict[str, Any] = {
-        "statement_counts": statement_counts,
-        "destructive_counts": destructive_counts,
-        "objects_found": objects_found,
-        "errors": errors,
-        "object_interactions": object_interactions,
-        "object_dependencies": object_dependencies,
+        # Basic counters
+        "statement_counts": dict(result.statement_counts),
+        "destructive_counts": dict(result.destructive_counts),
+        
+        # Objects and errors
+        "objects_found": [asdict(obj) for obj in result.objects_found],
+        "errors": result.errors,
         "current_file": result.current_file,
+        
+        # Process interactions
+        "object_interactions": {
+            f"{obj_type}:{name}": sorted(str(a) for a in actions)
+            for (obj_type, name), actions in result.object_interactions.items()
+        },
+        
+        # Process dependencies
+        "object_dependencies": {
+            f"{obj_type}:{name}": [
+                {
+                    "dependent_type": str(dep[0]),
+                    "dependent_name": str(dep[1]),
+                    "relationship_type": str(dep[2])
+                }
+                for dep in deps
+            ]
+            for (obj_type, name), deps in result.object_dependencies.items()
+        }
     }
-    return json.dumps(result_dict, indent=2)
+    
+    # Use a safe JSON encoder to handle remaining conversions
+    return json.dumps(result_dict, indent=2, cls=SafeJSONEncoder)
+
+class SafeJSONEncoder(json.JSONEncoder):
+    """JSON encoder that safely handles dataclasses, defaultdicts, and sets."""
+    def default(self, o: Any) -> Any:
+        # Handle dataclasses
+        if is_dataclass(o) and not isinstance(o, type):
+            return asdict(o)
+            
+        # Handle defaultdict
+        if isinstance(o, defaultdict):
+            # Cast to Mapping[Any, Any] for typing
+            return dict(cast(Mapping[Any, Any], o))
+            
+        # Handle sets
+        if isinstance(o, set):
+            # Cast to Set[Any] for typing
+            return sorted([str(item) for item in cast(Set[Any], o)])
+            
+        # Let the default encoder handle the rest
+        return super().default(o)
 
 # Ensure the directory exists if running this directly for testing (unlikely needed)
 # if __name__ == '__main__':

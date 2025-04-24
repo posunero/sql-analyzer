@@ -7,7 +7,6 @@ Provides functions for discovering SQL files within directories and reading
 their content, handling common file system errors.
 """
 
-import os
 from pathlib import Path
 import logging
 from typing import Iterator, Optional
