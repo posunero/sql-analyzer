@@ -41,10 +41,10 @@ try:
 except FileNotFoundError:
     print(f"Error: Grammar file not found at {grammar_path}")
     # Consider raising a custom exception or exiting if the grammar is essential
-    sql_parser = None
+    raise RuntimeError("SQL parser not initialized. Cannot parse SQL text.")
 except Exception as e:
     print(f"Error loading grammar: {e}")
-    sql_parser = None
+    raise RuntimeError("SQL parser not initialized. Cannot parse SQL text.")
 
 def parse_sql(sql_text: str) -> Optional[Tree[Any]]:
     """

@@ -1,0 +1,42 @@
+# Product Requirements Document (PRD): SQL Analyzer
+
+## Project Overview
+The SQL Analyzer is a command-line tool designed to parse, analyze, and report on SQL scripts, with a focus on the Snowflake SQL dialect. It provides validation, analysis, and reporting features to help developers and data engineers ensure the quality and correctness of their SQL code.
+
+## Goals
+- Parse Snowflake SQL scripts and generate an Abstract Syntax Tree (AST)
+- Analyze SQL files for common issues, best practices, and potential errors
+- Validate SQL scripts for syntax correctness
+- Generate reports in multiple formats (text, JSON, HTML)
+- Provide a user-friendly CLI for batch processing and automation
+
+## Key Features
+- **SQL Parsing:** Uses Lark grammar to parse Snowflake SQL into ASTs
+- **Analysis Engine:** Inspects parsed SQL for issues, counts statements, and collects errors
+- **Validation Mode:** Checks SQL files for syntax errors and reports them
+- **Reporting:** Outputs results in text, JSON, or HTML formats
+- **CLI Interface:** Supports batch processing, fail-fast mode, and configurable logging
+- **Extensibility:** Modular design for adding new analysis rules or supporting other SQL dialects
+- **Error Handling:** Robust error reporting for file I/O, parsing, and analysis errors
+
+## Supported SQL Dialect
+- Snowflake SQL (via custom Lark grammar)
+
+## Input/Output
+- **Input:** One or more `.sql` files or directories containing SQL scripts
+- **Output:** Analysis/validation reports in the selected format (stdout or file)
+
+## Requirements
+- Python 3.8+
+- Lark parser
+- Logging for diagnostics
+- Modular code structure for maintainability
+
+## Stretch Goals (Future)
+- Support for additional SQL dialects (e.g., PostgreSQL, MySQL)
+- More advanced analysis (e.g., query optimization hints, security checks)
+- Integration with CI/CD pipelines
+- Interactive web-based reporting
+
+---
+This PRD serves as the basis for generating initial development tasks with TaskMaster AI.
