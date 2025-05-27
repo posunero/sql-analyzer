@@ -67,6 +67,16 @@ BOOLEAN: "BOOLEAN"i
 TRANSIENT: "TRANSIENT"i
 CLUSTER: "CLUSTER"i
 DATA_RETENTION_TIME_IN_DAYS: "DATA_RETENTION_TIME_IN_DAYS"i
+NUMBER: "NUMBER"i
+INT: "INT"i
+INTEGER: "INTEGER"i
+VARCHAR: "VARCHAR"i
+DOUBLE: "DOUBLE"i
+FLOAT: "FLOAT"i
+DATE: "DATE"i
+TIMESTAMP: "TIMESTAMP"i
+VARIANT: "VARIANT"i
+RESULTSET: "RESULTSET"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -110,6 +120,26 @@ PACKAGE: "PACKAGE"i
 INSTALL: "INSTALL"i
 ALERT: "ALERT"i
 AUTHENTICATION: "AUTHENTICATION"i
+
+// New object types for unsupported features
+STREAMLIT: "STREAMLIT"i
+DYNAMIC: "DYNAMIC"i
+HYBRID: "HYBRID"i
+DATASET: "DATASET"i
+MODEL: "MODEL"i
+SNAPSHOT: "SNAPSHOT"i
+VOLUME: "VOLUME"i
+CATALOG: "CATALOG"i
+CONNECTION: "CONNECTION"i
+PASSWORD: "PASSWORD"i
+MASKING: "MASKING"i
+POLICY: "POLICY"i
+POLICIES: "POLICIES"i
+NETWORK: "NETWORK"i
+RULE: "RULE"i
+RULES: "RULES"i
+SECRET: "SECRET"i
+TRANSACTION: "TRANSACTION"i
 
 // Column constraints
 PRIMARY: "PRIMARY"i
@@ -193,6 +223,135 @@ ROLES: "ROLES"i
 ACCOUNTS: "ACCOUNTS"i
 SESSION: "SESSION"i
 
+// New keywords for unsupported features
+MAIN_FILE: "MAIN_FILE"i
+SPECIFICATION_TEMPLATE_FILE: "SPECIFICATION_TEMPLATE_FILE"i
+SPECIFICATION_FILE: "SPECIFICATION_FILE"i
+MIN_INSTANCES: "MIN_INSTANCES"i
+MAX_INSTANCES: "MAX_INSTANCES"i
+SPEC: "SPEC"i
+CONTAINERS: "CONTAINERS"i
+ENDPOINTS: "ENDPOINTS"i
+PUBLIC: "PUBLIC"i
+READINESS_PROBE: "READINESS_PROBE"i
+PATH: "PATH"i
+PORT: "PORT"i
+ENV: "ENV"i
+SERVER_PORT: "SERVER_PORT"i
+CHARACTER_NAME: "CHARACTER_NAME"i
+QUERY_WAREHOUSE: "QUERY_WAREHOUSE"i
+TARGET_LAG: "TARGET_LAG"i
+REFRESH_MODE: "REFRESH_MODE"i
+INCREMENTAL: "INCREMENTAL"i
+INITIALIZE: "INITIALIZE"i
+ON_CREATE: "ON_CREATE"i
+EXTERNAL_VOLUME: "EXTERNAL_VOLUME"i
+BASE_LOCATION: "BASE_LOCATION"i
+STORAGE_SERIALIZATION_POLICY: "STORAGE_SERIALIZATION_POLICY"i
+OPTIMIZED: "OPTIMIZED"i
+COMPATIBLE: "COMPATIBLE"i
+CONVERT: "CONVERT"i
+MANAGED: "MANAGED"i
+UNDROP: "UNDROP"i
+STREAMLITS: "STREAMLITS"i
+DYNAMIC_TABLES: "DYNAMIC_TABLES"i
+HYBRID_TABLES: "HYBRID_TABLES"i
+DATASETS: "DATASETS"i
+MODELS: "MODELS"i
+SNAPSHOTS: "SNAPSHOTS"i
+EXTERNAL_VOLUMES: "EXTERNAL_VOLUMES"i
+CONNECTIONS: "CONNECTIONS"i
+POOLS: "POOLS"i
+STORAGE_LOCATIONS: "STORAGE_LOCATIONS"i
+NAME: "NAME"i
+STORAGE_PROVIDER: "STORAGE_PROVIDER"i
+STORAGE_BASE_URL: "STORAGE_BASE_URL"i
+STORAGE_AWS_ROLE_ARN: "STORAGE_AWS_ROLE_ARN"i
+AZURE_TENANT_ID: "AZURE_TENANT_ID"i
+STORAGE_GCP_SERVICE_ACCOUNT: "STORAGE_GCP_SERVICE_ACCOUNT"i
+AZURE: "AZURE"i
+GCS: "GCS"i
+CATALOG_SOURCE: "CATALOG_SOURCE"i
+TABLE_FORMAT: "TABLE_FORMAT"i
+POLARIS: "POLARIS"i
+OBJECT_STORE: "OBJECT_STORE"i
+ICEBERG_REST: "ICEBERG_REST"i
+CATALOG_NAMESPACE: "CATALOG_NAMESPACE"i
+REST_CONFIG: "REST_CONFIG"i
+CATALOG_URI: "CATALOG_URI"i
+CATALOG_NAME: "CATALOG_NAME"i
+REST_AUTHENTICATION: "REST_AUTHENTICATION"i
+OAUTH: "OAUTH"i
+OAUTH_CLIENT_ID: "OAUTH_CLIENT_ID"i
+OAUTH_CLIENT_SECRET: "OAUTH_CLIENT_SECRET"i
+OAUTH_ALLOWED_SCOPES: "OAUTH_ALLOWED_SCOPES"i
+OAUTH_TOKEN_URI: "OAUTH_TOKEN_URI"i
+METADATA_FILE_PATH: "METADATA_FILE_PATH"i
+CATALOG_TABLE_NAME: "CATALOG_TABLE_NAME"i
+AUTO_REFRESH: "AUTO_REFRESH"i
+MIN_NODES: "MIN_NODES"i
+MAX_NODES: "MAX_NODES"i
+INSTANCE_FAMILY: "INSTANCE_FAMILY"i
+CPU_X64_XS: "CPU_X64_XS"i
+DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU: "DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU"i
+DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU: "DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU"i
+APPLICATION_PACKAGE: "APPLICATION_PACKAGE"i
+RELEASE_DIRECTIVES: "RELEASE_DIRECTIVES"i
+DIRECTIVE: "DIRECTIVE"i
+DIRECTIVES: "DIRECTIVES"i
+VERSION: "VERSION"i
+PATCH: "PATCH"i
+PUBLISH: "PUBLISH"i
+UNPUBLISH: "UNPUBLISH"i
+PASSWORD_MIN_LENGTH: "PASSWORD_MIN_LENGTH"i
+PASSWORD_MAX_LENGTH: "PASSWORD_MAX_LENGTH"i
+PASSWORD_MIN_UPPER_CASE_CHARS: "PASSWORD_MIN_UPPER_CASE_CHARS"i
+PASSWORD_MIN_LOWER_CASE_CHARS: "PASSWORD_MIN_LOWER_CASE_CHARS"i
+PASSWORD_MIN_NUMERIC_CHARS: "PASSWORD_MIN_NUMERIC_CHARS"i
+PASSWORD_MIN_SPECIAL_CHARS: "PASSWORD_MIN_SPECIAL_CHARS"i
+PASSWORD_MIN_AGE_DAYS: "PASSWORD_MIN_AGE_DAYS"i
+PASSWORD_MAX_AGE_DAYS: "PASSWORD_MAX_AGE_DAYS"i
+PASSWORD_MAX_RETRIES: "PASSWORD_MAX_RETRIES"i
+PASSWORD_LOCKOUT_TIME_MINS: "PASSWORD_LOCKOUT_TIME_MINS"i
+PASSWORD_HISTORY: "PASSWORD_HISTORY"i
+BODY: "BODY"i
+EXEMPT_OTHER_POLICIES: "EXEMPT_OTHER_POLICIES"i
+CLASSIFICATION_PROFILE: "CLASSIFICATION_PROFILE"i
+MAX_DATA_EXTENSION_TIME_IN_DAYS: "MAX_DATA_EXTENSION_TIME_IN_DAYS"i
+ENFORCED: "ENFORCED"i
+NOVALIDATE: "NOVALIDATE"i
+VALIDATE: "VALIDATE"i
+RELY: "RELY"i
+NORELY: "NORELY"i
+CONSTRAINT: "CONSTRAINT"i
+EXCLUDE: "EXCLUDE"i
+REPLACE_KEYWORD: "REPLACE"i
+RENAME_KEYWORD: "RENAME"i
+SNOW_PROTOCOL: "SNOW"i
+INFER_SCHEMA: "INFER_SCHEMA"i
+TEMPLATE: "TEMPLATE"i
+ARRAY_AGG: "ARRAY_AGG"i
+OBJECT_CONSTRUCT: "OBJECT_CONSTRUCT"i
+LOCATION: "LOCATION"i
+DELTA: "DELTA"i
+LOAD_MODE: "LOAD_MODE"i
+ADD_FILES_COPY: "ADD_FILES_COPY"i
+MATCH_BY_COLUMN_NAME: "MATCH_BY_COLUMN_NAME"i
+CASE_SENSITIVE: "CASE_SENSITIVE"i
+USERNAME: "USERNAME"i
+OAUTH2_REFRESH_TOKEN: "OAUTH2_REFRESH_TOKEN"i
+MODE: "MODE"i
+INGRESS: "INGRESS"i
+IPV4: "IPV4"i
+VALUE_LIST: "VALUE_LIST"i
+ALIAS: "ALIAS"i
+CURRENT_USER: "CURRENT_USER"i
+CURRENT_ROLE: "CURRENT_ROLE"i
+REGEXP_REPLACE: "REGEXP_REPLACE"i
+DEFAULT_VERSION: "DEFAULT_VERSION"i
+SYSTEM: "SYSTEM"i
+LIST_ICEBERG_TABLES_FROM_CATALOG: "LIST_ICEBERG_TABLES_FROM_CATALOG"i
+LIST_NAMESPACES_FROM_CATALOG: "LIST_NAMESPACES_FROM_CATALOG"i
 
 // CREATE FUNCTION specific
 TEMP: "TEMP"i
@@ -213,6 +372,11 @@ EXTERNAL_ACCESS_INTEGRATIONS: "EXTERNAL_ACCESS_INTEGRATIONS"i
 SECRETS: "SECRETS"i
 TARGET_PATH: "TARGET_PATH"i
 GRANTS: "GRANTS"i
+API_INTEGRATION: "API_INTEGRATION"i
+HEADERS: "HEADERS"i
+CONTEXT_HEADERS: "CONTEXT_HEADERS"i
+MAX_BATCH_ROWS: "MAX_BATCH_ROWS"i
+COMPRESSION: "COMPRESSION"i
 ALLOWED_VALUES: "ALLOWED_VALUES"i
 OBJECT_TYPES: "OBJECT_TYPES"i
 ALLOWED_DATABASES: "ALLOWED_DATABASES"i
@@ -231,28 +395,17 @@ COMPUTE: "COMPUTE"i
 POOL: "POOL"i
 VERSIONED: "VERSIONED"i
 APPLICATION: "APPLICATION"i
-SPECIFICATION_TEMPLATE_FILE: "SPECIFICATION_TEMPLATE_FILE"i
-SPECIFICATION_FILE: "SPECIFICATION_FILE"i
-MIN_NODES: "MIN_NODES"i
-MAX_NODES: "MAX_NODES"i
-INSTANCE_FAMILY: "INSTANCE_FAMILY"i
 GPU_NV_M: "GPU_NV_M"i
 BIND: "BIND"i
 ENDPOINT: "ENDPOINT"i
 DISTRIBUTION: "DISTRIBUTION"i
 VERSIONS: "VERSIONS"i
 RELEASE: "RELEASE"i
-DIRECTIVE: "DIRECTIVE"i
-VERSION: "VERSION"i
-PATCH: "PATCH"i
 UPGRADE_AFTER: "UPGRADE_AFTER"i
 UPGRADE: "UPGRADE"i
-RESULTSET: "RESULTSET"i
 JOIN_CONSTRAINT: "JOIN_CONSTRAINT"i
 JOIN_REQUIRED: "JOIN_REQUIRED"i
-PUBLISH: "PUBLISH"i
 REVIEW: "REVIEW"i
-UNPUBLISH: "UNPUBLISH"i
 LISTINGS: "LISTINGS"i
 RELEASES: "RELEASES"i
 MANAGE: "MANAGE"i
@@ -261,35 +414,42 @@ CONSUMER_ACCOUNT: "CONSUMER_ACCOUNT"i
 PROGRAMS: "PROGRAMS"i
 LOOKUP: "LOOKUP"i
 OWNER: "OWNER"i
-RULE: "RULE"i
-VALUE_LIST: "VALUE_LIST"i
-IPV4: "IPV4"i
 GENERIC_SECRET: "GENERIC_SECRET"i
 API_AUTHENTICATION: "API_AUTHENTICATION"i
 OAUTH2: "OAUTH2"i
-OAUTH2_REFRESH_TOKEN: "OAUTH2_REFRESH_TOKEN"i
 API_KEY: "API_KEY"i
 AWS_SIGV4: "AWS_SIGV4"i
 AWS_KEY_ID: "AWS_KEY_ID"i
 AWS_SECRET_KEY: "AWS_SECRET_KEY"i
 EXTERNAL_STAGE: "EXTERNAL_STAGE"i
-STORAGE_PROVIDER: "STORAGE_PROVIDER"i
 S3: "S3"i
-STORAGE_AWS_ROLE_ARN: "STORAGE_AWS_ROLE_ARN"i
 ALLOWED_NETWORK_RULES: "ALLOWED_NETWORK_RULES"i
 ALLOWED_AUTHENTICATION_SECRETS: "ALLOWED_AUTHENTICATION_SECRETS"i
-SECRET: "SECRET"i
 SECURITY: "SECURITY"i
+STORAGE: "STORAGE"i
+NOTIFICATION: "NOTIFICATION"i
+STORAGE_ALLOWED_LOCATIONS: "STORAGE_ALLOWED_LOCATIONS"i
+STORAGE_BLOCKED_LOCATIONS: "STORAGE_BLOCKED_LOCATIONS"i
+NOTIFICATION_PROVIDER: "NOTIFICATION_PROVIDER"i
+GCP_PUBSUB: "GCP_PUBSUB"i
+GCP_PUBSUB_SUBSCRIPTION_NAME: "GCP_PUBSUB_SUBSCRIPTION_NAME"i
+QUEUE: "QUEUE"i
 IMAGE: "IMAGE"i
 REPOSITORIES: "REPOSITORIES"i
 SERVICES: "SERVICES"i
-CONTAINERS: "CONTAINERS"i
-ENDPOINTS: "ENDPOINTS"i
-SNAPSHOT: "SNAPSHOT"i
 SPECIFICATION: "SPECIFICATION"i
 RSA_PUBLIC_KEY: "RSA_PUBLIC_KEY"i
 USER: "USER"i
 FIELDS: "FIELDS"i
+EXCEPTION: "EXCEPTION"i
+RAISE: "RAISE"i
+SQLERRM: "SQLERRM"i
+ELSEIF: "ELSEIF"i
+WHILE: "WHILE"i
+LOOP: "LOOP"i
+BREAK: "BREAK"i
+CONTINUE: "CONTINUE"i
+RETURN: "RETURN"i
 
 // Languages
 JAVA: "JAVA"i
@@ -316,16 +476,21 @@ STAR: "*"
 SLASH: "/"
 COLON: ":"
 DOUBLE_COLON: "::"
+ASSIGN: ":="
 LBRACKET: "["
 RBRACKET: "]"
+ELLIPSIS: "..."
+DOLLAR_SIGN: "$"
+CONCAT: "||"
 
 // Define a terminal for single-quoted strings, handling escaped single quotes
 SINGLE_QUOTED_STRING: /'([^']|'')*'/
+DOUBLE_QUOTED_STRING: /"([^"]|"")*"/
 DOLLAR_QUOTED_STRING: /\$\$.*?\$\$/s
 STAGE_PATH: /@[a-zA-Z0-9_\.\-\/]+/
 SINGLE_QUOTED_STAGE_PATH: /'@[a-zA-Z0-9_\.\-\/]+'/
 PARAMETER: /(\$[0-9]+|:[a-zA-Z_][a-zA-Z0-9_]*|\?)/
-PLACEHOLDER: /<[a-zA-Z_][a-zA-Z0-9_]*>/
+PLACEHOLDER: /<[a-zA-Z_][a-zA-Z0-9_\-]*>/
 
 // Add new tokens for stage parameters
 DIRECTORY: "DIRECTORY"i
@@ -335,7 +500,7 @@ ENCRYPTION: "ENCRYPTION"i
 qualified_name: (IDENTIFIER | PLACEHOLDER) ( DOT (IDENTIFIER | PLACEHOLDER) )*
 
 // Define simple literal types early
-string: SINGLE_QUOTED_STRING 
+string: SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING 
 number: SIGNED_NUMBER
 boolean: TRUE | FALSE
 
@@ -373,6 +538,8 @@ statement: create_replication_group_stmt
          | savepoint_stmt
          | rollback_to_savepoint_stmt
          | declare_stmt
+         | declare_block_stmt
+         | anonymous_block_stmt
          | set_stmt
          | execute_immediate_stmt
          | execute_task_stmt
@@ -400,9 +567,9 @@ statement: create_replication_group_stmt
          | create_materialized_view_stmt
          | create_network_policy_stmt
          | create_replication_stmt
-                   | alter_replication_stmt
-          | alter_listing_stmt
-          | create_account_stmt
+         | alter_replication_stmt
+         | alter_listing_stmt
+         | create_account_stmt
          | alter_account_stmt
          | drop_account_stmt
          | show_accounts_stmt
@@ -416,6 +583,36 @@ statement: create_replication_group_stmt
          | let_stmt
          | cursor_stmt
          | open_stmt
+         | create_streamlit_stmt
+         | drop_streamlit_stmt
+         | create_dynamic_table_stmt
+         | drop_dynamic_table_stmt
+         | create_hybrid_table_stmt
+         | create_dataset_stmt
+         | alter_dataset_stmt
+         | alter_model_stmt
+         | drop_snapshot_stmt
+         | create_external_volume_stmt
+         | drop_external_volume_stmt
+         | undrop_external_volume_stmt
+         | create_catalog_integration_stmt
+         | drop_catalog_integration_stmt
+         | create_compute_pool_stmt
+         | drop_compute_pool_stmt
+         | create_connection_stmt
+         | drop_connection_stmt
+         | create_application_package_stmt
+         | drop_application_package_stmt
+         | create_password_policy_stmt
+         | drop_password_policy_stmt
+         | create_network_rule_stmt
+         | drop_network_rule_stmt
+         | create_secret_stmt
+         | drop_secret_stmt
+         | undrop_iceberg_table_stmt
+         | undrop_tag_stmt
+         | describe_transaction_stmt
+         | ELLIPSIS
 
 
 // DML Statements
@@ -437,16 +634,29 @@ ddl_stmt: create_stmt
 
 // SELECT statement
 select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
-select_list: STAR | select_item ( COMMA select_item)*
+           | LPAREN select_stmt RPAREN
+select_list: advanced_star_expr | select_item ( COMMA select_item)*
 select_item: expr (AS? IDENTIFIER)?
+advanced_star_expr: STAR (EXCLUDE LPAREN qualified_name (COMMA qualified_name)* RPAREN)? (REPLACE_KEYWORD LPAREN replace_item (COMMA replace_item)* RPAREN)? (RENAME_KEYWORD LPAREN rename_item (COMMA rename_item)* RPAREN)?
+replace_item: expr AS qualified_name
+rename_item: qualified_name AS qualified_name
 from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 
 // Removed old recursive table_ref rule
 
 base_table_ref: qualified_name (AS? IDENTIFIER)?
                | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
+               | LPAREN values_clause RPAREN (AS? IDENTIFIER)?
                | LATERAL? function_call (AS? IDENTIFIER)?
                | STAGE_PATH (AS? IDENTIFIER)?
+               | stage_table_ref
+               | values_clause (AS? IDENTIFIER)?
+
+stage_table_ref: SINGLE_QUOTED_STRING LPAREN stage_table_options (COMMA stage_table_options)* RPAREN IDENTIFIER?
+stage_table_options: FILE_FORMAT FAT_ARROW SINGLE_QUOTED_STRING
+                   | PATTERN FAT_ARROW SINGLE_QUOTED_STRING
+
+values_clause: VALUES value_tuple (COMMA value_tuple)*
 
 join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
 
@@ -525,10 +735,40 @@ create_stmt: create_table_stmt
            | create_service_stmt
            | create_external_listing_stmt
            | create_data_metric_function_stmt
+           | create_application_stmt
+           | create_streamlit_stmt
+           | create_dynamic_table_stmt
+           | create_hybrid_table_stmt
+           | create_dataset_stmt
+           | create_external_volume_stmt
+           | create_catalog_integration_stmt
+           | create_compute_pool_stmt
+           | create_connection_stmt
+           | create_application_package_stmt
+           | create_password_policy_stmt
 
-create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause?)? | AS select_stmt | clone_clause)
-column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (COMMENT SINGLE_QUOTED_STRING)?
+create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE (IF NOT EXISTS)? qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause? table_properties?)? (AS select_stmt)? | AS select_stmt | clone_clause)
+
+table_properties: table_property+
+
+table_property: CLASSIFICATION_PROFILE EQ SINGLE_QUOTED_STRING
+              | STORAGE_SERIALIZATION_POLICY EQ (OPTIMIZED | COMPATIBLE)
+              | MAX_DATA_EXTENSION_TIME_IN_DAYS EQ number
+column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (WITH MASKING POLICY qualified_name)? (COMMENT SINGLE_QUOTED_STRING)?
 data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)?
+         | PLACEHOLDER
+         | NUMBER (LPAREN number ( COMMA number)? RPAREN)?
+         | INT
+         | INTEGER
+         | VARCHAR (LPAREN number RPAREN)?
+         | DOUBLE
+         | FLOAT
+         | BOOLEAN
+         | DATE
+         | TIMESTAMP
+         | VARIANT
+         | RESULTSET
+         | TABLE LPAREN column_def ( COMMA column_def)* RPAREN
 
 // Revert to the simplest constraint definition without extra grouping
 column_constraint: NOT NULL 
@@ -558,6 +798,7 @@ task_param: WAREHOUSE EQ qualified_name
           | ALLOW_OVERLAPPING_EXECUTION
           | USER_TASK_TIMEOUT_MS EQ number
           | COMMENT EQ SINGLE_QUOTED_STRING
+          | WHEN expr
 
 create_stream_stmt: CREATE (OR REPLACE)? STREAM (IF NOT EXISTS)? qualified_name ON (TABLE | STAGE) qualified_name stream_param* at_before_clause?
 stream_param: APPEND_ONLY EQ boolean
@@ -584,6 +825,7 @@ stage_param: URL EQ SINGLE_QUOTED_STRING
            | FILE_FORMAT EQ (qualified_name | LPAREN file_format_option+ RPAREN)
            | DIRECTORY EQ LPAREN stage_directory_option (COMMA stage_directory_option)* RPAREN
            | ENCRYPTION EQ LPAREN stage_encryption_option (COMMA stage_encryption_option)* RPAREN
+           | STORAGE_INTEGRATION EQ qualified_name
 
 // Options for STAGE DIRECTORY and ENCRYPTION
 stage_directory_option: IDENTIFIER EQ boolean
@@ -592,9 +834,21 @@ stage_encryption_option: IDENTIFIER EQ SINGLE_QUOTED_STRING
 // Helper rule for file format options within parentheses
 file_format_option: IDENTIFIER EQ (SINGLE_QUOTED_STRING | IDENTIFIER | boolean | number)
 
-create_database_stmt: CREATE (OR REPLACE)? DATABASE (IF NOT EXISTS)? qualified_name (COMMENT EQ SINGLE_QUOTED_STRING)? clone_clause?
+create_database_stmt: CREATE (OR REPLACE | OR ALTER)? DATABASE (IF NOT EXISTS)? qualified_name database_properties? clone_clause?
 
-create_schema_stmt: CREATE (OR REPLACE)? SCHEMA (IF NOT EXISTS)? qualified_name clone_clause?
+database_properties: database_property+
+
+database_property: COMMENT EQ SINGLE_QUOTED_STRING
+                 | EXTERNAL_VOLUME EQ qualified_name
+                 | DATA_RETENTION_TIME_IN_DAYS EQ number
+
+create_schema_stmt: CREATE (OR REPLACE | OR ALTER)? (VERSIONED)? SCHEMA (IF NOT EXISTS)? qualified_name schema_properties? clone_clause?
+
+schema_properties: schema_property+
+
+schema_property: CLASSIFICATION_PROFILE EQ SINGLE_QUOTED_STRING
+               | DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU EQ SINGLE_QUOTED_STRING
+               | DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU EQ SINGLE_QUOTED_STRING
 
 // Dedicated rules for the RETURNS clause structure
 returns_clause: RETURNS (data_type | returns_table)
@@ -607,7 +861,7 @@ volatility: VOLATILE | IMMUTABLE
 copy_grants_option: COPY GRANTS
 
 // --- CREATE PROCEDURE ---
-create_procedure_stmt: CREATE (OR REPLACE)? PROCEDURE qualified_name LPAREN [argument_def (COMMA argument_def)*] RPAREN RETURNS data_type LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) procedure_properties? (AS procedure_body)?
+create_procedure_stmt: CREATE (OR REPLACE)? PROCEDURE qualified_name function_args (RETURNS data_type)? (LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA))? procedure_properties? (AS procedure_body)?
 
 // Properties for procedures (excluding LANGUAGE which is already specified)
 procedure_properties: procedure_property+
@@ -628,20 +882,47 @@ procedure_property: CALLED ON NULL INPUT
                   | COMMENT EQ SINGLE_QUOTED_STRING
                   | EXECUTE AS OWNER
 
-procedure_body: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING | stored_proc_block
+procedure_body: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING | stored_proc_block | ELLIPSIS
 
 // Stored procedure block syntax
-stored_proc_block: (declare_section)? BEGIN statement_list END
-declare_section: DECLARE variable_declaration (SEMICOLON variable_declaration)*
-variable_declaration: IDENTIFIER data_type (DEFAULT expr)?
-statement_list: _statement_wrapper (SEMICOLON _statement_wrapper)*
+stored_proc_block: (declare_section)? BEGIN statement_list (exception_section)? END
+declare_section: DECLARE variable_declaration (SEMICOLON variable_declaration)* (SEMICOLON)?
+variable_declaration: IDENTIFIER data_type (DEFAULT expr | ASSIGN expr)?
+                    | IDENTIFIER CURSOR FOR (IDENTIFIER | select_stmt)
+                    | IDENTIFIER EXCEPTION LPAREN number COMMA SINGLE_QUOTED_STRING RPAREN
+statement_list: proc_statement (SEMICOLON proc_statement)* (SEMICOLON)?
+proc_statement: if_stmt
+              | case_stmt
+              | while_stmt
+              | for_stmt
+              | return_stmt
+              | raise_stmt
+              | assignment_stmt
+              | _statement_wrapper
+
+if_stmt: IF expr THEN statement_list (ELSEIF expr THEN statement_list)* (ELSE statement_list)? END IF
+
+case_stmt: CASE (expr)? (WHEN expr THEN statement_list)+ (ELSE statement_list)? END (CASE)?
+
+while_stmt: WHILE expr DO statement_list END WHILE
+
+for_stmt: FOR IDENTIFIER IN expr DO statement_list END FOR
+
+return_stmt: RETURN (TABLE LPAREN expr RPAREN | expr)?
+
+raise_stmt: RAISE IDENTIFIER
+
+assignment_stmt: qualified_name ASSIGN expr
+                | IDENTIFIER ASSIGN expr
+
+exception_section: EXCEPTION (WHEN IDENTIFIER THEN statement_list)+
 
 // --- CREATE FUNCTION (Revised Structure) ---
-create_function_stmt: CREATE create_function_mods qualified_name function_args function_returns (function_properties (AS function_impl)? | AS function_impl)
+create_function_stmt: CREATE create_function_mods qualified_name function_args function_returns (function_properties (AS function_impl)? | AS function_impl)?
 
-create_function_mods: (OR REPLACE)? (TEMP | TEMPORARY)? SECURE? (FUNCTION | AGGREGATE FUNCTION) (IF NOT EXISTS)?
+create_function_mods: (OR REPLACE | OR ALTER)? (TEMP | TEMPORARY)? SECURE? (FUNCTION | AGGREGATE FUNCTION | DATA METRIC FUNCTION | EXTERNAL FUNCTION) (IF NOT EXISTS)?
 
-function_args: LPAREN [argument_def ( COMMA argument_func_args)*] RPAREN
+function_args: LPAREN [argument_def ( COMMA argument_def)* | ELLIPSIS] RPAREN
 
 function_returns: RETURNS (data_type | table_return_type)
 
@@ -664,12 +945,22 @@ function_property: LANGUAGE (SQL | JAVASCRIPT | PYTHON | JAVA | SCALA) // Langua
                  | SECRETS EQ LPAREN SINGLE_QUOTED_STRING ( COMMA SINGLE_QUOTED_STRING)* RPAREN
                  | TARGET_PATH EQ SINGLE_QUOTED_STRING
                  | copy_grants_option
-                 | COMMENT EQ SINGLE_QUOTED_STRING // Add COMMENT property here
+                 | COMMENT EQ (SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING) // Add COMMENT property here
+                 | API_INTEGRATION EQ qualified_name
+                 | HEADERS EQ LPAREN header_assignment (COMMA header_assignment)* RPAREN
+                 | CONTEXT_HEADERS EQ LPAREN qualified_name (COMMA qualified_name)* RPAREN
+                 | MAX_BATCH_ROWS EQ number
+                 | COMPRESSION EQ (SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING)
+                 | SERVICE EQ qualified_name
+                 | ENDPOINT EQ qualified_name
 
 function_impl: SINGLE_QUOTED_STRING | DOLLAR_QUOTED_STRING
 
 // Helper for import locations
 import_location: SINGLE_QUOTED_STRING | SINGLE_QUOTED_STAGE_PATH
+
+// Helper for header assignments in external functions
+header_assignment: (SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING) EQ (SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING)
 
 // Argument definition with optional default
 argument_def: IDENTIFIER data_type [DEFAULT expr]
@@ -696,9 +987,14 @@ alter_stmt: alter_table_stmt
           | alter_network_policy_stmt
           | alter_replication_stmt
           | alter_session_stmt
+          | alter_application_package_stmt
+          | alter_schema_stmt
+          | alter_account_stmt
+          | alter_application_stmt
+          | alter_user_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
-alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
+alter_table_action: ADD COLUMN (IF NOT EXISTS)? qualified_name data_type (DEFAULT expr)?
                   | DROP COLUMN qualified_name
                   | MODIFY COLUMN qualified_name data_type
                   | RENAME COLUMN qualified_name TO qualified_name
@@ -706,7 +1002,13 @@ alter_table_action: ADD COLUMN qualified_name data_type (DEFAULT expr)?
                   | CLUSTER BY LPAREN expr (COMMA expr)* RPAREN
                   | ADD ROW ACCESS POLICY qualified_name ON LPAREN qualified_name (COMMA qualified_name)* RPAREN
                   | DROP ROW ACCESS POLICY
+                  | DROP ALL ROW ACCESS POLICIES
                   | RENAME ROW ACCESS POLICY TO qualified_name
+                  | ADD CONSTRAINT qualified_name PRIMARY KEY LPAREN qualified_name (COMMA qualified_name)* RPAREN constraint_properties?
+                  | MODIFY CONSTRAINT qualified_name constraint_properties
+                  | MODIFY COLUMN IDENTIFIER SET MASKING POLICY qualified_name
+
+constraint_properties: (NOT)? ENFORCED (NOVALIDATE | VALIDATE)? (NORELY | RELY)?
 
 alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
@@ -744,20 +1046,25 @@ drop_stmt: DROP object_type (IF EXISTS)? qualified_name
         | drop_external_function_stmt
         | drop_network_policy_stmt
         | drop_join_policy_stmt
-object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | STORAGE INTEGRATION | NOTIFICATION INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY | LISTING | STREAMLIT | DYNAMIC TABLE | HYBRID TABLE | DATASET | MODEL | SNAPSHOT | EXTERNAL VOLUME | CATALOG INTEGRATION | COMPUTE POOL | CONNECTION | APPLICATION PACKAGE | PASSWORD POLICY | NETWORK RULE | SECRET | ICEBERG TABLE | SERVICE
 
 // TRUNCATE statement
 truncate_stmt: TRUNCATE TABLE qualified_name
 
 // SHOW statement
 show_stmt: SHOW object_types like_clause? scope_clause?
+         | SHOW RELEASE DIRECTIVES IN APPLICATION PACKAGE qualified_name
+         | SHOW VERSIONS IN APPLICATION PACKAGE qualified_name
+         | SHOW SERVICE CONTAINERS IN SERVICE qualified_name
+         | SHOW ENDPOINTS IN SERVICE qualified_name
 object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
-            | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS | JOIN POLICIES | FAILOVER GROUPS | LISTINGS | RELEASES
+            | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS | JOIN POLICIES | FAILOVER GROUPS | LISTINGS | RELEASES | STREAMLITS | DYNAMIC_TABLES | HYBRID_TABLES | DATASETS | MODELS | SNAPSHOTS | EXTERNAL_VOLUMES | COMPUTE POOLS | CONNECTIONS | APPLICATION PACKAGES | PASSWORD POLICIES | ROW ACCESS POLICIES | MASKING POLICIES | NETWORK RULES | SECRETS | ICEBERG TABLES | RELEASE_DIRECTIVES | IMAGE REPOSITORIES | SERVICES | VERSIONS
 like_clause: LIKE SINGLE_QUOTED_STRING
 scope_clause: IN (DATABASE | SCHEMA) qualified_name
 
 // DESCRIBE statement
 describe_stmt: (DESCRIBE | DESC) object_type qualified_name
+             | (DESCRIBE | DESC) TRANSACTION
 
 // USE statement (Example for WAREHOUSE and ROLE)
 use_stmt: USE object_type qualified_name
@@ -776,6 +1083,8 @@ copy_option: file_format_clause
            | HEADER number
            | VALIDATE boolean
            | PURGE boolean
+           | LOAD_MODE EQ (ADD_FILES_COPY | IDENTIFIER)
+           | MATCH_BY_COLUMN_NAME EQ (CASE_SENSITIVE | IDENTIFIER)
 
 file_format_clause: FILE_FORMAT EQ LPAREN file_format_option+ RPAREN // Reuses existing option rule
 
@@ -785,14 +1094,17 @@ on_error_clause: ON_ERROR EQ SINGLE_QUOTED_STRING
 grant_role_stmt: GRANT ROLE qualified_name TO ROLE qualified_name
 revoke_role_stmt: REVOKE ROLE qualified_name FROM ROLE qualified_name
 
-grant_stmt: GRANT APPLY ON JOIN POLICY ON ACCOUNT TO grantee_type qualified_name
-          | GRANT privilege_list ON object_specification TO grantee_type qualified_name
+grant_stmt: GRANT APPLY ON JOIN POLICY ON ACCOUNT TO grantee_type (qualified_name | PLACEHOLDER)
+          | GRANT privilege_list ON object_specification TO grantee_type (qualified_name | PLACEHOLDER)
+          | GRANT USAGE ON FUNCTION qualified_name LPAREN function_param_types RPAREN TO (grantee_type (qualified_name | PLACEHOLDER) | PLACEHOLDER | qualified_name)
+          | GRANT USAGE ON PROCEDURE qualified_name LPAREN function_param_types RPAREN TO (grantee_type (qualified_name | PLACEHOLDER) | PLACEHOLDER | qualified_name)
 revoke_stmt: REVOKE privilege_list ON object_specification FROM grantee_type qualified_name
 
 privilege_list: ALL PRIVILEGES? | privilege ( COMMA privilege )*
 
 privilege: CREATE JOIN POLICY
          | APPLY JOIN POLICY
+         | MANAGE RELEASES
          | SELECT
          | INSERT
          | UPDATE
@@ -801,7 +1113,8 @@ privilege: CREATE JOIN POLICY
          | CREATE
          | APPLY
          | ALTER
-         | DROP // Add more as needed
+         | DROP
+         | MANAGE // Add more as needed
 
 object_specification: object_type qualified_name 
                     | DATABASE qualified_name 
@@ -810,8 +1123,11 @@ object_specification: object_type qualified_name
                     | ALL object_types IN SCHEMA qualified_name
                     | ACCOUNT
                     | JOIN POLICY ON ACCOUNT
+                    | APPLICATION PACKAGE qualified_name
 
-grantee_type: ROLE // Add USER, SHARE etc. if needed
+grantee_type: ROLE | SHARE | USER | APPLICATION ROLE // Add USER, SHARE etc. if needed
+
+function_param_types: data_type (COMMA data_type)*
 
 // --- Expressions (Revised with Explicit Precedence) ---
 expr: disjunction
@@ -823,7 +1139,7 @@ conjunction: conjunction AND comparison | comparison
 
 comparison: add_sub (comparison_op add_sub)?
 
-add_sub: add_sub (PLUS | MINUS) mul_div | mul_div
+add_sub: add_sub (PLUS | MINUS | CONCAT) mul_div | mul_div
 
 mul_div: mul_div (STAR | SLASH) unary | unary
 
@@ -844,6 +1160,7 @@ atom: literal
      | LPAREN select_stmt RPAREN  // Added for scalar subqueries
      | exists_expr
      | quantified_comparison
+     | execute_immediate_expr
 
 // Operators split by type
 comparison_op: EQ | NE | LT | GT | LE | GE | LIKE | IN | IS | BETWEEN
@@ -853,11 +1170,15 @@ comparison_op: EQ | NE | LT | GT | LE | GE | LIKE | IN | IS | BETWEEN
 cast_expr: CAST LPAREN expr AS data_type RPAREN
 case_expr: CASE (expr)? (WHEN expr THEN expr)+ (ELSE expr)? END
 exists_expr: EXISTS LPAREN select_stmt RPAREN
+execute_immediate_expr: EXECUTE IMMEDIATE (DOLLAR_QUOTED_STRING | PARAMETER | named_parameter | SINGLE_QUOTED_STRING | IDENTIFIER) (USING LPAREN expr_list RPAREN)?
 quantified_comparison: expr comparison_op (ANY | ALL | SOME) LPAREN select_stmt RPAREN
                     | expr IN LPAREN expr_list RPAREN
 
 // Function calls (Refactored)
-function_call: (qualified_name | COUNT | SUM | AVG | MAX | MIN) LPAREN func_args? RPAREN
+function_call: (qualified_name | system_function | COUNT | SUM | AVG | MAX | MIN | INFER_SCHEMA | ARRAY_AGG | OBJECT_CONSTRUCT | CURRENT_USER | CURRENT_ROLE | REGEXP_REPLACE) LPAREN func_args? RPAREN
+system_function: IDENTIFIER DOLLAR_SIGN IDENTIFIER
+                | SYSTEM DOLLAR_SIGN LIST_ICEBERG_TABLES_FROM_CATALOG
+                | SYSTEM DOLLAR_SIGN LIST_NAMESPACES_FROM_CATALOG
 func_args: STAR | DISTINCT expr_list | expr_list | named_arg_list
 expr_list: expr ( COMMA expr )*
 named_arg_list: named_arg (COMMA named_arg)*
@@ -870,6 +1191,9 @@ literal: string
        | NULL
        | PARAMETER
        | PLACEHOLDER
+       | named_parameter
+
+named_parameter: COLON IDENTIFIER
 
 TRIGGERS: "TRIGGERS"i
 PERCENT: "PERCENT"i
@@ -898,19 +1222,17 @@ file_format_option_kv: FIELD_DELIMITER EQ string
 
 FIELD_DELIMITER: "FIELD_DELIMITER"i
 
-create_role_stmt: CREATE (OR REPLACE)? ROLE (IF NOT EXISTS)? qualified_name (MANAGED ACCESS)?
+create_role_stmt: CREATE (OR REPLACE)? (APPLICATION)? ROLE (IF NOT EXISTS)? qualified_name (MANAGED ACCESS)?
 
-MASKING: "MASKING"i
-POLICY: "POLICY"i
-POLICIES: "POLICIES"i
 ARROW: "->"
 
-create_masking_policy_stmt: CREATE MASKING POLICY qualified_name AS LPAREN masking_args RPAREN RETURNS data_type ARROW expr
+create_masking_policy_stmt: CREATE (OR REPLACE)? MASKING POLICY qualified_name AS LPAREN masking_args RPAREN RETURNS data_type ARROW expr masking_policy_options?
 masking_args: IDENTIFIER data_type (COMMA IDENTIFIER data_type)*
+masking_policy_options: (COMMENT EQ SINGLE_QUOTED_STRING)? (EXEMPT_OTHER_POLICIES EQ boolean)?
 
 CALL: "CALL"i
 
-call_procedure_stmt: CALL qualified_name LPAREN (expr_list)? RPAREN
+call_procedure_stmt: CALL qualified_name LPAREN (expr_list)? RPAREN (INTO named_parameter)?
 
 PUT: "PUT"i
 
@@ -930,8 +1252,12 @@ savepoint_stmt: SAVEPOINT IDENTIFIER
 rollback_to_savepoint_stmt: ROLLBACK TO SAVEPOINT IDENTIFIER
 
 declare_stmt: DECLARE IDENTIFIER data_type
+declare_block_stmt: DECLARE variable_declaration (SEMICOLON variable_declaration)* (SEMICOLON)? BEGIN statement_list (exception_section)? END
+anonymous_block_stmt: BEGIN statement_list (exception_section)? END
 set_stmt: SET IDENTIFIER EQ expr
         | UNSET IDENTIFIER
+        | IDENTIFIER ASSIGN expr
+        | qualified_name ASSIGN expr
 
 DECLARE: "DECLARE"i
 
@@ -973,7 +1299,7 @@ when_insert_clause: WHEN expr THEN INTO qualified_name (LPAREN qualified_name (C
 EXECUTE: "EXECUTE"i
 IMMEDIATE: "IMMEDIATE"i
 
-execute_immediate_stmt: EXECUTE IMMEDIATE (DOLLAR_QUOTED_STRING | PARAMETER) (USING LPAREN expr_list RPAREN)?
+execute_immediate_stmt: EXECUTE IMMEDIATE (DOLLAR_QUOTED_STRING | PARAMETER | named_parameter | SINGLE_QUOTED_STRING | IDENTIFIER) (USING LPAREN expr_list RPAREN)?
 
 IDENTIFIER: /@?[a-zA-Z_][a-zA-Z0-9_\$]*/
 
@@ -988,8 +1314,6 @@ execute_task_stmt: EXECUTE TASK qualified_name
 // Allow SET of one or more stream parameters
 stream_set_clause: stream_param ( COMMA stream_param )*
 
-TIMESTAMP: "TIMESTAMP"i
-
 // Insert search optimization statements
 enable_search_optimization_stmt: ENABLE SEARCH OPTIMIZATION ON qualified_name
 disable_search_optimization_stmt: DISABLE SEARCH OPTIMIZATION ON qualified_name
@@ -1001,9 +1325,26 @@ alter_job_stmt: ALTER JOB qualified_name (SUSPEND | RESUME | REMOVE SCHEDULE | A
 job_param: WAREHOUSE EQ qualified_name | SCHEDULE EQ SINGLE_QUOTED_STRING | MAX_CONCURRENCY EQ number
 
 // Apache Iceberg table support
-create_iceberg_table_stmt: CREATE ICEBERG TABLE qualified_name
-alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name
+create_iceberg_table_stmt: CREATE (OR REPLACE)? ICEBERG TABLE qualified_name (LPAREN column_def (COMMA column_def)* RPAREN)? iceberg_table_param* (AS select_stmt)?
+alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name alter_iceberg_action
 drop_iceberg_table_stmt: DROP ICEBERG TABLE qualified_name
+
+iceberg_table_param: EXTERNAL_VOLUME EQ SINGLE_QUOTED_STRING
+                   | CATALOG EQ (SINGLE_QUOTED_STRING | qualified_name)
+                   | METADATA_FILE_PATH EQ SINGLE_QUOTED_STRING
+                   | CATALOG_TABLE_NAME EQ SINGLE_QUOTED_STRING
+                   | AUTO_REFRESH EQ boolean
+                   | BASE_LOCATION EQ SINGLE_QUOTED_STRING
+                   | STORAGE_SERIALIZATION_POLICY EQ (OPTIMIZED | COMPATIBLE)
+                   | WITH MASKING POLICY qualified_name
+                   | WITH ROW ACCESS POLICY qualified_name ON LPAREN qualified_name (COMMA qualified_name)* RPAREN
+
+alter_iceberg_action: CONVERT TO MANAGED iceberg_convert_param*
+                    | REFRESH SINGLE_QUOTED_STRING
+                    | ALTER COLUMN qualified_name SET DATA TYPE data_type
+
+iceberg_convert_param: BASE_LOCATION EQ SINGLE_QUOTED_STRING
+                     | STORAGE_SERIALIZATION_POLICY EQ (OPTIMIZED | COMPATIBLE)
 
 // Snowpark package statements
 create_package_stmt: CREATE PACKAGE qualified_name
@@ -1016,7 +1357,7 @@ alter_alert_stmt: ALTER ALERT qualified_name
 drop_alert_stmt: DROP ALERT qualified_name
 
 // Row access policy enhancements
-alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name
+alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name SET BODY ARROW expr
 drop_row_access_policy_stmt: DROP ROW ACCESS POLICY qualified_name
 drop_join_policy_stmt: DROP JOIN POLICY (IF EXISTS)? qualified_name
 
@@ -1036,42 +1377,58 @@ create_share_stmt: CREATE (OR REPLACE)? SHARE (IF NOT EXISTS)? qualified_name
 alter_share_stmt: ALTER SHARE qualified_name (ADD (DATA | ACCOUNTS EQ qualified_name)? | DROP (DATA | ACCOUNTS EQ qualified_name)?)?
 drop_share_stmt: DROP SHARE qualified_name
 
-MANAGED: "MANAGED"i
-
 // Added new Snowflake DDL keywords for full core coverage
 CLONE: "CLONE"i
 EXTERNAL: "EXTERNAL"i
+INTERNAL: "INTERNAL"i
 FORCE: "FORCE"i
 GET: "GET"i
 HEADER: "HEADER"i
 INTEGRATION: "INTEGRATION"i
+STORAGE_INTEGRATION: "STORAGE_INTEGRATION"i
 LIST: "LIST"i
-NETWORK: "NETWORK"i
 PATTERN: "PATTERN"i
 PURGE: "PURGE"i
 REPLICATION: "REPLICATION"i
 SHARE: "SHARE"i
 UNSET: "UNSET"i
-VALIDATE: "VALIDATE"i
 
 // Helper for CLONE statements
 clone_clause: CLONE qualified_name
 
 // INTEGRATION statements
-create_integration_stmt: CREATE (OR REPLACE)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
+create_integration_stmt: CREATE (OR REPLACE)? (EXTERNAL ACCESS | STORAGE | NOTIFICATION)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
 alter_integration_stmt: ALTER INTEGRATION qualified_name integration_param*
 drop_integration_stmt: DROP INTEGRATION qualified_name
 
 // Parameters for INTEGRATION
-integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
+integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE | QUEUE)
                  | ENABLED EQ boolean
                  | COMMENT EQ SINGLE_QUOTED_STRING
                  | SECRETS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | ALLOWED_NETWORK_RULES EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | ALLOWED_AUTHENTICATION_SECRETS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | STORAGE_PROVIDER EQ (SINGLE_QUOTED_STRING | IDENTIFIER)
+                 | STORAGE_ALLOWED_LOCATIONS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | STORAGE_BLOCKED_LOCATIONS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+                 | STORAGE_AWS_ROLE_ARN EQ SINGLE_QUOTED_STRING
+                 | AZURE_TENANT_ID EQ SINGLE_QUOTED_STRING
+                 | NOTIFICATION_PROVIDER EQ (GCP_PUBSUB | IDENTIFIER)
+                 | GCP_PUBSUB_SUBSCRIPTION_NAME EQ SINGLE_QUOTED_STRING
 
 // External Table statements
-create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name
-alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name
+create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name external_table_options
+alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name REFRESH
 drop_external_table_stmt: DROP EXTERNAL TABLE qualified_name
+
+external_table_options: external_table_option*
+external_table_option: USING TEMPLATE LPAREN select_stmt RPAREN
+                      | LOCATION EQ STAGE_PATH
+                      | WITH LOCATION EQ STAGE_PATH
+                      | FILE_FORMAT EQ (qualified_name | LPAREN file_format_option+ RPAREN)
+                      | TABLE_FORMAT EQ DELTA
+                      | AUTO_REFRESH EQ boolean
+                      | INTEGRATION EQ SINGLE_QUOTED_STRING
 
 // Materialized View statements
 create_materialized_view_stmt: CREATE (OR REPLACE)? MATERIALIZED VIEW (IF NOT EXISTS)? qualified_name AS select_stmt
@@ -1079,28 +1436,23 @@ alter_materialized_view_stmt: ALTER MATERIALIZED VIEW qualified_name
 drop_materialized_view_stmt: DROP MATERIALIZED VIEW qualified_name
 
 // External Function statements
-create_external_function_stmt: CREATE (OR REPLACE)? EXTERNAL FUNCTION (IF NOT EXISTS)? qualified_name
+create_external_function_stmt: CREATE (OR REPLACE)? SECURE? EXTERNAL FUNCTION (IF NOT EXISTS)? qualified_name function_args function_returns external_function_properties? AS SINGLE_QUOTED_STRING
 alter_external_function_stmt: ALTER EXTERNAL FUNCTION qualified_name
 drop_external_function_stmt: DROP EXTERNAL FUNCTION qualified_name
+
+// Properties for external functions
+external_function_properties: external_function_property+
+external_function_property: API_INTEGRATION EQ qualified_name
+                          | HEADERS EQ LPAREN header_assignment (COMMA header_assignment)* RPAREN
+                          | CONTEXT_HEADERS EQ LPAREN qualified_name (COMMA qualified_name)* RPAREN
+                          | MAX_BATCH_ROWS EQ number
+                          | COMPRESSION EQ SINGLE_QUOTED_STRING
+                          | COMMENT EQ SINGLE_QUOTED_STRING
 
 // Network Policy statements
 create_network_policy_stmt: CREATE (OR REPLACE)? NETWORK POLICY qualified_name
 alter_network_policy_stmt: ALTER NETWORK POLICY qualified_name
 drop_network_policy_stmt: DROP NETWORK POLICY qualified_name
-
-// Network Rule statements
-create_network_rule_stmt: CREATE (OR REPLACE)? NETWORK RULE qualified_name network_rule_param*
-network_rule_param: TYPE EQ SINGLE_QUOTED_STRING
-                   | VALUE_LIST EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
-
-// Secret statements
-create_secret_stmt: CREATE (OR REPLACE)? SECRET qualified_name secret_param+
-secret_param: TYPE EQ SINGLE_QUOTED_STRING
-            | API_AUTHENTICATION EQ SINGLE_QUOTED_STRING
-            | OAUTH2_REFRESH_TOKEN EQ SINGLE_QUOTED_STRING
-            | API_KEY EQ SINGLE_QUOTED_STRING
-            | AWS_KEY_ID EQ SINGLE_QUOTED_STRING
-            | AWS_SECRET_KEY EQ SINGLE_QUOTED_STRING
 
 // Security Integration statements
 create_security_integration_stmt: CREATE (OR REPLACE)? SECURITY INTEGRATION qualified_name security_integration_param+
@@ -1129,6 +1481,8 @@ replication_identifier_list: qualified_name (COMMA qualified_name)*
 // Account-level statements
 create_account_stmt: CREATE (OR REPLACE)? ACCOUNT (IF NOT EXISTS)? qualified_name
 alter_account_stmt: ALTER ACCOUNT qualified_name
+                  | ALTER ACCOUNT SET DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU EQ SINGLE_QUOTED_STRING
+                  | ALTER ACCOUNT SET DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU EQ SINGLE_QUOTED_STRING
 drop_account_stmt: DROP ACCOUNT qualified_name
 show_accounts_stmt: SHOW ACCOUNTS
 
@@ -1152,6 +1506,9 @@ create_service_stmt: CREATE (OR REPLACE)? SERVICE (IF NOT EXISTS)? qualified_nam
 service_param: IN COMPUTE POOL qualified_name
              | FROM SPECIFICATION_TEMPLATE_FILE EQ SINGLE_QUOTED_STRING
              | FROM SPECIFICATION_FILE EQ SINGLE_QUOTED_STRING
+             | FROM SPECIFICATION DOLLAR_QUOTED_STRING
+             | MIN_INSTANCES EQ number
+             | MAX_INSTANCES EQ number
 create_external_listing_stmt: CREATE (OR REPLACE)? EXTERNAL LISTING qualified_name (SHARE qualified_name)? (AS DOLLAR_QUOTED_STRING)? listing_param*
 
 // Listing parameters
@@ -1159,13 +1516,171 @@ listing_param: PUBLISH EQ boolean
              | REVIEW EQ boolean
 create_data_metric_function_stmt: CREATE (OR REPLACE)? DATA METRIC FUNCTION qualified_name function_args? function_returns? function_properties? (AS function_impl)?
 
+// CREATE APPLICATION statement
+create_application_stmt: CREATE APPLICATION qualified_name FROM APPLICATION PACKAGE qualified_name
+
 // Additional statement types
-let_stmt: LET IDENTIFIER (CURSOR FOR select_stmt | EQ expr)
+let_stmt: LET IDENTIFIER (CURSOR FOR select_stmt | EQ expr | ASSIGN expr)
 cursor_stmt: LET IDENTIFIER CURSOR FOR select_stmt
 open_stmt: OPEN IDENTIFIER (USING LPAREN expr_list RPAREN)?
 
 // ALTER LISTING statement
 alter_listing_stmt: ALTER LISTING qualified_name (PUBLISH | UNPUBLISH | AS DOLLAR_QUOTED_STRING)
 
+// ALTER APPLICATION PACKAGE statement
+alter_application_package_stmt: ALTER APPLICATION PACKAGE qualified_name alter_app_package_action
 
+alter_app_package_action: SET DEFAULT RELEASE DIRECTIVE ACCOUNTS EQ LPAREN qualified_name RPAREN VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING) UPGRADE_AFTER EQ SINGLE_QUOTED_STRING
+                        | SET DEFAULT RELEASE DIRECTIVE VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ SINGLE_QUOTED_STRING UPGRADE_AFTER EQ SINGLE_QUOTED_STRING
+                        | SET DEFAULT RELEASE DIRECTIVE VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING) UPGRADE_AFTER EQ SINGLE_QUOTED_STRING
+                        | SET DEFAULT RELEASE DIRECTIVE VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING)
+                        | SET RELEASE DIRECTIVE IDENTIFIER ACCOUNTS EQ LPAREN qualified_name RPAREN VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING)
+                        | SET RELEASE DIRECTIVE IDENTIFIER VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING)
+                        | MODIFY RELEASE DIRECTIVE IDENTIFIER VERSION EQ (IDENTIFIER | SINGLE_QUOTED_STRING) PATCH EQ (number | SINGLE_QUOTED_STRING)
+                        | UNSET RELEASE DIRECTIVE IDENTIFIER
+                        | SET DISTRIBUTION EQ (EXTERNAL | INTERNAL)
 
+alter_schema_stmt: ALTER SCHEMA qualified_name SET schema_property (COMMA schema_property)*
+
+alter_application_stmt: ALTER APPLICATION qualified_name UPGRADE
+
+alter_user_stmt: ALTER USER (qualified_name | PLACEHOLDER) SET user_property (COMMA user_property)*
+
+user_property: RSA_PUBLIC_KEY EQ SINGLE_QUOTED_STRING
+             | IDENTIFIER EQ (SINGLE_QUOTED_STRING | IDENTIFIER | boolean | number)
+
+// ========== STREAMLIT STATEMENTS ==========
+create_streamlit_stmt: CREATE (OR REPLACE)? STREAMLIT qualified_name FROM (STAGE_PATH | SINGLE_QUOTED_STAGE_PATH) streamlit_param*
+drop_streamlit_stmt: DROP STREAMLIT qualified_name
+
+streamlit_param: MAIN_FILE EQ SINGLE_QUOTED_STRING
+               | QUERY_WAREHOUSE EQ qualified_name
+
+// ========== DYNAMIC TABLE STATEMENTS ==========
+create_dynamic_table_stmt: CREATE (OR REPLACE)? DYNAMIC (ICEBERG)? TABLE qualified_name (LPAREN qualified_name (COMMA qualified_name)* RPAREN)? dynamic_table_param* AS select_stmt
+drop_dynamic_table_stmt: DROP DYNAMIC TABLE qualified_name
+
+dynamic_table_param: TARGET_LAG EQ SINGLE_QUOTED_STRING
+                   | WAREHOUSE EQ qualified_name
+                   | REFRESH_MODE EQ INCREMENTAL
+                   | INITIALIZE EQ ON_CREATE
+                   | COMMENT EQ SINGLE_QUOTED_STRING
+                   | EXTERNAL_VOLUME EQ SINGLE_QUOTED_STRING
+                   | CATALOG EQ SINGLE_QUOTED_STRING
+                   | BASE_LOCATION EQ SINGLE_QUOTED_STRING
+
+// ========== HYBRID TABLE STATEMENTS ==========
+create_hybrid_table_stmt: CREATE (OR REPLACE)? HYBRID TABLE qualified_name LPAREN column_def (COMMA column_def)* RPAREN
+
+// ========== DATASET STATEMENTS ==========
+create_dataset_stmt: CREATE (OR REPLACE)? DATASET qualified_name
+alter_dataset_stmt: ALTER DATASET qualified_name DROP VERSION SINGLE_QUOTED_STRING
+
+// ========== MODEL STATEMENTS ==========
+alter_model_stmt: ALTER MODEL qualified_name alter_model_action
+
+alter_model_action: DROP VERSION IDENTIFIER
+                  | SET COMMENT EQ SINGLE_QUOTED_STRING
+                  | SET DEFAULT_VERSION EQ SINGLE_QUOTED_STRING
+                  | SET TAG qualified_name EQ SINGLE_QUOTED_STRING
+                  | VERSION IDENTIFIER SET ALIAS EQ SINGLE_QUOTED_STRING
+
+// ========== SNAPSHOT STATEMENTS ==========
+drop_snapshot_stmt: DROP SNAPSHOT qualified_name
+
+// ========== EXTERNAL VOLUME STATEMENTS ==========
+create_external_volume_stmt: CREATE (OR REPLACE)? EXTERNAL VOLUME qualified_name STORAGE_LOCATIONS EQ LPAREN storage_location (COMMA storage_location)* RPAREN
+drop_external_volume_stmt: DROP EXTERNAL VOLUME qualified_name
+undrop_external_volume_stmt: UNDROP EXTERNAL VOLUME qualified_name
+
+storage_location: LPAREN storage_location_param (COMMA? storage_location_param)* RPAREN
+
+storage_location_param: NAME EQ SINGLE_QUOTED_STRING
+                      | STORAGE_PROVIDER EQ (S3 | AZURE | GCS | SINGLE_QUOTED_STRING)
+                      | STORAGE_BASE_URL EQ SINGLE_QUOTED_STRING
+                      | STORAGE_AWS_ROLE_ARN EQ SINGLE_QUOTED_STRING
+                      | AZURE_TENANT_ID EQ SINGLE_QUOTED_STRING
+                      | STORAGE_GCP_SERVICE_ACCOUNT EQ SINGLE_QUOTED_STRING
+
+// ========== CATALOG INTEGRATION STATEMENTS ==========
+create_catalog_integration_stmt: CREATE (OR REPLACE)? CATALOG INTEGRATION qualified_name catalog_integration_param*
+drop_catalog_integration_stmt: DROP CATALOG INTEGRATION qualified_name
+
+catalog_integration_param: CATALOG_SOURCE EQ (POLARIS | OBJECT_STORE | ICEBERG_REST)
+                         | TABLE_FORMAT EQ ICEBERG
+                         | CATALOG_NAMESPACE EQ SINGLE_QUOTED_STRING
+                         | REST_CONFIG EQ LPAREN rest_config_param (COMMA? rest_config_param)* RPAREN
+                         | REST_AUTHENTICATION EQ LPAREN rest_auth_param (COMMA? rest_auth_param)* RPAREN
+                         | ENABLED EQ boolean
+
+rest_config_param: CATALOG_URI EQ SINGLE_QUOTED_STRING
+                 | CATALOG_NAME EQ SINGLE_QUOTED_STRING
+
+rest_auth_param: TYPE EQ OAUTH
+               | OAUTH_CLIENT_ID EQ SINGLE_QUOTED_STRING
+               | OAUTH_CLIENT_SECRET EQ SINGLE_QUOTED_STRING
+               | OAUTH_ALLOWED_SCOPES EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+               | OAUTH_TOKEN_URI EQ SINGLE_QUOTED_STRING
+
+// ========== COMPUTE POOL STATEMENTS ==========
+create_compute_pool_stmt: CREATE (OR REPLACE)? COMPUTE POOL qualified_name compute_pool_param*
+drop_compute_pool_stmt: DROP COMPUTE POOL qualified_name
+
+compute_pool_param: MIN_NODES EQ number
+                  | MAX_NODES EQ number
+                  | INSTANCE_FAMILY EQ (CPU_X64_XS | IDENTIFIER)
+
+// ========== CONNECTION STATEMENTS ==========
+create_connection_stmt: CREATE (OR REPLACE)? CONNECTION qualified_name
+drop_connection_stmt: DROP CONNECTION qualified_name
+
+// ========== APPLICATION PACKAGE STATEMENTS ==========
+create_application_package_stmt: CREATE (OR REPLACE)? APPLICATION PACKAGE qualified_name application_package_param*
+
+application_package_param: DISTRIBUTION EQ (EXTERNAL | INTERNAL)
+drop_application_package_stmt: DROP APPLICATION PACKAGE qualified_name
+
+// ========== PASSWORD POLICY STATEMENTS ==========
+create_password_policy_stmt: CREATE (OR REPLACE)? PASSWORD POLICY qualified_name password_policy_param*
+drop_password_policy_stmt: DROP PASSWORD POLICY qualified_name
+
+password_policy_param: PASSWORD_MIN_LENGTH EQ number
+                     | PASSWORD_MAX_LENGTH EQ number
+                     | PASSWORD_MIN_UPPER_CASE_CHARS EQ number
+                     | PASSWORD_MIN_LOWER_CASE_CHARS EQ number
+                     | PASSWORD_MIN_NUMERIC_CHARS EQ number
+                     | PASSWORD_MIN_SPECIAL_CHARS EQ number
+                     | PASSWORD_MIN_AGE_DAYS EQ number
+                     | PASSWORD_MAX_AGE_DAYS EQ number
+                     | PASSWORD_MAX_RETRIES EQ number
+                     | PASSWORD_LOCKOUT_TIME_MINS EQ number
+                     | PASSWORD_HISTORY EQ number
+                     | COMMENT EQ SINGLE_QUOTED_STRING
+
+// ========== NETWORK RULE STATEMENTS ==========
+create_network_rule_stmt: CREATE (OR REPLACE)? NETWORK RULE qualified_name network_rule_param*
+drop_network_rule_stmt: DROP NETWORK RULE qualified_name
+
+network_rule_param: MODE EQ INGRESS
+                  | TYPE EQ (IPV4 | SINGLE_QUOTED_STRING)
+                  | VALUE_LIST EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
+
+// ========== SECRET STATEMENTS ==========
+create_secret_stmt: CREATE (OR REPLACE)? SECRET qualified_name secret_param*
+drop_secret_stmt: DROP SECRET qualified_name
+
+secret_param: TYPE EQ (PASSWORD | OAUTH2 | GENERIC_SECRET | SINGLE_QUOTED_STRING)
+            | USERNAME EQ SINGLE_QUOTED_STRING
+            | PASSWORD EQ SINGLE_QUOTED_STRING
+            | API_AUTHENTICATION EQ (SINGLE_QUOTED_STRING | OAUTH2 | API_KEY | AWS_SIGV4)
+            | OAUTH2_REFRESH_TOKEN EQ SINGLE_QUOTED_STRING
+            | API_KEY EQ SINGLE_QUOTED_STRING
+            | AWS_KEY_ID EQ SINGLE_QUOTED_STRING
+            | AWS_SECRET_KEY EQ SINGLE_QUOTED_STRING
+
+// ========== UNDROP STATEMENTS ==========
+undrop_iceberg_table_stmt: UNDROP ICEBERG TABLE qualified_name
+undrop_tag_stmt: UNDROP TAG qualified_name
+
+// ========== DESCRIBE TRANSACTION ==========
+describe_transaction_stmt: DESCRIBE TRANSACTION
