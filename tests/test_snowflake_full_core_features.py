@@ -2,11 +2,14 @@ import pytest
 from lark import Tree
 from sql_analyzer.parser.core import parse_sql
 from sql_analyzer.analysis.engine import AnalysisEngine
+from typing import Any
 
 # Helper for analysis
 
-def analyze_sql(sql: str):
+def analyze_sql(sql: str) -> Any:
     tree = parse_sql(sql)
+    if tree is None:
+        raise ValueError("Failed to parse SQL")
     engine = AnalysisEngine()
     return engine.analyze(tree)
 
@@ -16,7 +19,7 @@ def analyze_sql(sql: str):
     ("CREATE DATABASE new_db CLONE src_db;", "CREATE_DATABASE", "src_db"),
     ("CREATE SCHEMA new_sch CLONE src_sch;", "CREATE_SCHEMA", "src_sch"),
 ])
-def test_clone_parsing_and_analysis(sql, stmt, source):
+def test_clone_parsing_and_analysis(sql: str, stmt: str, source: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -28,7 +31,7 @@ def test_clone_parsing_and_analysis(sql, stmt, source):
     ("CREATE SHARE my_share;", "CREATE_SHARE"),
     ("CREATE OR REPLACE SHARE IF NOT EXISTS my_share;", "CREATE_SHARE"),
 ])
-def test_share_create(sql, stmt):
+def test_share_create(sql: str, stmt: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -39,14 +42,14 @@ def test_share_create(sql, stmt):
     "ALTER SHARE my_share ADD DATA;",
     "ALTER SHARE my_share DROP DATA;"
 ])
-def test_share_alter(sql):
+def test_share_alter(sql: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
     assert res.statement_counts.get("ALTER_SHARE", 0) == 1
     assert any(o.action == "ALTER_SHARE" and o.name == "my_share" for o in res.objects_found)
 
-def test_share_drop():
+def test_share_drop() -> None:
     sql = "DROP SHARE my_share;"
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
@@ -62,7 +65,7 @@ def test_share_drop():
     ("CREATE INTEGRATION my_int;", "CREATE_INTEGRATION"),
     ("CREATE OR REPLACE INTEGRATION IF NOT EXISTS my_int;", "CREATE_INTEGRATION"),
 ])
-def test_integration_create(sql, stmt):
+def test_integration_create(sql: str, stmt: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -73,14 +76,14 @@ def test_integration_create(sql, stmt):
     "ALTER INTEGRATION my_int;",
     "ALTER INTEGRATION my_int TYPE = 'X';"
 ])
-def test_integration_alter(sql):
+def test_integration_alter(sql: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
     assert res.statement_counts.get("ALTER_INTEGRATION", 0) == 1
     assert any(o.action == "ALTER_INTEGRATION" and o.name == "my_int" for o in res.objects_found)
 
-def test_integration_drop():
+def test_integration_drop() -> None:
     sql = "DROP INTEGRATION my_int;"
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
@@ -94,7 +97,7 @@ def test_integration_drop():
     ("ALTER EXTERNAL TABLE ext.tbl1;", "ext.tbl1"),
     ("DROP EXTERNAL TABLE ext.tbl1;", "ext.tbl1"),
 ])
-def test_external_table(stmt, name):
+def test_external_table(stmt: str, name: str) -> None:
     tree = parse_sql(stmt)
     assert isinstance(tree, Tree)
     res = analyze_sql(stmt)
@@ -107,7 +110,7 @@ def test_external_table(stmt, name):
     ("CREATE MATERIALIZED VIEW mv1 AS SELECT c1 FROM t1;", "CREATE_MATERIALIZED_VIEW", "mv1"),
     ("CREATE OR REPLACE MATERIALIZED VIEW IF NOT EXISTS mv2 AS SELECT * FROM t2;", "CREATE_MATERIALIZED_VIEW", "mv2"),
 ])
-def test_mview_create(sql, stmt, name):
+def test_mview_create(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -118,7 +121,7 @@ def test_mview_create(sql, stmt, name):
     ("ALTER MATERIALIZED VIEW mv1;", "ALTER_MATERIALIZED_VIEW", "mv1"),
     ("DROP MATERIALIZED VIEW mv1;", "DROP_MATERIALIZED_VIEW", "mv1"),
 ])
-def test_mview_alter_drop(sql, stmt, name):
+def test_mview_alter_drop(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -131,7 +134,7 @@ def test_mview_alter_drop(sql, stmt, name):
     ("ALTER EXTERNAL FUNCTION ef1;", "ALTER_EXTERNAL_FUNCTION", "ef1"),
     ("DROP EXTERNAL FUNCTION ef1;", "DROP_EXTERNAL_FUNCTION", "ef1"),
 ])
-def test_efunc(sql, stmt, name):
+def test_efunc(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -144,7 +147,7 @@ def test_efunc(sql, stmt, name):
     ("ALTER NETWORK POLICY np1;", "ALTER_NETWORK_POLICY", "np1"),
     ("DROP NETWORK POLICY np1;", "DROP_NETWORK_POLICY", "np1"),
 ])
-def test_network_policy(sql, stmt, name):
+def test_network_policy(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -156,7 +159,7 @@ def test_network_policy(sql, stmt, name):
     ("CREATE REPLICATION rep1;", "CREATE_REPLICATION", "rep1"),
     ("CREATE OR REPLACE REPLICATION IF NOT EXISTS rep2;", "CREATE_REPLICATION", "rep2"),
 ])
-def test_replication_create(sql, stmt, name):
+def test_replication_create(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -167,7 +170,7 @@ def test_replication_create(sql, stmt, name):
     "ALTER REPLICATION rep1;",
     "ALTER REPLICATION rep2;"
 ])
-def test_replication_alter(sql):
+def test_replication_alter(sql: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -179,7 +182,7 @@ def test_replication_alter(sql):
     ("CREATE ACCOUNT acc1;", "CREATE_ACCOUNT", "acc1"),
     ("CREATE OR REPLACE ACCOUNT IF NOT EXISTS acc2;", "CREATE_ACCOUNT", "acc2"),
 ])
-def test_account_create(sql, stmt, name):
+def test_account_create(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -190,7 +193,7 @@ def test_account_create(sql, stmt, name):
     ("ALTER ACCOUNT acc1;", "ALTER_ACCOUNT", "acc1"),
     ("DROP ACCOUNT acc1;", "DROP_ACCOUNT", "acc1"),
 ])
-def test_account_alter_and_drop(sql, stmt, name):
+def test_account_alter_and_drop(sql: str, stmt: str, name: str) -> None:
     tree = parse_sql(sql)
     assert isinstance(tree, Tree)
     res = analyze_sql(sql)
@@ -198,7 +201,7 @@ def test_account_alter_and_drop(sql, stmt, name):
     assert any(o.action == stmt and o.name == name for o in res.objects_found)
 
 
-def test_account_show():
+def test_account_show() -> None:
     tree = parse_sql("SHOW ACCOUNTS;")
     assert isinstance(tree, Tree)
     res = analyze_sql("SHOW ACCOUNTS;")

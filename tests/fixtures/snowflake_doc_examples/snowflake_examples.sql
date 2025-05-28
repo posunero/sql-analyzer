@@ -206,12 +206,12 @@ CREATE TABLE messages (message_text VARCHAR)
 SELECT * FROM messages;
 SELECT my_echo_udf(message_text) FROM messages;
 SHOW ENDPOINTS IN SERVICE echo_service;
-ALTER USER <user-name> SET RSA_PUBLIC_KEY='MIIBIjANBgkqh...';
-CREATE [ OR REPLACE ] SNAPSHOT [ IF NOT EXISTS ] <name>
-FROM SERVICE <service_name>;
+ALTER USER user_name SET RSA_PUBLIC_KEY='MIIBIjANBgkqh...';
+CREATE SNAPSHOT snapshot_name
+FROM SERVICE service_name;
 CREATE SNAPSHOT snapshot_0
 FROM SERVICE example_service;
-ALTER SNAPSHOT [ IF EXISTS ] <name> SET COMMENT = '<string_literal>';
+ALTER SNAPSHOT snapshot_name SET COMMENT = 'string_literal';
 ALTER SNAPSHOT example_snapshot SET COMMENT = 'sample comment.';
 
 -- From snowflake_split_273.sql

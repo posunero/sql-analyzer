@@ -77,6 +77,9 @@ DATE: "DATE"i
 TIMESTAMP: "TIMESTAMP"i
 VARIANT: "VARIANT"i
 RESULTSET: "RESULTSET"i
+OBJECT: "OBJECT"i
+ARRAY: "ARRAY"i
+MAP: "MAP"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -260,6 +263,7 @@ DATASETS: "DATASETS"i
 MODELS: "MODELS"i
 SNAPSHOTS: "SNAPSHOTS"i
 EXTERNAL_VOLUMES: "EXTERNAL_VOLUMES"i
+VOLUMES: "VOLUMES"i
 CONNECTIONS: "CONNECTIONS"i
 POOLS: "POOLS"i
 STORAGE_LOCATIONS: "STORAGE_LOCATIONS"i
@@ -479,6 +483,8 @@ DOUBLE_COLON: "::"
 ASSIGN: ":="
 LBRACKET: "["
 RBRACKET: "]"
+LBRACE: "{"
+RBRACE: "}"
 ELLIPSIS: "..."
 DOLLAR_SIGN: "$"
 CONCAT: "||"
@@ -746,6 +752,7 @@ create_stmt: create_table_stmt
            | create_connection_stmt
            | create_application_package_stmt
            | create_password_policy_stmt
+           | create_snapshot_stmt
 
 create_table_stmt: CREATE (OR REPLACE)? TRANSIENT? TABLE (IF NOT EXISTS)? qualified_name (LPAREN column_def ( COMMA column_def )* ( COMMA table_constraint )* RPAREN (cluster_by_clause? data_retention_clause? with_tag_clause? table_properties?)? (AS select_stmt)? | AS select_stmt | clone_clause)
 
@@ -755,20 +762,29 @@ table_property: CLASSIFICATION_PROFILE EQ SINGLE_QUOTED_STRING
               | STORAGE_SERIALIZATION_POLICY EQ (OPTIMIZED | COMPATIBLE)
               | MAX_DATA_EXTENSION_TIME_IN_DAYS EQ number
 column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (WITH MASKING POLICY qualified_name)? (COMMENT SINGLE_QUOTED_STRING)?
-data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)?
+data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
          | PLACEHOLDER
-         | NUMBER (LPAREN number ( COMMA number)? RPAREN)?
-         | INT
-         | INTEGER
-         | VARCHAR (LPAREN number RPAREN)?
-         | DOUBLE
-         | FLOAT
-         | BOOLEAN
-         | DATE
-         | TIMESTAMP
-         | VARIANT
-         | RESULTSET
+         | NUMBER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
+         | INT null_constraint?
+         | INTEGER null_constraint?
+         | VARCHAR (LPAREN number RPAREN)? null_constraint?
+         | DOUBLE null_constraint?
+         | FLOAT null_constraint?
+         | BOOLEAN null_constraint?
+         | DATE null_constraint?
+         | TIMESTAMP null_constraint?
+         | VARIANT null_constraint?
+         | RESULTSET null_constraint?
+         | OBJECT (LPAREN object_field_def (COMMA object_field_def)* RPAREN)? null_constraint?
+         | ARRAY (LPAREN data_type RPAREN)? null_constraint?
+         | MAP (LPAREN data_type COMMA data_type RPAREN)? null_constraint?
          | TABLE LPAREN column_def ( COMMA column_def)* RPAREN
+
+// Null constraint for data types
+null_constraint: NOT NULL | NULL
+
+// Object field definition for OBJECT type parameters
+object_field_def: IDENTIFIER data_type
 
 // Revert to the simplest constraint definition without extra grouping
 column_constraint: NOT NULL 
@@ -992,6 +1008,7 @@ alter_stmt: alter_table_stmt
           | alter_account_stmt
           | alter_application_stmt
           | alter_user_stmt
+          | alter_snapshot_stmt
 
 alter_table_stmt: ALTER TABLE qualified_name alter_table_action
 alter_table_action: ADD COLUMN (IF NOT EXISTS)? qualified_name data_type (DEFAULT expr)?
@@ -1006,7 +1023,6 @@ alter_table_action: ADD COLUMN (IF NOT EXISTS)? qualified_name data_type (DEFAUL
                   | RENAME ROW ACCESS POLICY TO qualified_name
                   | ADD CONSTRAINT qualified_name PRIMARY KEY LPAREN qualified_name (COMMA qualified_name)* RPAREN constraint_properties?
                   | MODIFY CONSTRAINT qualified_name constraint_properties
-                  | MODIFY COLUMN IDENTIFIER SET MASKING POLICY qualified_name
 
 constraint_properties: (NOT)? ENFORCED (NOVALIDATE | VALIDATE)? (NORELY | RELY)?
 
@@ -1046,7 +1062,10 @@ drop_stmt: DROP object_type (IF EXISTS)? qualified_name
         | drop_external_function_stmt
         | drop_network_policy_stmt
         | drop_join_policy_stmt
-object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | STORAGE INTEGRATION | NOTIFICATION INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY | LISTING | STREAMLIT | DYNAMIC TABLE | HYBRID TABLE | DATASET | MODEL | SNAPSHOT | EXTERNAL VOLUME | CATALOG INTEGRATION | COMPUTE POOL | CONNECTION | APPLICATION PACKAGE | PASSWORD POLICY | NETWORK RULE | SECRET | ICEBERG TABLE | SERVICE
+        | drop_iceberg_table_stmt
+        | DROP (IF EXISTS)? ROW ACCESS POLICY qualified_name
+        | DROP (IF EXISTS)? MASKING POLICY qualified_name
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | STORAGE INTEGRATION | NOTIFICATION INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY | LISTING | STREAMLIT | DYNAMIC TABLE | HYBRID TABLE | DATASET | MODEL | SNAPSHOT | EXTERNAL VOLUME | CATALOG INTEGRATION | COMPUTE POOL | CONNECTION | APPLICATION PACKAGE | PASSWORD POLICY | NETWORK RULE | SECRET | SERVICE | ROW ACCESS POLICY | MASKING POLICY
 
 // TRUNCATE statement
 truncate_stmt: TRUNCATE TABLE qualified_name
@@ -1058,13 +1077,16 @@ show_stmt: SHOW object_types like_clause? scope_clause?
          | SHOW SERVICE CONTAINERS IN SERVICE qualified_name
          | SHOW ENDPOINTS IN SERVICE qualified_name
 object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
-            | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS | JOIN POLICIES | FAILOVER GROUPS | LISTINGS | RELEASES | STREAMLITS | DYNAMIC_TABLES | HYBRID_TABLES | DATASETS | MODELS | SNAPSHOTS | EXTERNAL_VOLUMES | COMPUTE POOLS | CONNECTIONS | APPLICATION PACKAGES | PASSWORD POLICIES | ROW ACCESS POLICIES | MASKING POLICIES | NETWORK RULES | SECRETS | ICEBERG TABLES | RELEASE_DIRECTIVES | IMAGE REPOSITORIES | SERVICES | VERSIONS
+            | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS | JOIN POLICIES | FAILOVER GROUPS | LISTINGS | RELEASES | STREAMLITS | DYNAMIC_TABLES | DYNAMIC TABLES | HYBRID_TABLES | HYBRID TABLES | DATASETS | MODELS | SNAPSHOTS | EXTERNAL_VOLUMES | EXTERNAL VOLUMES | COMPUTE POOLS | CONNECTIONS | APPLICATION PACKAGES | PASSWORD POLICIES | ROW ACCESS POLICIES | MASKING POLICIES | NETWORK RULES | SECRETS | ICEBERG TABLES | RELEASE_DIRECTIVES | IMAGE REPOSITORIES | SERVICES | VERSIONS
 like_clause: LIKE SINGLE_QUOTED_STRING
 scope_clause: IN (DATABASE | SCHEMA) qualified_name
 
 // DESCRIBE statement
 describe_stmt: (DESCRIBE | DESC) object_type qualified_name
              | (DESCRIBE | DESC) TRANSACTION
+             | (DESCRIBE | DESC) ROW ACCESS POLICY qualified_name
+             | (DESCRIBE | DESC) MASKING POLICY qualified_name
+             | (DESCRIBE | DESC) ICEBERG TABLE qualified_name
 
 // USE statement (Example for WAREHOUSE and ROLE)
 use_stmt: USE object_type qualified_name
@@ -1087,6 +1109,8 @@ copy_option: file_format_clause
            | MATCH_BY_COLUMN_NAME EQ (CASE_SENSITIVE | IDENTIFIER)
 
 file_format_clause: FILE_FORMAT EQ LPAREN file_format_option+ RPAREN // Reuses existing option rule
+                  | FILE_FORMAT EQ SINGLE_QUOTED_STRING
+                  | FILE_FORMAT EQ IDENTIFIER
 
 on_error_clause: ON_ERROR EQ SINGLE_QUOTED_STRING
 
@@ -1167,7 +1191,9 @@ comparison_op: EQ | NE | LT | GT | LE | GE | LIKE | IN | IS | BETWEEN
 // binary_op rule removed as operators are handled at specific precedence levels
 // unary_op rule removed as operators are handled in the 'unary' rule
 
-cast_expr: CAST LPAREN expr AS data_type RPAREN
+cast_expr: CAST LPAREN expr AS data_type cast_modifier? RPAREN
+
+cast_modifier: RENAME FIELDS | ADD FIELDS
 case_expr: CASE (expr)? (WHEN expr THEN expr)+ (ELSE expr)? END
 exists_expr: EXISTS LPAREN select_stmt RPAREN
 execute_immediate_expr: EXECUTE IMMEDIATE (DOLLAR_QUOTED_STRING | PARAMETER | named_parameter | SINGLE_QUOTED_STRING | IDENTIFIER) (USING LPAREN expr_list RPAREN)?
@@ -1192,6 +1218,20 @@ literal: string
        | PARAMETER
        | PLACEHOLDER
        | named_parameter
+       | object_literal
+       | array_literal
+
+// Object literal: {'key': value, 'key2': value2}
+object_literal: LBRACE object_pair_list? RBRACE
+
+object_pair_list: object_pair (COMMA object_pair)*
+
+object_pair: (string | IDENTIFIER) COLON expr
+
+// Array literal: [value1, value2, value3]
+array_literal: LBRACKET array_element_list? RBRACKET
+
+array_element_list: expr (COMMA expr)*
 
 named_parameter: COLON IDENTIFIER
 
@@ -1326,7 +1366,7 @@ job_param: WAREHOUSE EQ qualified_name | SCHEDULE EQ SINGLE_QUOTED_STRING | MAX_
 
 // Apache Iceberg table support
 create_iceberg_table_stmt: CREATE (OR REPLACE)? ICEBERG TABLE qualified_name (LPAREN column_def (COMMA column_def)* RPAREN)? iceberg_table_param* (AS select_stmt)?
-alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name alter_iceberg_action
+alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name alter_iceberg_action?
 drop_iceberg_table_stmt: DROP ICEBERG TABLE qualified_name
 
 iceberg_table_param: EXTERNAL_VOLUME EQ SINGLE_QUOTED_STRING
@@ -1357,7 +1397,7 @@ alter_alert_stmt: ALTER ALERT qualified_name
 drop_alert_stmt: DROP ALERT qualified_name
 
 // Row access policy enhancements
-alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name SET BODY ARROW expr
+alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name (SET BODY ARROW expr)?
 drop_row_access_policy_stmt: DROP ROW ACCESS POLICY qualified_name
 drop_join_policy_stmt: DROP JOIN POLICY (IF EXISTS)? qualified_name
 
@@ -1418,7 +1458,7 @@ integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE |
 
 // External Table statements
 create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name external_table_options
-alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name REFRESH
+alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name (REFRESH)?
 drop_external_table_stmt: DROP EXTERNAL TABLE qualified_name
 
 external_table_options: external_table_option*
@@ -1436,7 +1476,7 @@ alter_materialized_view_stmt: ALTER MATERIALIZED VIEW qualified_name
 drop_materialized_view_stmt: DROP MATERIALIZED VIEW qualified_name
 
 // External Function statements
-create_external_function_stmt: CREATE (OR REPLACE)? SECURE? EXTERNAL FUNCTION (IF NOT EXISTS)? qualified_name function_args function_returns external_function_properties? AS SINGLE_QUOTED_STRING
+create_external_function_stmt: CREATE (OR REPLACE)? SECURE? EXTERNAL FUNCTION (IF NOT EXISTS)? qualified_name function_args? function_returns? external_function_properties? (AS SINGLE_QUOTED_STRING)?
 alter_external_function_stmt: ALTER EXTERNAL FUNCTION qualified_name
 drop_external_function_stmt: DROP EXTERNAL FUNCTION qualified_name
 
@@ -1557,7 +1597,7 @@ streamlit_param: MAIN_FILE EQ SINGLE_QUOTED_STRING
                | QUERY_WAREHOUSE EQ qualified_name
 
 // ========== DYNAMIC TABLE STATEMENTS ==========
-create_dynamic_table_stmt: CREATE (OR REPLACE)? DYNAMIC (ICEBERG)? TABLE qualified_name (LPAREN qualified_name (COMMA qualified_name)* RPAREN)? dynamic_table_param* AS select_stmt
+create_dynamic_table_stmt: CREATE (OR REPLACE)? DYNAMIC (ICEBERG)? TABLE qualified_name (LPAREN column_def (COMMA column_def)* RPAREN)? dynamic_table_param* AS select_stmt
 drop_dynamic_table_stmt: DROP DYNAMIC TABLE qualified_name
 
 dynamic_table_param: TARGET_LAG EQ SINGLE_QUOTED_STRING
@@ -1565,8 +1605,8 @@ dynamic_table_param: TARGET_LAG EQ SINGLE_QUOTED_STRING
                    | REFRESH_MODE EQ INCREMENTAL
                    | INITIALIZE EQ ON_CREATE
                    | COMMENT EQ SINGLE_QUOTED_STRING
-                   | EXTERNAL_VOLUME EQ SINGLE_QUOTED_STRING
-                   | CATALOG EQ SINGLE_QUOTED_STRING
+                   | EXTERNAL_VOLUME EQ (SINGLE_QUOTED_STRING | qualified_name)
+                   | CATALOG EQ (SINGLE_QUOTED_STRING | qualified_name)
                    | BASE_LOCATION EQ SINGLE_QUOTED_STRING
 
 // ========== HYBRID TABLE STATEMENTS ==========
@@ -1584,8 +1624,15 @@ alter_model_action: DROP VERSION IDENTIFIER
                   | SET DEFAULT_VERSION EQ SINGLE_QUOTED_STRING
                   | SET TAG qualified_name EQ SINGLE_QUOTED_STRING
                   | VERSION IDENTIFIER SET ALIAS EQ SINGLE_QUOTED_STRING
+                  | SET (model_set_property (COMMA? model_set_property)*)
+
+model_set_property: COMMENT EQ SINGLE_QUOTED_STRING
+                  | DEFAULT_VERSION EQ SINGLE_QUOTED_STRING
+                  | IDENTIFIER EQ SINGLE_QUOTED_STRING
 
 // ========== SNAPSHOT STATEMENTS ==========
+create_snapshot_stmt: CREATE (OR REPLACE)? SNAPSHOT (IF NOT EXISTS)? qualified_name FROM SERVICE qualified_name
+alter_snapshot_stmt: ALTER SNAPSHOT (IF EXISTS)? qualified_name SET COMMENT EQ SINGLE_QUOTED_STRING
 drop_snapshot_stmt: DROP SNAPSHOT qualified_name
 
 // ========== EXTERNAL VOLUME STATEMENTS ==========
