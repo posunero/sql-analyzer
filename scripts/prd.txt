@@ -1,42 +1,207 @@
-# Product Requirements Document (PRD): SQL Analyzer
+# Product Requirements Document: Snowflake SQL Analyzer - Missing Syntax Features Implementation
 
 ## Project Overview
-The SQL Analyzer is a command-line tool designed to parse, analyze, and report on SQL scripts, with a focus on the Snowflake SQL dialect. It provides validation, analysis, and reporting features to help developers and data engineers ensure the quality and correctness of their SQL code.
+This project aims to implement comprehensive support for missing Snowflake SQL syntax features in the existing SQL analyzer. Based on analysis of the current grammar file (`sql_analyzer/grammar/snowflake.lark`) and Context7 Snowflake documentation, there are significant gaps in syntax support that need to be addressed.
 
-## Goals
-- Parse Snowflake SQL scripts and generate an Abstract Syntax Tree (AST)
-- Analyze SQL files for common issues, best practices, and potential errors
-- Validate SQL scripts for syntax correctness
-- Generate reports in multiple formats (text, JSON, HTML)
-- Provide a user-friendly CLI for batch processing and automation
+## Current State Analysis
+The current implementation includes basic DDL/DML operations but is missing many advanced Snowflake features including:
+- Advanced SHOW commands with filtering and scoping
+- Complete DESCRIBE command variations  
+- Modern data platform features (Streamlit, Dynamic Tables, Hybrid Tables)
+- Advanced data governance features (Row Access Policies, Masking Policies)
+- Container services and compute infrastructure
+- Machine learning and AI features
+- Advanced security and network policies
+- Comprehensive Iceberg table support
+- File format and stage management enhancements
 
-## Key Features
-- **SQL Parsing:** Uses Lark grammar to parse Snowflake SQL into ASTs
-- **Analysis Engine:** Inspects parsed SQL for issues, counts statements, and collects errors
-- **Validation Mode:** Checks SQL files for syntax errors and reports them
-- **Reporting:** Outputs results in text, JSON, or HTML formats
-- **CLI Interface:** Supports batch processing, fail-fast mode, and configurable logging
-- **Extensibility:** Modular design for adding new analysis rules or supporting other SQL dialects
-- **Error Handling:** Robust error reporting for file I/O, parsing, and analysis errors
+## Implementation Requirements
 
-## Supported SQL Dialect
-- Snowflake SQL (via custom Lark grammar)
+### 1. Advanced SHOW Commands Enhancement
+**Priority:** High
+**Description:** Implement comprehensive SHOW command syntax with proper filtering, scoping, and pagination support.
 
-## Input/Output
-- **Input:** One or more `.sql` files or directories containing SQL scripts
-- **Output:** Analysis/validation reports in the selected format (stdout or file)
+**Features Required:**
+- SHOW TERSE variants for condensed output
+- LIKE patterns for filtering
+- IN clause for scoping (ACCOUNT, DATABASE, SCHEMA, APPLICATION, APPLICATION PACKAGE)
+- STARTS WITH filtering
+- LIMIT and FROM pagination
+- Object-specific SHOW commands (ROLES, USERS, FUNCTIONS, PROCEDURES, etc.)
 
-## Requirements
-- Python 3.8+
-- Lark parser
-- Logging for diagnostics
-- Modular code structure for maintainability
+**Technical Implementation:**
+- Extend existing `show_stmt` rule in grammar
+- Add TERSE keyword support
+- Implement proper scoping syntax
+- Add pagination clause parsing
+- Update visitor to handle new parameters
 
-## Stretch Goals (Future)
-- Support for additional SQL dialects (e.g., PostgreSQL, MySQL)
-- More advanced analysis (e.g., query optimization hints, security checks)
-- Integration with CI/CD pipelines
-- Interactive web-based reporting
+### 2. Complete DESCRIBE Command Implementation  
+**Priority:** High
+**Description:** Implement all DESCRIBE command variations with proper object type support.
+
+**Features Required:**
+- DESCRIBE/DESC abbreviation support for all object types
+- Object-specific describe commands (FUNCTION with arguments, INTEGRATION with types)
+- TYPE parameter support for tables (COLUMNS vs STAGE)
+- Transaction description support
+- Integration type-specific descriptions
+
+**Technical Implementation:**
+- Enhance `describe_stmt` rule with all object types
+- Add optional parameters for specific object types
+- Support argument lists for function descriptions
+- Implement integration type filtering
+
+### 3. Modern Data Platform Features
+**Priority:** High
+**Description:** Implement support for modern Snowflake data platform objects.
+
+**Features Required:**
+- **Streamlit Objects:** CREATE/ALTER/DROP STREAMLIT with Git integration, main file specification
+- **Dynamic Tables:** CREATE/ALTER/DROP DYNAMIC TABLE with TARGET_LAG, REFRESH_MODE, warehouses
+- **Hybrid Tables:** CREATE/DROP HYBRID TABLE with primary key constraints
+- **Datasets:** CREATE/ALTER/DROP DATASET with versioning support
+- **Models:** ALTER MODEL with version management and metadata
+- **Snapshots:** CREATE/ALTER/DROP SNAPSHOT from services
+
+**Technical Implementation:**
+- Add new object type keywords to grammar
+- Implement object-specific DDL statement rules
+- Add parameter parsing for each object type
+- Update visitor patterns for new objects
+
+### 4. Advanced Data Governance Features
+**Priority:** Medium
+**Description:** Implement comprehensive data governance and security features.
+
+**Features Required:**
+- **Row Access Policies:** Enhanced CREATE/ALTER/DROP with complex expressions
+- **Masking Policies:** Dynamic masking with exemption policies
+- **Classification Profiles:** Table and schema-level classification
+- **Tag Management:** Enhanced tag operations with value constraints
+- **Network Policies:** CREATE/ALTER/DROP with ingress/egress rules
+- **Authentication Policies:** Password and OAuth policies
+
+**Technical Implementation:**
+- Extend policy-related grammar rules
+- Add complex expression parsing for policy bodies
+- Implement tag value constraint syntax
+- Add network rule parameter parsing
+
+### 5. Container Services and Compute Infrastructure
+**Priority:** Medium  
+**Description:** Implement Snowflake's container and compute services.
+
+**Features Required:**
+- **Compute Pools:** CREATE/ALTER/DROP with instance families and scaling
+- **Services:** CREATE/ALTER/DROP with container specifications
+- **Application Packages:** CREATE/ALTER/DROP with versioning and release directives
+- **Connections:** CREATE/ALTER/DROP for external connections
+- **External Volumes:** CREATE/DROP/UNDROP with storage provider configurations
+
+**Technical Implementation:**
+- Add compute infrastructure keywords
+- Implement container specification parsing
+- Add storage location and provider syntax
+- Support version and release directive management
+
+### 6. Enhanced Iceberg Table Support
+**Priority:** Medium
+**Description:** Complete Iceberg table feature implementation.
+
+**Features Required:**
+- CREATE ICEBERG TABLE with all catalog sources (Polaris, Object Store, REST)
+- Catalog integration with authentication and configuration
+- Metadata file path specifications
+- AUTO_REFRESH and conversion support
+- Enhanced ALTER operations for managed conversion
+
+**Technical Implementation:**
+- Extend existing iceberg grammar rules
+- Add catalog integration parameters
+- Implement metadata file path syntax
+- Support conversion operations
+
+### 7. File Format and Stage Enhancements
+**Priority:** Medium
+**Description:** Enhance file format and stage management capabilities.
+
+**Features Required:**
+- Advanced file format options for all supported types
+- Stage directory and encryption configurations
+- Template-based external table creation with INFER_SCHEMA
+- Enhanced COPY INTO options with load modes
+- Stage listing and file management operations
+
+**Technical Implementation:**
+- Extend file format option parsing
+- Add stage configuration parameters
+- Implement template syntax for external tables
+- Add advanced COPY INTO options
+
+### 8. System Functions and Built-ins
+**Priority:** Low
+**Description:** Implement missing system functions and built-in capabilities.
+
+**Features Required:**
+- SYSTEM$ functions (LIST_ICEBERG_TABLES_FROM_CATALOG, etc.)
+- GET_DDL function enhancements
+- Advanced aggregate functions (ARRAY_AGG with options)
+- Semi-structured data functions improvements
+- Machine learning prediction functions
+
+**Technical Implementation:**
+- Add system function parsing to function_call rule
+- Extend built-in function recognition
+- Implement ML-specific function syntax
+- Add semi-structured data operations
+
+### 9. Advanced SQL Language Features
+**Priority:** Low  
+**Description:** Implement advanced SQL language constructs.
+
+**Features Required:**
+- Enhanced SELECT with EXCLUDE, REPLACE, RENAME clauses
+- Advanced window function options
+- QUALIFY clause for window function filtering
+- PIVOT/UNPIVOT operations
+- Multi-table INSERT operations
+
+**Technical Implementation:**
+- Extend SELECT statement grammar
+- Add advanced clauses to select parsing
+- Implement pivot/unpivot syntax
+- Support multi-table insert patterns
+
+## Success Criteria
+1. All identified missing syntax features are parseable without errors
+2. Grammar passes comprehensive test suite covering all new features  
+3. Visitor pattern correctly extracts object references and dependencies
+4. Analysis engine properly categorizes all new statement types
+5. Reporting systems display new objects and operations correctly
+6. Performance remains acceptable with expanded grammar
+7. 95%+ compatibility with real-world Snowflake SQL scripts
+
+## Implementation Approach
+- **Phase 1:** High-priority features (SHOW/DESCRIBE enhancements, modern platform objects)
+- **Phase 2:** Medium-priority features (governance, compute infrastructure, Iceberg)  
+- **Phase 3:** Low-priority features (system functions, advanced SQL constructs)
+- Each phase includes comprehensive testing and integration validation
+- Maintain backward compatibility throughout implementation
+
+## Technical Constraints
+- Must work with existing Lark parser framework
+- Maintain consistency with current grammar patterns
+- Ensure visitor pattern scalability
+- Preserve existing functionality and test coverage
+- Follow established code organization and naming conventions
+
+## Dependencies
+- Context7 Snowflake documentation for syntax validation
+- Existing test infrastructure and fixtures
+- Current grammar structure and parsing framework
+- Analysis and reporting systems integration
 
 ---
 This PRD serves as the basis for generating initial development tasks with TaskMaster AI.
