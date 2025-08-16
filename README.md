@@ -70,6 +70,8 @@ Current implementation covers approximately **70-75%** of the Snowflake SQL spec
   - Streamlit application support
   - External access integrations
 
+For a more detailed rundown of unimplemented features, see [Unsupported Snowflake Syntax](docs/unsupported_snowflake_syntax.md).
+
 ## Installation
 
 ### Install from PyPI
