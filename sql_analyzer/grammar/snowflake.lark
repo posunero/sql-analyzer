@@ -20,6 +20,7 @@ GROUP: "GROUP"i
 GROUPS: "GROUPS"i
 BY: "BY"i
 HAVING: "HAVING"i
+QUALIFY: "QUALIFY"i
 ORDER: "ORDER"i
 LIMIT: "LIMIT"i
 WITH: "WITH"i
@@ -203,6 +204,8 @@ CROSS: "CROSS"i
 NATURAL: "NATURAL"i
 OUTER: "OUTER"i
 ASC: "ASC"i
+RANGE: "RANGE"i
+ROWS: "ROWS"i
 TABLES: "TABLES"i
 VIEWS: "VIEWS"i
 WAREHOUSES: "WAREHOUSES"i
@@ -217,6 +220,7 @@ ANY: "ANY"i
 SOME: "SOME"i
 DISTINCT: "DISTINCT"i
 CASE: "CASE"i
+CURRENT: "CURRENT"i
 COPY: "COPY"i
 SHARES: "SHARES"i
 INTEGRATIONS: "INTEGRATIONS"i
@@ -354,6 +358,14 @@ CURRENT_ROLE: "CURRENT_ROLE"i
 REGEXP_REPLACE: "REGEXP_REPLACE"i
 DEFAULT_VERSION: "DEFAULT_VERSION"i
 SYSTEM: "SYSTEM"i
+SAMPLE: "SAMPLE"i
+TABLESAMPLE: "TABLESAMPLE"i
+BERNOULLI: "BERNOULLI"i
+PIVOT: "PIVOT"i
+UNPIVOT: "UNPIVOT"i
+UNBOUNDED: "UNBOUNDED"i
+PRECEDING: "PRECEDING"i
+FOLLOWING: "FOLLOWING"i
 LIST_ICEBERG_TABLES_FROM_CATALOG: "LIST_ICEBERG_TABLES_FROM_CATALOG"i
 LIST_NAMESPACES_FROM_CATALOG: "LIST_NAMESPACES_FROM_CATALOG"i
 
@@ -639,7 +651,7 @@ ddl_stmt: create_stmt
         | describe_stmt
 
 // SELECT statement
-select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? order_clause? limit_clause?
+select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? qualify_clause? order_clause? limit_clause?
            | LPAREN select_stmt RPAREN
 select_list: advanced_star_expr | select_item ( COMMA select_item)*
 select_item: expr (AS? IDENTIFIER)?
@@ -650,13 +662,20 @@ from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 
 // Removed old recursive table_ref rule
 
-base_table_ref: qualified_name (AS? IDENTIFIER)?
-               | LPAREN select_stmt RPAREN (AS? IDENTIFIER)?
+// Extend base_table_ref in-place to preserve existing tree shape for visitors
+base_table_ref: qualified_name sample_clause? pivot_or_unpivot_clause? (AS? IDENTIFIER)?
+               | LPAREN select_stmt RPAREN pivot_or_unpivot_clause? (AS? IDENTIFIER)?
                | LPAREN values_clause RPAREN (AS? IDENTIFIER)?
                | LATERAL? function_call (AS? IDENTIFIER)?
                | STAGE_PATH (AS? IDENTIFIER)?
                | stage_table_ref
                | values_clause (AS? IDENTIFIER)?
+
+sample_clause: (SAMPLE | TABLESAMPLE) (BERNOULLI | SYSTEM)? LPAREN (number | expr) (PERCENT | ROWS)? RPAREN
+
+pivot_or_unpivot_clause: pivot_clause | unpivot_clause
+pivot_clause: PIVOT LPAREN function_call FOR expr IN LPAREN expr_list RPAREN RPAREN
+unpivot_clause: UNPIVOT LPAREN expr FOR IDENTIFIER IN LPAREN expr_list RPAREN RPAREN
 
 stage_table_ref: SINGLE_QUOTED_STRING LPAREN stage_table_options (COMMA stage_table_options)* RPAREN IDENTIFIER?
 stage_table_options: FILE_FORMAT FAT_ARROW SINGLE_QUOTED_STRING
@@ -670,6 +689,7 @@ join_type: (INNER | LEFT | RIGHT | FULL) (OUTER)? | CROSS | NATURAL
 where_clause: WHERE expr
 group_clause: GROUP BY expr ( COMMA expr)*
 having_clause: HAVING expr
+qualify_clause: QUALIFY expr
 order_clause: ORDER BY order_item ( COMMA order_item)*
 order_item: expr (ASC | DESC)?
 limit_clause: LIMIT number
@@ -1104,7 +1124,7 @@ copy_option: file_format_clause
            | PATTERN SINGLE_QUOTED_STRING
            | HEADER number
            | VALIDATE boolean
-           | PURGE boolean
+           | PURGE EQ? boolean
            | LOAD_MODE EQ (ADD_FILES_COPY | IDENTIFIER)
            | MATCH_BY_COLUMN_NAME EQ (CASE_SENSITIVE | IDENTIFIER)
 
@@ -1324,10 +1344,19 @@ OVER: "OVER"i
 LATERAL: "LATERAL"i
 
 window_spec: LPAREN window_spec_contents RPAREN
-window_spec_contents: (partition_by_clause order_clause?) | (order_clause) | // PARTITION BY ... ORDER BY ...
+// Allow optional PARTITION, optional ORDER, and optional frame in that order
+window_spec_contents: partition_by_clause? order_clause? window_frame?
 partition_by_clause: PARTITION BY expr (COMMA expr)*
 
 PARTITION: "PARTITION"i
+
+// Window frame support
+window_frame: (ROWS | RANGE) BETWEEN frame_bound AND frame_bound
+frame_bound: UNBOUNDED PRECEDING
+           | number PRECEDING
+           | CURRENT ROW
+           | number FOLLOWING
+           | UNBOUNDED FOLLOWING
 
 argument_func_args: argument_def
 
@@ -1369,7 +1398,7 @@ create_iceberg_table_stmt: CREATE (OR REPLACE)? ICEBERG TABLE qualified_name (LP
 alter_iceberg_table_stmt: ALTER ICEBERG TABLE qualified_name alter_iceberg_action?
 drop_iceberg_table_stmt: DROP ICEBERG TABLE qualified_name
 
-iceberg_table_param: EXTERNAL_VOLUME EQ SINGLE_QUOTED_STRING
+iceberg_table_param: EXTERNAL_VOLUME EQ (SINGLE_QUOTED_STRING | qualified_name)
                    | CATALOG EQ (SINGLE_QUOTED_STRING | qualified_name)
                    | METADATA_FILE_PATH EQ SINGLE_QUOTED_STRING
                    | CATALOG_TABLE_NAME EQ SINGLE_QUOTED_STRING
@@ -1581,6 +1610,7 @@ alter_app_package_action: SET DEFAULT RELEASE DIRECTIVE ACCOUNTS EQ LPAREN quali
                         | SET DISTRIBUTION EQ (EXTERNAL | INTERNAL)
 
 alter_schema_stmt: ALTER SCHEMA qualified_name SET schema_property (COMMA schema_property)*
+                 | ALTER SCHEMA qualified_name SET schema_property schema_property+
 
 alter_application_stmt: ALTER APPLICATION qualified_name UPGRADE
 
@@ -1597,7 +1627,8 @@ streamlit_param: MAIN_FILE EQ SINGLE_QUOTED_STRING
                | QUERY_WAREHOUSE EQ qualified_name
 
 // ========== DYNAMIC TABLE STATEMENTS ==========
-create_dynamic_table_stmt: CREATE (OR REPLACE)? DYNAMIC (ICEBERG)? TABLE qualified_name (LPAREN column_def (COMMA column_def)* RPAREN)? dynamic_table_param* AS select_stmt
+create_dynamic_table_stmt: CREATE (OR REPLACE)? DYNAMIC (ICEBERG)? TABLE qualified_name (LPAREN (column_def (COMMA column_def)* | simple_column_list) RPAREN)? dynamic_table_param* AS select_stmt
+simple_column_list: qualified_name (COMMA qualified_name)*
 drop_dynamic_table_stmt: DROP DYNAMIC TABLE qualified_name
 
 dynamic_table_param: TARGET_LAG EQ SINGLE_QUOTED_STRING

@@ -25,8 +25,13 @@ parser = Lark(grammar, start='start')
 class TestUnsupportedFeatures:
     """Test cases for Snowflake features not currently supported in the grammar."""
     
-    def test_parse_unsupported_sql(self, sql_statement: str) -> None:
-        """Helper method to test if SQL statement fails to parse (as expected for unsupported features)."""
+    def _parse_helper(self, sql_statement: str) -> None:
+        """Helper method kept for backwards-compatibility; not used as a pytest fixture.
+
+        Note: Individual tests call this method directly and pass a SQL string. This method
+        simply parses the provided SQL using the Snowflake grammar to ensure it is accepted
+        by the parser at parse-time (no execution semantics implied).
+        """
         parser.parse(sql_statement)
     
     # ========== STREAMLIT OBJECTS ==========
@@ -39,7 +44,7 @@ class TestUnsupportedFeatures:
           MAIN_FILE = 'streamlit_main.py'
           QUERY_WAREHOUSE = my_warehouse;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_streamlit_from_git(self):
         """CREATE STREAMLIT from Git repository - not supported"""
@@ -49,22 +54,22 @@ class TestUnsupportedFeatures:
           MAIN_FILE = 'streamlit_main.py'
           QUERY_WAREHOUSE = my_warehouse;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_streamlits(self):
         """SHOW STREAMLITS command - not supported"""
         sql = "SHOW STREAMLITS;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_streamlit(self):
         """DESCRIBE STREAMLIT command - not supported"""
         sql = "DESC STREAMLIT hello_streamlit;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_streamlit(self):
         """DROP STREAMLIT command - not supported"""
         sql = "DROP STREAMLIT hello_streamlit;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== DYNAMIC TABLES ==========
     
@@ -78,7 +83,7 @@ class TestUnsupportedFeatures:
             SELECT revenue - cost, (revenue - cost) * tax_rate, (revenue - cost) * (1.0 - tax_rate)
             FROM staging_table;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_dynamic_table_with_refresh_mode(self):
         """CREATE DYNAMIC TABLE with REFRESH_MODE - not supported"""
@@ -93,7 +98,7 @@ class TestUnsupportedFeatures:
         SELECT l.login_id, l.user_id, l.location, l.event_time
         FROM logins_raw l;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_dynamic_iceberg_table(self):
         """CREATE DYNAMIC ICEBERG TABLE - not supported"""
@@ -109,17 +114,17 @@ class TestUnsupportedFeatures:
         BASE_LOCATION = 'dynamic_table_location'
         AS SELECT id, name FROM source_table;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_dynamic_tables(self):
         """SHOW DYNAMIC TABLES - not supported"""
         sql = "SHOW DYNAMIC TABLES LIKE 'product_%' IN SCHEMA mydb.myschema;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_dynamic_table(self):
         """DROP DYNAMIC TABLE - not supported"""
         sql = "DROP DYNAMIC TABLE product;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== HYBRID TABLES ==========
     
@@ -132,19 +137,19 @@ class TestUnsupportedFeatures:
             value DOUBLE
         );
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_hybrid_tables(self):
         """SHOW HYBRID TABLES - not supported"""
         sql = "SHOW HYBRID TABLES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== DATASETS ==========
     
     def test_create_dataset(self):
         """CREATE DATASET - not supported"""
         sql = "CREATE DATASET my_dataset;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_dataset_drop_version(self):
         """ALTER DATASET DROP VERSION - not supported"""
@@ -152,14 +157,14 @@ class TestUnsupportedFeatures:
         ALTER DATASET my_dataset
         DROP VERSION 'v1';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== MODELS ==========
     
     def test_alter_model_drop_version(self):
         """ALTER MODEL DROP VERSION - not supported"""
         sql = "ALTER MODEL my_model DROP VERSION v1_0;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_model_set_properties(self):
         """ALTER MODEL SET properties - not supported"""
@@ -168,29 +173,29 @@ class TestUnsupportedFeatures:
           COMMENT = 'Updated model'
           DEFAULT_VERSION = 'v2_0';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_model_set_tag(self):
         """ALTER MODEL SET TAG - not supported"""
         sql = "ALTER MODEL my_model SET TAG environment = 'production';"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_model_version_set_alias(self):
         """ALTER MODEL VERSION SET ALIAS - not supported"""
         sql = "ALTER MODEL my_model VERSION v1_0 SET ALIAS = 'stable';"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== SNAPSHOTS ==========
     
     def test_drop_snapshot(self):
         """DROP SNAPSHOT - not supported"""
         sql = "DROP SNAPSHOT example_snapshot;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_snapshot(self):
         """DESCRIBE SNAPSHOT - not supported"""
         sql = "DESCRIBE SNAPSHOT example_snapshot;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== EXTERNAL VOLUMES ==========
     
@@ -207,7 +212,7 @@ class TestUnsupportedFeatures:
             )
           );
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_external_volume_azure(self):
         """CREATE EXTERNAL VOLUME for Azure - not supported"""
@@ -222,7 +227,7 @@ class TestUnsupportedFeatures:
             )
           );
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_external_volume_gcs(self):
         """CREATE EXTERNAL VOLUME for GCS - not supported"""
@@ -237,27 +242,27 @@ class TestUnsupportedFeatures:
             )
           );
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_external_volume(self):
         """DROP EXTERNAL VOLUME - not supported"""
         sql = "DROP EXTERNAL VOLUME my_external_volume;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_undrop_external_volume(self):
         """UNDROP EXTERNAL VOLUME - not supported"""
         sql = "UNDROP EXTERNAL VOLUME my_external_volume;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_external_volumes(self):
         """SHOW EXTERNAL VOLUMES - not supported"""
         sql = "SHOW EXTERNAL VOLUMES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_external_volume(self):
         """DESCRIBE EXTERNAL VOLUME - not supported"""
         sql = "DESCRIBE EXTERNAL VOLUME my_external_volume;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== CATALOG INTEGRATIONS ==========
     
@@ -279,7 +284,7 @@ class TestUnsupportedFeatures:
           )
           ENABLED = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_catalog_integration_object_store(self):
         """CREATE CATALOG INTEGRATION for Object Store - not supported"""
@@ -289,7 +294,7 @@ class TestUnsupportedFeatures:
           TABLE_FORMAT = ICEBERG
           ENABLED = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_catalog_integration_rest(self):
         """CREATE CATALOG INTEGRATION for REST - not supported"""
@@ -311,12 +316,12 @@ class TestUnsupportedFeatures:
           )
           ENABLED = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_catalog_integration(self):
         """DROP CATALOG INTEGRATION - not supported"""
         sql = "DROP CATALOG INTEGRATION my_catalog_integration;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED ICEBERG TABLE FEATURES ==========
     
@@ -328,7 +333,7 @@ class TestUnsupportedFeatures:
           CATALOG='my_catalog_integration'
           METADATA_FILE_PATH='path/to/metadata/v1.metadata.json';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_iceberg_table_from_rest_catalog(self):
         """CREATE ICEBERG TABLE from REST catalog - not supported"""
@@ -339,7 +344,7 @@ class TestUnsupportedFeatures:
           CATALOG_TABLE_NAME = 'my_open_catalog_table'
           AUTO_REFRESH = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_iceberg_table_from_delta_files(self):
         """CREATE ICEBERG TABLE from Delta files - not supported"""
@@ -350,7 +355,7 @@ class TestUnsupportedFeatures:
           BASE_LOCATION = 'relative/path/from/ext/vol/'
           AUTO_REFRESH = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_iceberg_table_with_snowflake_catalog(self):
         """CREATE ICEBERG TABLE with Snowflake catalog - not supported"""
@@ -361,7 +366,7 @@ class TestUnsupportedFeatures:
           BASE_LOCATION = 'my_iceberg_table'
           STORAGE_SERIALIZATION_POLICY = OPTIMIZED;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_iceberg_table_convert_to_managed(self):
         """ALTER ICEBERG TABLE CONVERT TO MANAGED - not supported"""
@@ -370,27 +375,27 @@ class TestUnsupportedFeatures:
           BASE_LOCATION = 'my/relative/path/from/external_volume'
           STORAGE_SERIALIZATION_POLICY = COMPATIBLE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_iceberg_table_refresh(self):
         """ALTER ICEBERG TABLE REFRESH - not supported"""
         sql = "ALTER ICEBERG TABLE my_iceberg_table REFRESH 'path/to/metadata/v2.metadata.json';"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_undrop_iceberg_table(self):
         """UNDROP ICEBERG TABLE - not supported"""
         sql = "UNDROP ICEBERG TABLE my_iceberg_table;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_iceberg_tables(self):
         """SHOW ICEBERG TABLES - not supported"""
         sql = "SHOW ICEBERG TABLES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_iceberg_table(self):
         """DESCRIBE ICEBERG TABLE - not supported"""
         sql = "DESCRIBE ICEBERG TABLE my_iceberg_table;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== COMPUTE POOLS ==========
     
@@ -402,41 +407,41 @@ class TestUnsupportedFeatures:
           MAX_NODES = 5
           INSTANCE_FAMILY = CPU_X64_XS;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_compute_pool(self):
         """DESCRIBE COMPUTE POOL - not supported"""
         sql = "DESCRIBE COMPUTE POOL tutorial_compute_pool;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_account_set_compute_pool(self):
         """ALTER ACCOUNT SET compute pool defaults - not supported"""
         sql = "ALTER ACCOUNT SET DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU='my_pool';"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_compute_pool(self):
         """DROP COMPUTE POOL - not supported"""
         sql = "DROP COMPUTE POOL tutorial_compute_pool;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== CONNECTIONS ==========
     
     def test_create_connection(self):
         """CREATE CONNECTION - not supported"""
         sql = "CREATE CONNECTION my_connection;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_connection(self):
         """DROP CONNECTION - not supported"""
         sql = "DROP CONNECTION my_connection;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== APPLICATION PACKAGES & NATIVE APPS ==========
     
     def test_create_application_package(self):
         """CREATE APPLICATION PACKAGE - not supported"""
         sql = "CREATE APPLICATION PACKAGE hello_snowflake_package;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_application_from_package(self):
         """CREATE APPLICATION from package - not supported"""
@@ -444,7 +449,7 @@ class TestUnsupportedFeatures:
         CREATE APPLICATION hello_snowflake_app
           FROM APPLICATION PACKAGE hello_snowflake_package;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_application_package_release_directive(self):
         """ALTER APPLICATION PACKAGE release directives - not supported"""
@@ -454,24 +459,24 @@ class TestUnsupportedFeatures:
           VERSION = v1_0
           PATCH = 2;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_release_directives(self):
         """SHOW RELEASE DIRECTIVES - not supported"""
         sql = "SHOW RELEASE DIRECTIVES IN APPLICATION PACKAGE hello_snowflake_package;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_application_package(self):
         """DROP APPLICATION PACKAGE - not supported"""
         sql = "DROP APPLICATION PACKAGE hello_snowflake_package;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== LISTINGS ==========
     
     def test_alter_listing(self):
         """ALTER LISTING - not supported"""
         sql = "ALTER LISTING my_listing PUBLISH;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== PASSWORD POLICIES ==========
     
@@ -492,22 +497,22 @@ class TestUnsupportedFeatures:
           PASSWORD_HISTORY = 5
           COMMENT = 'Production password policy';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_password_policy(self):
         """DROP PASSWORD POLICY - not supported"""
         sql = "DROP PASSWORD POLICY password_policy_production_1;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_password_policies(self):
         """SHOW PASSWORD POLICIES - not supported"""
         sql = "SHOW PASSWORD POLICIES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_password_policy(self):
         """DESCRIBE PASSWORD POLICY - not supported"""
         sql = "DESCRIBE PASSWORD POLICY password_policy_production_1;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ROW ACCESS POLICIES ==========
     
@@ -518,27 +523,27 @@ class TestUnsupportedFeatures:
         AS (the_owner VARCHAR) RETURNS BOOLEAN ->
             the_owner = CURRENT_USER();
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_row_access_policy(self):
         """ALTER ROW ACCESS POLICY - not supported"""
         sql = "ALTER ROW ACCESS POLICY rap_table_employee_info SET BODY -> false;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_row_access_policy(self):
         """DROP ROW ACCESS POLICY - not supported"""
         sql = "DROP ROW ACCESS POLICY rap_table_employee_info;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_row_access_policies(self):
         """SHOW ROW ACCESS POLICIES - not supported"""
         sql = "SHOW ROW ACCESS POLICIES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_row_access_policy(self):
         """DESCRIBE ROW ACCESS POLICY - not supported"""
         sql = "DESC ROW ACCESS POLICY rap_table_employee_info;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== MASKING POLICIES ==========
     
@@ -551,12 +556,12 @@ class TestUnsupportedFeatures:
             ELSE '*********'
           END;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_masking_policy(self):
         """DESCRIBE MASKING POLICY - not supported"""
         sql = "DESC MASKING POLICY email_mask;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_masking_policy_with_exempt_other_policies(self):
         """CREATE MASKING POLICY with exempt_other_policies - not supported"""
@@ -571,17 +576,17 @@ class TestUnsupportedFeatures:
         COMMENT = 'specify in row access policy'
         EXEMPT_OTHER_POLICIES = true;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_masking_policy(self):
         """DROP MASKING POLICY - not supported"""
         sql = "DROP MASKING POLICY email_mask;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_masking_policies(self):
         """SHOW MASKING POLICIES - not supported"""
         sql = "SHOW MASKING POLICIES IN SCHEMA governance.policies;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== EXTERNAL VOLUMES ==========
     
@@ -592,7 +597,7 @@ class TestUnsupportedFeatures:
           EXTERNAL_VOLUME = my_external_volume
           DATA_RETENTION_TIME_IN_DAYS = 5;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED ALTER TABLE FEATURES ==========
     
@@ -602,12 +607,12 @@ class TestUnsupportedFeatures:
         ALTER TABLE row_access_policy_test_table 
         ADD ROW ACCESS POLICY st_schema.row_access_policy ON (the_owner);
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_table_drop_all_row_access_policies(self):
         """ALTER TABLE DROP ALL ROW ACCESS POLICIES - not supported"""
         sql = "ALTER TABLE my_table DROP ALL ROW ACCESS POLICIES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_table_constraint_properties(self):
         """ALTER TABLE with constraint properties (ENFORCED, VALIDATE, RELY) - not supported"""
@@ -615,7 +620,7 @@ class TestUnsupportedFeatures:
         ALTER TABLE my_table 
         ADD CONSTRAINT pk_constraint PRIMARY KEY (id) NOT ENFORCED NOVALIDATE RELY;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_table_modify_constraint(self):
         """ALTER TABLE MODIFY CONSTRAINT - not supported"""
@@ -623,7 +628,7 @@ class TestUnsupportedFeatures:
         ALTER TABLE my_table 
         MODIFY CONSTRAINT pk_constraint NOT ENFORCED VALIDATE NORELY;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED CREATE TABLE FEATURES ==========
     
@@ -635,7 +640,7 @@ class TestUnsupportedFeatures:
             name VARCHAR(100)
         ) CLASSIFICATION_PROFILE = 'my_profile';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_table_with_storage_serialization_policy(self):
         """CREATE TABLE with STORAGE_SERIALIZATION_POLICY - not supported"""
@@ -645,7 +650,7 @@ class TestUnsupportedFeatures:
             name VARCHAR(100)
         ) STORAGE_SERIALIZATION_POLICY = OPTIMIZED;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_table_with_max_data_extension_time(self):
         """CREATE TABLE with MAX_DATA_EXTENSION_TIME_IN_DAYS - not supported"""
@@ -655,7 +660,7 @@ class TestUnsupportedFeatures:
             name VARCHAR(100)
         ) MAX_DATA_EXTENSION_TIME_IN_DAYS = 14;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED SCHEMA FEATURES ==========
     
@@ -666,7 +671,7 @@ class TestUnsupportedFeatures:
           CLASSIFICATION_PROFILE = 'my_profile'
           DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU = 'my_pool';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_alter_schema_set_compute_pools(self):
         """ALTER SCHEMA SET compute pool defaults - not supported"""
@@ -675,19 +680,19 @@ class TestUnsupportedFeatures:
           DEFAULT_NOTEBOOK_COMPUTE_POOL_CPU = 'cpu_pool'
           DEFAULT_NOTEBOOK_COMPUTE_POOL_GPU = 'gpu_pool';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== SYSTEM FUNCTIONS ==========
     
     def test_system_list_iceberg_tables_from_catalog(self):
         """SYSTEM$LIST_ICEBERG_TABLES_FROM_CATALOG function - not supported"""
         sql = "SELECT SYSTEM$LIST_ICEBERG_TABLES_FROM_CATALOG('myCatalogIntegration');"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_system_list_namespaces_from_catalog(self):
         """SYSTEM$LIST_NAMESPACES_FROM_CATALOG function - not supported"""
         sql = "SELECT SYSTEM$LIST_NAMESPACES_FROM_CATALOG('my_catalog_integration', 'db1');"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED FUNCTION FEATURES ==========
     
@@ -702,7 +707,7 @@ class TestUnsupportedFeatures:
           MAX_BATCH_ROWS = 100
           AS '/echo';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_function_with_service(self):
         """CREATE FUNCTION with SERVICE parameter - not supported"""
@@ -713,14 +718,14 @@ class TestUnsupportedFeatures:
           ENDPOINT = my_endpoint
           AS '/process';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== DESCRIBE TRANSACTION ==========
     
     def test_describe_transaction(self):
         """DESCRIBE TRANSACTION - not supported"""
         sql = "DESCRIBE TRANSACTION;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED ICEBERG FEATURES ==========
     
@@ -737,7 +742,7 @@ class TestUnsupportedFeatures:
         WITH ROW ACCESS POLICY my_row_policy ON (id)
         AS SELECT id, name FROM source_table;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED SELECT FEATURES ==========
     
@@ -749,7 +754,7 @@ class TestUnsupportedFeatures:
                  RENAME (old_col AS new_col)
         FROM my_table;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== STAGE QUERIES ==========
     
@@ -761,14 +766,14 @@ class TestUnsupportedFeatures:
         ( FILE_FORMAT => 'my_parquet_format',
         PATTERN => '.*data.*' ) t;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== UNDROP STATEMENTS ==========
     
     def test_undrop_tag(self):
         """UNDROP TAG - not supported"""
         sql = "UNDROP TAG my_tag;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== SECRETS ==========
     
@@ -780,7 +785,7 @@ class TestUnsupportedFeatures:
           USERNAME = 'my_user_name'
           PASSWORD = 'my_password';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_secret_oauth2(self):
         """CREATE SECRET with OAUTH2 type - not supported"""
@@ -790,22 +795,22 @@ class TestUnsupportedFeatures:
           API_AUTHENTICATION = 'oauth_integration'
           OAUTH2_REFRESH_TOKEN = 'refresh_token_value';
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_secret(self):
         """DROP SECRET - not supported"""
         sql = "DROP SECRET my_secret;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_secrets(self):
         """SHOW SECRETS - not supported"""
         sql = "SHOW SECRETS;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_secret(self):
         """DESCRIBE SECRET - not supported"""
         sql = "DESCRIBE SECRET my_secret;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== NETWORK RULES ==========
     
@@ -817,22 +822,22 @@ class TestUnsupportedFeatures:
           TYPE = IPV4
           VALUE_LIST = ('192.168.1.0/24');
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_drop_network_rule(self):
         """DROP NETWORK RULE - not supported"""
         sql = "DROP NETWORK RULE allow_access_rule;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_show_network_rules(self):
         """SHOW NETWORK RULES - not supported"""
         sql = "SHOW NETWORK RULES;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_describe_network_rule(self):
         """DESCRIBE NETWORK RULE - not supported"""
         sql = "DESCRIBE NETWORK RULE allow_access_rule;"
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== ADVANCED EXTERNAL TABLE FEATURES ==========
     
@@ -853,7 +858,7 @@ class TestUnsupportedFeatures:
           FILE_FORMAT=my_parquet_format
           AUTO_REFRESH=false;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     def test_create_external_table_with_delta_format(self):
         """CREATE EXTERNAL TABLE with Delta format - not supported"""
@@ -864,7 +869,7 @@ class TestUnsupportedFeatures:
           TABLE_FORMAT = DELTA
           AUTO_REFRESH = TRUE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
     
     # ========== COPY INTO WITH LOAD_MODE ==========
     
@@ -878,7 +883,7 @@ class TestUnsupportedFeatures:
           PURGE = TRUE
           MATCH_BY_COLUMN_NAME = CASE_SENSITIVE;
         """
-        self.test_parse_unsupported_sql(sql)
+        self._parse_helper(sql)
 
 if __name__ == "__main__":
     # Run a simple test to verify the test framework works

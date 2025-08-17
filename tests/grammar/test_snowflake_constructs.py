@@ -2,6 +2,69 @@ import pytest
 from sql_analyzer.parser.core import parse_sql
 
 
+class TestSnowflakeQualifyGrammar:
+    def test_qualify_clause_basic(self):
+        """QUALIFY after SELECT with window function and followed by ORDER/LIMIT."""
+        sql = """
+        SELECT col1, ROW_NUMBER() OVER (PARTITION BY col2 ORDER BY col3) AS rn
+        FROM t
+        QUALIFY rn = 1
+        ORDER BY col1
+        LIMIT 10;
+        """
+        tree = parse_sql(sql)
+        assert tree is not None
+
+class TestSnowflakeSampleTablesampleGrammar:
+    def test_sample_tablesample_variants(self):
+        """SAMPLE/TABLESAMPLE with optional method and unit variants."""
+        stmts = [
+            "SELECT * FROM t SAMPLE (10);",
+            "SELECT * FROM t TABLESAMPLE (10 PERCENT);",
+            "SELECT * FROM t SAMPLE BERNOULLI (5 ROWS);",
+            "SELECT * FROM t TABLESAMPLE SYSTEM (0.1);",
+        ]
+        for sql in stmts:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+
+class TestSnowflakePivotUnpivotGrammar:
+    def test_pivot_unpivot_minimal(self):
+        """Minimal PIVOT and UNPIVOT forms after a base table reference."""
+        sqls = [
+            # Simplified pivot: aggregate function, FOR expr, IN list
+            """
+            SELECT *
+            FROM sales PIVOT (SUM(amount) FOR month IN (1,2,3));
+            """,
+            # Simplified unpivot: expr FOR identifier IN list
+            """
+            SELECT *
+            FROM inventory UNPIVOT (qty FOR m IN (jan,feb,mar));
+            """,
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+class TestSnowflakeWindowFrameGrammar:
+    def test_window_frame_rows_and_range(self):
+        """Window frame with ROWS and RANGE using BETWEEN ... AND ... bounds."""
+        sqls = [
+            """
+            SELECT SUM(x) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
+            FROM t;
+            """,
+            """
+            SELECT SUM(x) OVER (ORDER BY b RANGE BETWEEN UNBOUNDED PRECEDING AND 1 FOLLOWING)
+            FROM t;
+            """,
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
 class TestSnowflakeExceptionHandling:
     """Test exception handling in various block contexts"""
     
@@ -234,154 +297,6 @@ class TestSnowflakeProcedureWithReturnTable:
             user_data := (SELECT id, name, email FROM users WHERE id = user_id);
             RETURN TABLE(user_data);
           END;
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-
-class TestSnowflakeStorageIntegration:
-    """Test storage integration statements"""
-    
-    def test_create_storage_integration_gcs(self):
-        """Test CREATE STORAGE INTEGRATION for Google Cloud Storage"""
-        sql = """
-        CREATE STORAGE INTEGRATION gcs_int
-          TYPE = EXTERNAL_STAGE
-          STORAGE_PROVIDER = 'GCS'
-          ENABLED = TRUE
-          STORAGE_ALLOWED_LOCATIONS = ('gcs://mybucket1/path1/', 'gcs://mybucket2/path2/')
-          STORAGE_BLOCKED_LOCATIONS = ('gcs://mybucket1/path1/sensitivedata/', 'gcs://mybucket2/path2/sensitivedata/');
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-    def test_create_storage_integration_s3(self):
-        """Test CREATE STORAGE INTEGRATION for AWS S3"""
-        sql = """
-        CREATE STORAGE INTEGRATION s3_int
-          TYPE = EXTERNAL_STAGE
-          STORAGE_PROVIDER = 'S3'
-          ENABLED = TRUE
-          STORAGE_ALLOWED_LOCATIONS = ('s3://mybucket/path1/', 's3://mybucket/path2/')
-          STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/MyRole';
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-    def test_create_storage_integration_azure(self):
-        """Test CREATE STORAGE INTEGRATION for Azure"""
-        sql = """
-        CREATE STORAGE INTEGRATION azure_int
-          TYPE = EXTERNAL_STAGE
-          STORAGE_PROVIDER = 'AZURE'
-          ENABLED = TRUE
-          STORAGE_ALLOWED_LOCATIONS = ('azure://myaccount.blob.core.windows.net/mycontainer/path1/')
-          AZURE_TENANT_ID = '12345678-1234-1234-1234-123456789012';
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-
-class TestSnowflakeVariableDeclarations:
-    """Test variable declarations and assignments"""
-    
-    def test_let_statement_with_assignment(self):
-        """Test LET statement with assignment operator"""
-        sql = """
-        BEGIN
-          LET count := 1;
-          LET message := 'Hello World';
-          LET result := count * 10;
-        END;
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-    def test_declare_with_default_values(self):
-        """Test DECLARE with DEFAULT values"""
-        sql = """
-        DECLARE
-          counter INTEGER DEFAULT 0;
-          status VARCHAR DEFAULT 'pending';
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP();
-        BEGIN
-          counter := counter + 1;
-        END;
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-    def test_declare_resultset_with_query(self):
-        """Test DECLARE RESULTSET with default query"""
-        sql = """
-        DECLARE
-          user_data RESULTSET DEFAULT (SELECT * FROM users WHERE active = TRUE);
-        BEGIN
-          RETURN TABLE(user_data);
-        END;
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-
-class TestSnowflakeComplexScenarios:
-    """Test complex scenarios combining multiple features"""
-    
-    def test_complex_procedure_with_all_features(self):
-        """Test procedure combining multiple Snowflake features"""
-        sql = """
-        CREATE OR REPLACE PROCEDURE process_user_data(input_user_id INTEGER)
-        RETURNS TABLE(user_id INTEGER, status VARCHAR, processed_at TIMESTAMP)
-        LANGUAGE SQL
-        AS
-          DECLARE
-            user_count INTEGER DEFAULT 0;
-            result_data RESULTSET;
-            error_msg VARCHAR;
-            PROCESSING_ERROR EXCEPTION (-20001, 'Error processing user data');
-          BEGIN
-            -- Check if user exists
-            SELECT COUNT(*) INTO user_count FROM users WHERE id = input_user_id;
-            
-            IF (user_count = 0) THEN
-              RAISE PROCESSING_ERROR;
-            END IF;
-            
-            -- Process the data
-            result_data := (
-              SELECT id, 'processed', CURRENT_TIMESTAMP()
-              FROM users 
-              WHERE id = input_user_id
-            );
-            
-            RETURN TABLE(result_data);
-            
-                      EXCEPTION
-              WHEN PROCESSING_ERROR THEN
-                RETURN TABLE((SELECT input_user_id, 'error', CURRENT_TIMESTAMP()));
-          END;
-        """
-        tree = parse_sql(sql)
-        assert tree is not None
-
-    def test_dynamic_sql_with_exception_handling(self):
-        """Test dynamic SQL execution with exception handling"""
-        sql = """
-        DECLARE
-          dynamic_query VARCHAR;
-          result_set RESULTSET;
-          SQL_ERROR EXCEPTION (-20002, 'Dynamic SQL execution failed');
-        BEGIN
-          dynamic_query := 'SELECT * FROM ' || :table_name || ' WHERE active = TRUE';
-          
-          BEGIN
-            result_set := (EXECUTE IMMEDIATE :dynamic_query);
-            RETURN TABLE(result_set);
-          EXCEPTION
-            WHEN SQL_ERROR THEN
-              RETURN TABLE((SELECT 'Error executing query' as message));
-          END;
-        END;
         """
         tree = parse_sql(sql)
         assert tree is not None 

@@ -861,6 +861,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                     elif "EXTERNAL" in obj_type_tokens and "FUNCTION" in obj_type_tokens:
                         obj_type = "FUNCTION"  # Base type is still FUNCTION
                         compound_obj_type = "EXTERNAL_FUNCTION"
+                    elif "ROW" in obj_type_tokens and "ACCESS" in obj_type_tokens and "POLICY" in obj_type_tokens:
+                        # Normalize ROW ACCESS POLICY as a specific compound type
+                        obj_type = "POLICY"
+                        compound_obj_type = "ROW_ACCESS_POLICY"
                     
                     if obj_type:
                         logger.debug(f"Found compound object type: {compound_obj_type} (base: {obj_type})")
@@ -870,7 +874,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         if not obj_type:
             # Check for direct object type tokens like TABLE, VIEW, etc. as direct children
             for i, child in enumerate(children):
-                if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE', 'ROW'):
                     obj_type = child.type
                     logger.debug(f"Found direct object type token: {obj_type}")
                     break
@@ -914,6 +918,16 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                                     
                                     if compound_found:
                                         break
+                                    # Special-case: ROW ACCESS POLICY → treat base as POLICY for statement/action naming
+                                    if 'ROW' in obj_type_tokens and 'ACCESS' in obj_type_tokens and 'POLICY' in obj_type_tokens:
+                                        obj_type = 'POLICY'
+                                        compound_obj_type = 'ROW_ACCESS_POLICY'
+                                        break
+
+        # Normalize special-case captured earlier
+        if obj_type == 'ROW' and compound_obj_type is None:
+            compound_obj_type = 'ROW_ACCESS_POLICY'
+            obj_type = 'POLICY'
 
         logger.debug(f"Drop statement object type identified: {obj_type}, compound: {compound_obj_type}")
         
