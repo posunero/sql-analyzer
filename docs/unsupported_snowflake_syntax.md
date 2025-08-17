@@ -6,6 +6,12 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - `QUALIFY` clause
 - `SAMPLE`/`TABLESAMPLE`
 - `PIVOT` and `UNPIVOT`
+- `MATCH_RECOGNIZE` for row pattern recognition
+- Hierarchical queries using `CONNECT BY`, including `START WITH`, `SEARCH`, and `CYCLE`
+- Specialized joins such as `ASOF JOIN`
+- `GROUP BY` extensions like `ROLLUP`, `CUBE`, and `GROUPING SETS`
+- `SELECT` modifiers like `TOP n`, `INTO`, `FETCH`, and `FOR UPDATE`
+- `CHANGES` clause for change tracking
 - Window frame options like `ROWS BETWEEN` and `RANGE BETWEEN`
 - Advanced built-in functions such as `DATEADD`, `DATEDIFF`, `RESULT_SCAN`, and `LAST_QUERY_ID`
 
@@ -31,5 +37,6 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - Snowpark Container Services and Python UDF features
 - Machine learning operations (`CREATE MODEL`, `PREDICT`)
 - Organization-wide features such as privacy policies and external access integrations
+- Semantic view definitions and queries (`SEMANTIC_VIEW`)
 
 These gaps represent opportunities for future enhancements. Contributions and issue reports are welcome to help extend coverage.
