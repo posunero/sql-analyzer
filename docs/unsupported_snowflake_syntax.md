@@ -16,5 +16,6 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - Snowpark Container Services and Python UDF features
 - Machine learning operations (`CREATE MODEL`, `PREDICT`)
 - Organization-wide features such as privacy policies and external access integrations
+- Semantic view definitions and queries (`SEMANTIC_VIEW`)
 
 These gaps represent opportunities for future enhancements. Contributions and issue reports are welcome to help extend coverage.
