@@ -299,4 +299,110 @@ class TestSnowflakeProcedureWithReturnTable:
           END;
         """
         tree = parse_sql(sql)
-        assert tree is not None 
+        assert tree is not None
+
+
+class TestSnowflakeDataTypes:
+    """Tests for extended Snowflake data types"""
+
+    def test_complex_data_types(self):
+        sql = """
+        CREATE TABLE t (
+            v VARIANT,
+            o OBJECT,
+            a ARRAY(VARCHAR),
+            tm TIME(3) TZ,
+            d DATE,
+            nt TIMESTAMP_NTZ(9),
+            lt TIMESTAMP_LTZ,
+            tz TIMESTAMP_TZ(6),
+            g GEOGRAPHY
+        );
+        """
+        tree = parse_sql(sql)
+        assert tree is not None
+
+
+class TestSnowflakeGrantRevoke:
+    """Tests for expanded GRANT/REVOKE statements"""
+
+    def test_grant_and_revoke(self):
+        stmts = [
+            "GRANT SELECT ON TABLE mytable TO USER alice;",
+            "GRANT USAGE ON PROCEDURE myproc(VARCHAR) TO APPLICATION ROLE app_role;",
+            "REVOKE SELECT ON VIEW myview FROM SHARE shared_role;",
+        ]
+        for sql in stmts:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+
+class TestSnowflakeShowDescribe:
+    """Tests for additional SHOW/DESCRIBE object kinds"""
+
+    def test_show_describe_variants(self):
+        sqls = [
+            "SHOW FILE FORMATS;",
+            "SHOW SEQUENCES;",
+            "SHOW FUNCTIONS;",
+            "SHOW PROCEDURES;",
+            "SHOW NETWORK POLICIES;",
+            "SHOW STORAGE INTEGRATIONS;",
+            "SHOW NOTIFICATION INTEGRATIONS;",
+            "DESCRIBE FILE FORMAT my_format;",
+            "DESCRIBE NETWORK POLICY np1;",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+
+class TestSnowflakeLoops:
+    """Tests for LOOP, WHILE, and FOR constructs"""
+
+    def test_loop_while_for(self):
+        sqls = [
+            """
+            BEGIN
+              LET i := 0;
+              WHILE i < 5 DO
+                i := i + 1;
+              END WHILE;
+            END;
+            """,
+            """
+            BEGIN
+              FOR r IN (SELECT 1) DO
+                RETURN r;
+              END FOR;
+            END;
+            """,
+            """
+            BEGIN
+              LOOP
+                RETURN 1;
+              END LOOP;
+            END;
+            """,
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+
+class TestSnowflakeTableFunctions:
+    """Tests for FLATTEN and common table functions"""
+
+    def test_flatten_and_functions(self):
+        sqls = [
+            """
+            SELECT *
+            FROM LATERAL FLATTEN(INPUT => PARSE_JSON(data), PATH => '$', OUTER => TRUE, RECURSIVE => FALSE);
+            """,
+            "SELECT OBJECT_KEYS(v) FROM t;",
+            "SELECT ARRAY_SIZE(a) FROM t;",
+            "SELECT * FROM RESULT_SCAN(LAST_QUERY_ID());",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None

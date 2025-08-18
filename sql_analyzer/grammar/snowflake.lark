@@ -74,13 +74,19 @@ INTEGER: "INTEGER"i
 VARCHAR: "VARCHAR"i
 DOUBLE: "DOUBLE"i
 FLOAT: "FLOAT"i
+TIME: "TIME"i
 DATE: "DATE"i
 TIMESTAMP: "TIMESTAMP"i
+TIMESTAMP_NTZ: "TIMESTAMP_NTZ"i
+TIMESTAMP_LTZ: "TIMESTAMP_LTZ"i
+TIMESTAMP_TZ: "TIMESTAMP_TZ"i
+TZ: "TZ"i
 VARIANT: "VARIANT"i
 RESULTSET: "RESULTSET"i
 OBJECT: "OBJECT"i
 ARRAY: "ARRAY"i
 MAP: "MAP"i
+GEOGRAPHY: "GEOGRAPHY"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -214,6 +220,10 @@ STREAMS: "STREAMS"i
 STAGES: "STAGES"i
 DATABASES: "DATABASES"i
 SCHEMAS: "SCHEMAS"i
+SEQUENCES: "SEQUENCES"i
+FUNCTIONS: "FUNCTIONS"i
+PROCEDURES: "PROCEDURES"i
+FORMATS: "FORMATS"i
 ELSE: "ELSE"i
 END: "END"i
 ANY: "ANY"i
@@ -242,6 +252,7 @@ ENDPOINTS: "ENDPOINTS"i
 PUBLIC: "PUBLIC"i
 READINESS_PROBE: "READINESS_PROBE"i
 PATH: "PATH"i
+RECURSIVE: "RECURSIVE"i
 PORT: "PORT"i
 ENV: "ENV"i
 SERVER_PORT: "SERVER_PORT"i
@@ -792,12 +803,17 @@ data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
          | FLOAT null_constraint?
          | BOOLEAN null_constraint?
          | DATE null_constraint?
-         | TIMESTAMP null_constraint?
+         | TIME (LPAREN number RPAREN)? TZ? null_constraint?
+         | TIMESTAMP (LPAREN number RPAREN)? null_constraint?
+         | TIMESTAMP_NTZ (LPAREN number RPAREN)? null_constraint?
+         | TIMESTAMP_LTZ (LPAREN number RPAREN)? null_constraint?
+         | TIMESTAMP_TZ (LPAREN number RPAREN)? null_constraint?
          | VARIANT null_constraint?
-         | RESULTSET null_constraint?
          | OBJECT (LPAREN object_field_def (COMMA object_field_def)* RPAREN)? null_constraint?
          | ARRAY (LPAREN data_type RPAREN)? null_constraint?
          | MAP (LPAREN data_type COMMA data_type RPAREN)? null_constraint?
+         | GEOGRAPHY null_constraint?
+         | RESULTSET null_constraint?
          | TABLE LPAREN column_def ( COMMA column_def)* RPAREN
 
 // Null constraint for data types
@@ -931,6 +947,7 @@ proc_statement: if_stmt
               | case_stmt
               | while_stmt
               | for_stmt
+              | loop_stmt
               | return_stmt
               | raise_stmt
               | assignment_stmt
@@ -943,6 +960,8 @@ case_stmt: CASE (expr)? (WHEN expr THEN statement_list)+ (ELSE statement_list)? 
 while_stmt: WHILE expr DO statement_list END WHILE
 
 for_stmt: FOR IDENTIFIER IN expr DO statement_list END FOR
+
+loop_stmt: LOOP statement_list END LOOP
 
 return_stmt: RETURN (TABLE LPAREN expr RPAREN | expr)?
 
@@ -1074,8 +1093,7 @@ alter_stream_stmt: ALTER STREAM qualified_name SET stream_set_clause
 alter_pipe_stmt: ALTER PIPE qualified_name (REFRESH | SET pipe_param ( COMMA pipe_param )*)
 
 // DROP statements
-drop_stmt: DROP object_type (IF EXISTS)? qualified_name
-        | drop_share_stmt
+drop_stmt: drop_share_stmt
         | drop_integration_stmt
         | drop_external_table_stmt
         | drop_materialized_view_stmt
@@ -1083,9 +1101,10 @@ drop_stmt: DROP object_type (IF EXISTS)? qualified_name
         | drop_network_policy_stmt
         | drop_join_policy_stmt
         | drop_iceberg_table_stmt
+        | DROP object_type (IF EXISTS)? qualified_name
         | DROP (IF EXISTS)? ROW ACCESS POLICY qualified_name
         | DROP (IF EXISTS)? MASKING POLICY qualified_name
-object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | STORAGE INTEGRATION | NOTIFICATION INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY | LISTING | STREAMLIT | DYNAMIC TABLE | HYBRID TABLE | DATASET | MODEL | SNAPSHOT | EXTERNAL VOLUME | CATALOG INTEGRATION | COMPUTE POOL | CONNECTION | APPLICATION PACKAGE | PASSWORD POLICY | NETWORK RULE | SECRET | SERVICE | ROW ACCESS POLICY | MASKING POLICY
+object_type: TABLE | VIEW | WAREHOUSE | TASK | STREAM | PIPE | STAGE | DATABASE | SCHEMA | PROCEDURE | FUNCTION | SEQUENCE | SHARE | INTEGRATION | STORAGE INTEGRATION | NOTIFICATION INTEGRATION | EXTERNAL TABLE | MATERIALIZED VIEW | EXTERNAL FUNCTION | JOIN POLICY | LISTING | STREAMLIT | DYNAMIC TABLE | HYBRID TABLE | DATASET | MODEL | SNAPSHOT | EXTERNAL VOLUME | CATALOG INTEGRATION | COMPUTE POOL | CONNECTION | APPLICATION PACKAGE | PASSWORD POLICY | NETWORK RULE | NETWORK POLICY | SECRET | SERVICE | ROW ACCESS POLICY | MASKING POLICY | FILE FORMAT
 
 // TRUNCATE statement
 truncate_stmt: TRUNCATE TABLE qualified_name
@@ -1098,6 +1117,7 @@ show_stmt: SHOW object_types like_clause? scope_clause?
          | SHOW ENDPOINTS IN SERVICE qualified_name
 object_types: TABLES | VIEWS | WAREHOUSES | TASKS | STREAMS | STAGES | DATABASES | SCHEMAS
             | SHARES | INTEGRATIONS | REPLICATIONS | EXTERNAL TABLES | MATERIALIZED VIEWS | USERS | ROLES | PARAMETERS | JOIN POLICIES | FAILOVER GROUPS | LISTINGS | RELEASES | STREAMLITS | DYNAMIC_TABLES | DYNAMIC TABLES | HYBRID_TABLES | HYBRID TABLES | DATASETS | MODELS | SNAPSHOTS | EXTERNAL_VOLUMES | EXTERNAL VOLUMES | COMPUTE POOLS | CONNECTIONS | APPLICATION PACKAGES | PASSWORD POLICIES | ROW ACCESS POLICIES | MASKING POLICIES | NETWORK RULES | SECRETS | ICEBERG TABLES | RELEASE_DIRECTIVES | IMAGE REPOSITORIES | SERVICES | VERSIONS
+            | NETWORK POLICIES | SEQUENCES | FUNCTIONS | PROCEDURES | FILE FORMATS | STORAGE INTEGRATIONS | NOTIFICATION INTEGRATIONS
 like_clause: LIKE SINGLE_QUOTED_STRING
 scope_clause: IN (DATABASE | SCHEMA) qualified_name
 
@@ -1153,6 +1173,8 @@ privilege: CREATE JOIN POLICY
          | INSERT
          | UPDATE
          | DELETE
+         | REFERENCES
+         | TRIGGER
          | USAGE
          | CREATE
          | APPLY
@@ -1255,6 +1277,7 @@ array_element_list: expr (COMMA expr)*
 
 named_parameter: COLON IDENTIFIER
 
+TRIGGER: "TRIGGER"i
 TRIGGERS: "TRIGGERS"i
 PERCENT: "PERCENT"i
 DO: "DO"i

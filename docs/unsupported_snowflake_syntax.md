@@ -3,33 +3,12 @@
 The SQL Analyzer currently parses a large portion of Snowflake SQL, but several syntax areas remain unsupported or only partially implemented. This document summarizes the main gaps.
 
 ## Core SQL Features
-- `QUALIFY` clause
-- `SAMPLE`/`TABLESAMPLE`
-- `PIVOT` and `UNPIVOT`
-- `MATCH_RECOGNIZE` for row pattern recognition
-- Hierarchical queries using `CONNECT BY`, including `START WITH`, `SEARCH`, and `CYCLE`
-- Specialized joins such as `ASOF JOIN`
-- `GROUP BY` extensions like `ROLLUP`, `CUBE`, and `GROUPING SETS`
-- `SELECT` modifiers like `TOP n`, `INTO`, `FETCH`, and `FOR UPDATE`
-- `CHANGES` clause for change tracking
-- Window frame options like `ROWS BETWEEN` and `RANGE BETWEEN`
-- Advanced built-in functions such as `DATEADD`, `DATEDIFF`, `RESULT_SCAN`, and `LAST_QUERY_ID`
+- Advanced built-in functions such as `DATEADD` and `DATEDIFF`
 
 ## DDL and Data Types
-- Complete support for Snowflake data types (e.g., `VARIANT`, `OBJECT`, `ARRAY`, `TIME`, `GEOGRAPHY`)
 - `ALTER TABLE` variants like `PIVOT`/`UNPIVOT` and advanced clustering options
-- Expanded `GRANT`/`REVOKE` privileges and role management features
-- `SHOW`/`DESCRIBE` for all Snowflake object kinds
-
-## Procedural and Scripting Constructs
-- `IF`, `ELSE`, and `CASE` blocks inside scripting
-- Looping constructs (`LOOP`, `WHILE`, `FOR`)
-- Exception handling (`TRY`/`CATCH`)
-- Multi-statement blocks with variable scoping and `RETURN`
 
 ## Semi-Structured Data and Table Functions
-- Full `FLATTEN` support including `PATH`, `OUTER`, and `RECURSIVE` parameters
-- Additional table functions like `OBJECT_KEYS` and `ARRAY_SIZE`
 - User-defined table functions (UDTFs)
 
 ## Ecosystem and Advanced Services
