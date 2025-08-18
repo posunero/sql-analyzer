@@ -16,6 +16,22 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - Snowpark Container Services and Python UDF features
 - Machine learning operations (`CREATE MODEL`, `PREDICT`)
 - Organization-wide features such as privacy policies and external access integrations
-- Semantic view definitions and queries (`SEMANTIC_VIEW`)
+
+## Recently Implemented Features
+
+- Join variants including `ASOF`, `NATURAL`, and `DIRECTED` joins
+- Hierarchical queries with `START WITH`/`CONNECT BY`, `LEVEL`, and `CONNECT_BY_ROOT`
+- LATERAL `TABLE` functions with named arguments using `=>`
+- `VALUES` sources with positional `$n` column references
+- `PIVOT` and `UNPIVOT` table operators
+- `QUALIFY` clause for post-aggregation filtering
+- `SAMPLE`/`TABLESAMPLE` with optional `REPEATABLE` seeds
+- Time-travel clauses `AT`, `BEFORE`, and `CHANGES`
+- Result limiting via `TOP`, `FETCH`, and `FOR UPDATE`
+- `MATCH_RECOGNIZE` table operator
+- `GROUPING SETS`, `ROLLUP`, `CUBE`, `GROUPING`, and `GROUPING_ID`
+- `CREATE SEMANTIC VIEW` and `SEMANTIC_VIEW()` table references
+- New data types `VECTOR`, `GEOGRAPHY`, and `GEOMETRY`
+- Comprehensive window frame definitions with `ROWS`, `RANGE`, or `GROUPS` and `EXCLUDE` options
 
 These gaps represent opportunities for future enhancements. Contributions and issue reports are welcome to help extend coverage.

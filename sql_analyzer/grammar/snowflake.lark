@@ -18,11 +18,37 @@ FROM: "FROM"i
 WHERE: "WHERE"i
 GROUP: "GROUP"i
 GROUPS: "GROUPS"i
+GROUPING: "GROUPING"i
+GROUPING_ID: "GROUPING_ID"i
 BY: "BY"i
+ROLLUP: "ROLLUP"i
+CUBE: "CUBE"i
 HAVING: "HAVING"i
 QUALIFY: "QUALIFY"i
+CONNECT: "CONNECT"i
+PRIOR: "PRIOR"i
+LEVEL: "LEVEL"i
+CONNECT_BY_ROOT: "CONNECT_BY_ROOT"i
+MATCH_RECOGNIZE: "MATCH_RECOGNIZE"i
+MATCH: "MATCH"i
+MEASURES: "MEASURES"i
+DEFINE: "DEFINE"i
+PER: "PER"i
+SKIP: "SKIP"i
+ONE: "ONE"i
+LAST: "LAST"i
+PAST: "PAST"i
+NO: "NO"i
+OTHERS: "OTHERS"i
 ORDER: "ORDER"i
 LIMIT: "LIMIT"i
+TOP: "TOP"i
+FETCH: "FETCH"i
+FIRST: "FIRST"i
+NEXT: "NEXT"i
+ONLY: "ONLY"i
+TIES: "TIES"i
+REPEATABLE: "REPEATABLE"i
 WITH: "WITH"i
 AS: "AS"i
 AND: "AND"i
@@ -36,6 +62,7 @@ INTO: "INTO"i
 VALUES: "VALUES"i
 UPDATE: "UPDATE"i
 SET: "SET"i
+SETS: "SETS"i
 DELETE: "DELETE"i
 LIKE: "LIKE"i
 IN: "IN"i
@@ -47,6 +74,7 @@ USE: "USE"i
 IF: "IF"i
 EXISTS: "EXISTS"i
 BETWEEN: "BETWEEN"i
+SEMANTIC: "SEMANTIC"i
 MERGE: "MERGE"i
 WHEN: "WHEN"i
 MATCHED: "MATCHED"i
@@ -87,6 +115,8 @@ OBJECT: "OBJECT"i
 ARRAY: "ARRAY"i
 MAP: "MAP"i
 GEOGRAPHY: "GEOGRAPHY"i
+GEOMETRY: "GEOMETRY"i
+VECTOR: "VECTOR"i
 
 // DDL Commands
 CREATE: "CREATE"i
@@ -200,6 +230,8 @@ AT: "AT"i
 BEFORE: "BEFORE"i
 OFFSET: "OFFSET"i
 STATEMENT: "STATEMENT"i
+CHANGES: "CHANGES"i
+INFORMATION: "INFORMATION"i
 INPUT: "INPUT"i
 CAST: "CAST"i
 INNER: "INNER"i
@@ -209,6 +241,8 @@ FULL: "FULL"i
 CROSS: "CROSS"i
 NATURAL: "NATURAL"i
 OUTER: "OUTER"i
+ASOF: "ASOF"i
+DIRECTED: "DIRECTED"i
 ASC: "ASC"i
 RANGE: "RANGE"i
 ROWS: "ROWS"i
@@ -526,7 +560,7 @@ DIRECTORY: "DIRECTORY"i
 ENCRYPTION: "ENCRYPTION"i
 
 // Common Rules
-qualified_name: (IDENTIFIER | PLACEHOLDER) ( DOT (IDENTIFIER | PLACEHOLDER) )*
+qualified_name: (IDENTIFIER | PLACEHOLDER | PARAMETER) ( DOT (IDENTIFIER | PLACEHOLDER | PARAMETER) )*
 
 // Define simple literal types early
 string: SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING 
@@ -662,7 +696,7 @@ ddl_stmt: create_stmt
         | describe_stmt
 
 // SELECT statement
-select_stmt: SELECT DISTINCT? select_list from_clause? where_clause? group_clause? having_clause? qualify_clause? order_clause? limit_clause?
+select_stmt: SELECT top_clause? DISTINCT? select_list from_clause? where_clause? hierarchical_clause? group_clause? having_clause? qualify_clause? order_clause? limit_fetch_clause? for_update_clause?
            | LPAREN select_stmt RPAREN
 select_list: advanced_star_expr | select_item ( COMMA select_item)*
 select_item: expr (AS? IDENTIFIER)?
@@ -674,19 +708,37 @@ from_clause: FROM base_table_ref (COMMA base_table_ref)* join_clause*
 // Removed old recursive table_ref rule
 
 // Extend base_table_ref in-place to preserve existing tree shape for visitors
-base_table_ref: qualified_name sample_clause? pivot_or_unpivot_clause? (AS? IDENTIFIER)?
-               | LPAREN select_stmt RPAREN pivot_or_unpivot_clause? (AS? IDENTIFIER)?
-               | LPAREN values_clause RPAREN (AS? IDENTIFIER)?
+base_table_ref: qualified_name time_travel_clause? sample_clause? pivot_or_unpivot_clause? match_recognize_clause? (AS? IDENTIFIER)?
+               | LPAREN select_stmt RPAREN pivot_or_unpivot_clause? match_recognize_clause? (AS? IDENTIFIER)?
+               | LPAREN values_clause RPAREN (AS? IDENTIFIER (LPAREN qualified_name (COMMA qualified_name)* RPAREN)? )?
+               | LATERAL? TABLE LPAREN function_call RPAREN (AS? IDENTIFIER)?
                | LATERAL? function_call (AS? IDENTIFIER)?
                | STAGE_PATH (AS? IDENTIFIER)?
                | stage_table_ref
-               | values_clause (AS? IDENTIFIER)?
+               | values_clause (AS? IDENTIFIER (LPAREN qualified_name (COMMA qualified_name)* RPAREN)? )?
 
-sample_clause: (SAMPLE | TABLESAMPLE) (BERNOULLI | SYSTEM)? LPAREN (number | expr) (PERCENT | ROWS)? RPAREN
+sample_clause: (SAMPLE | TABLESAMPLE) (BERNOULLI | SYSTEM)? LPAREN (number | expr) (PERCENT | ROWS)? RPAREN (REPEATABLE LPAREN (number | expr) RPAREN)?
+
+time_travel_clause: AT LPAREN at_before_param ( COMMA at_before_param )* RPAREN
+                   | BEFORE LPAREN at_before_param ( COMMA at_before_param )* RPAREN
+                   | CHANGES LPAREN INFORMATION FAT_ARROW expr RPAREN
 
 pivot_or_unpivot_clause: pivot_clause | unpivot_clause
 pivot_clause: PIVOT LPAREN function_call FOR expr IN LPAREN expr_list RPAREN RPAREN
 unpivot_clause: UNPIVOT LPAREN expr FOR IDENTIFIER IN LPAREN expr_list RPAREN RPAREN
+
+match_recognize_clause: MATCH_RECOGNIZE LPAREN partition_by_clause? order_clause? measures_clause? rows_per_match_clause? after_match_clause? pattern_clause define_clause RPAREN
+measures_clause: MEASURES measure_item (COMMA measure_item)*
+measure_item: expr AS IDENTIFIER
+rows_per_match_clause: ONE ROW PER MATCH | ALL ROWS PER MATCH
+after_match_clause: AFTER MATCH SKIP (TO NEXT ROW | PAST LAST ROW | TO FIRST IDENTIFIER | TO LAST IDENTIFIER)
+pattern_clause: PATTERN LPAREN pattern_expr RPAREN
+pattern_expr: pattern_atom+
+pattern_atom: IDENTIFIER pattern_suffix?
+            | LPAREN pattern_expr RPAREN pattern_suffix?
+pattern_suffix: STAR | PLUS
+define_clause: DEFINE define_item (COMMA define_item)*
+define_item: IDENTIFIER AS expr
 
 stage_table_ref: SINGLE_QUOTED_STRING LPAREN stage_table_options (COMMA stage_table_options)* RPAREN IDENTIFIER?
 stage_table_options: FILE_FORMAT FAT_ARROW SINGLE_QUOTED_STRING
@@ -694,16 +746,30 @@ stage_table_options: FILE_FORMAT FAT_ARROW SINGLE_QUOTED_STRING
 
 values_clause: VALUES value_tuple (COMMA value_tuple)*
 
-join_clause: join_type? JOIN base_table_ref (ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
-
-join_type: (INNER | LEFT | RIGHT | FULL) (OUTER)? | CROSS | NATURAL
+join_clause: natural_join_clause | regular_join_clause
+natural_join_clause: NATURAL (INNER | LEFT | RIGHT | FULL)? (OUTER)? JOIN base_table_ref (USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN)?
+regular_join_clause: join_type? JOIN base_table_ref join_condition?
+join_type: (INNER | LEFT | RIGHT | FULL) (OUTER)? DIRECTED? | CROSS | ASOF
+join_condition: ON expr | USING LPAREN qualified_name ( COMMA qualified_name)* RPAREN
 where_clause: WHERE expr
-group_clause: GROUP BY expr ( COMMA expr)*
+hierarchical_clause: START WITH expr CONNECT BY connect_by_condition (COMMA connect_by_condition)*
+connect_by_condition: PRIOR? expr comparison_op PRIOR? expr
+group_clause: GROUP BY grouping_element ( COMMA grouping_element)*
+grouping_element: expr
+               | ROLLUP LPAREN expr_list RPAREN
+               | CUBE LPAREN expr_list RPAREN
+               | GROUPING SETS LPAREN grouping_set_list RPAREN
+grouping_set_list: grouping_set ( COMMA grouping_set)*
+grouping_set: LPAREN expr_list? RPAREN
 having_clause: HAVING expr
 qualify_clause: QUALIFY expr
 order_clause: ORDER BY order_item ( COMMA order_item)*
 order_item: expr (ASC | DESC)?
+limit_fetch_clause: limit_clause | top_clause | fetch_clause
 limit_clause: LIMIT number
+top_clause: TOP number (PERCENT)? (WITH TIES)?
+fetch_clause: FETCH (FIRST | NEXT) number (ROW | ROWS) (ONLY | WITH TIES)
+for_update_clause: FOR UPDATE
 
 // INSERT statement
 insert_stmt: INSERT INTO qualified_name (LPAREN qualified_name ( COMMA qualified_name)* RPAREN)? VALUES value_tuple ( COMMA value_tuple)*
@@ -737,6 +803,7 @@ assignment: qualified_name EQ expr
 // CREATE statements
 create_stmt: create_table_stmt
            | create_view_stmt
+           | create_semantic_view_stmt
            | create_warehouse_stmt
            | create_task_stmt
            | create_stream_stmt
@@ -813,6 +880,8 @@ data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
          | ARRAY (LPAREN data_type RPAREN)? null_constraint?
          | MAP (LPAREN data_type COMMA data_type RPAREN)? null_constraint?
          | GEOGRAPHY null_constraint?
+         | GEOMETRY null_constraint?
+         | VECTOR LPAREN data_type COMMA number RPAREN null_constraint?
          | RESULTSET null_constraint?
          | TABLE LPAREN column_def ( COMMA column_def)* RPAREN
 
@@ -836,6 +905,7 @@ autoincrement_clause: (AUTOINCREMENT | IDENTITY) (START number INCREMENT number)
 table_constraint: PRIMARY KEY LPAREN qualified_name ( COMMA qualified_name )* RPAREN
 
 create_view_stmt: CREATE (OR REPLACE)? (SECURE)? VIEW qualified_name AS select_stmt
+create_semantic_view_stmt: CREATE (OR REPLACE)? SEMANTIC VIEW qualified_name AS select_stmt
 
 create_warehouse_stmt: CREATE (OR REPLACE)? WAREHOUSE (IF NOT EXISTS)? qualified_name warehouse_param*
 warehouse_param: WAREHOUSE_SIZE EQ (IDENTIFIER | SINGLE_QUOTED_STRING)
@@ -1197,7 +1267,6 @@ function_param_types: data_type (COMMA data_type)*
 
 // --- Expressions (Revised with Explicit Precedence) ---
 expr: disjunction
-    | function_call OVER window_spec
 
 disjunction: disjunction OR conjunction | conjunction
 
@@ -1209,12 +1278,13 @@ add_sub: add_sub (PLUS | MINUS | CONCAT) mul_div | mul_div
 
 mul_div: mul_div (STAR | SLASH) unary | unary
 
-unary: (NOT | PLUS | MINUS) unary | primary_expr
+unary: (NOT | PLUS | MINUS | PRIOR) unary | CONNECT_BY_ROOT unary | primary_expr
 
 primary_expr: primary_expr LBRACKET expr RBRACKET      // Array access: a[i]
             | primary_expr COLON IDENTIFIER            // Path access: a:b
             | primary_expr DOT IDENTIFIER              // Path access: a.b (Snowflake allows this after first :) 
             | primary_expr DOUBLE_COLON data_type    // Cast: a::type
+            | function_call OVER window_spec
             | atom                                     // Base case
 
 atom: literal
@@ -1227,6 +1297,7 @@ atom: literal
      | exists_expr
      | quantified_comparison
      | execute_immediate_expr
+     | LEVEL
 
 // Operators split by type
 comparison_op: EQ | NE | LT | GT | LE | GE | LIKE | IN | IS | BETWEEN
@@ -1243,7 +1314,7 @@ quantified_comparison: expr comparison_op (ANY | ALL | SOME) LPAREN select_stmt 
                     | expr IN LPAREN expr_list RPAREN
 
 // Function calls (Refactored)
-function_call: (qualified_name | system_function | COUNT | SUM | AVG | MAX | MIN | INFER_SCHEMA | ARRAY_AGG | OBJECT_CONSTRUCT | CURRENT_USER | CURRENT_ROLE | REGEXP_REPLACE) LPAREN func_args? RPAREN
+function_call: (qualified_name | system_function | COUNT | SUM | AVG | MAX | MIN | INFER_SCHEMA | ARRAY_AGG | OBJECT_CONSTRUCT | CURRENT_USER | CURRENT_ROLE | REGEXP_REPLACE | GROUPING | GROUPING_ID) LPAREN func_args? RPAREN
 system_function: IDENTIFIER DOLLAR_SIGN IDENTIFIER
                 | SYSTEM DOLLAR_SIGN LIST_ICEBERG_TABLES_FROM_CATALOG
                 | SYSTEM DOLLAR_SIGN LIST_NAMESPACES_FROM_CATALOG
@@ -1374,12 +1445,15 @@ partition_by_clause: PARTITION BY expr (COMMA expr)*
 PARTITION: "PARTITION"i
 
 // Window frame support
-window_frame: (ROWS | RANGE) BETWEEN frame_bound AND frame_bound
+window_frame: (ROWS | RANGE | GROUPS) frame_extent frame_exclusion?
+frame_extent: frame_bound
+             | BETWEEN frame_bound AND frame_bound
 frame_bound: UNBOUNDED PRECEDING
            | number PRECEDING
            | CURRENT ROW
            | number FOLLOWING
            | UNBOUNDED FOLLOWING
+frame_exclusion: EXCLUDE (CURRENT ROW | GROUP | TIES | NO OTHERS)
 
 argument_func_args: argument_def
 
