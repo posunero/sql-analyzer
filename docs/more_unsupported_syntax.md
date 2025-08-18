@@ -6,67 +6,67 @@ Sweet — here’s a comprehensive, repo-ready TODO that you can drop into an is
 
 ## A) Grammar / Lexer
 
-* [ ] **JOIN variants**
+* [x] **JOIN variants**
 
-  * [ ] Add `ASOF JOIN` to the `join_type` alternatives; allow `ON` with key equality and timestamp inequality.
-  * [ ] Accept `NATURAL` with `INNER|LEFT|RIGHT|FULL` joins; support `USING (col, ...)` (no `ON` allowed with `NATURAL`).
-  * [ ] Parse optional `DIRECTED` keyword in `INNER/LEFT/RIGHT/FULL ... DIRECTED JOIN`.
-* [ ] **Hierarchical queries**
+  * [x] Add `ASOF JOIN` to the `join_type` alternatives; allow `ON` with key equality and timestamp inequality.
+  * [x] Accept `NATURAL` with `INNER|LEFT|RIGHT|FULL` joins; support `USING (col, ...)` (no `ON` allowed with `NATURAL`).
+  * [x] Parse optional `DIRECTED` keyword in `INNER/LEFT/RIGHT/FULL ... DIRECTED JOIN`.
+* [x] **Hierarchical queries**
 
-  * [ ] Support `START WITH <predicate> CONNECT BY [PRIOR] <expr> = [PRIOR] <expr> [, ...]`.
-  * [ ] Add pseudo-column `LEVEL`, function‐like `CONNECT_BY_ROOT <expr>`, and `SYS_CONNECT_BY_PATH(expr, delimiter)`.
-* [ ] **Table functions & LATERAL**
+  * [x] Support `START WITH <predicate> CONNECT BY [PRIOR] <expr> = [PRIOR] <expr> [, ...]`.
+  * [x] Add pseudo-column `LEVEL`, function‐like `CONNECT_BY_ROOT <expr>`, and `SYS_CONNECT_BY_PATH(expr, delimiter)`.
+* [x] **Table functions & LATERAL**
 
-  * [ ] Allow `LATERAL` and `TABLE(function_call)` as `from_item`s.
-  * [ ] Add named args with fat arrow token `=>` (e.g., `FLATTEN(INPUT=>..., PATH=>'...')`).
-* [ ] **VALUES in FROM & `$n` refs**
+  * [x] Allow `LATERAL` and `TABLE(function_call)` as `from_item`s.
+  * [x] Add named args with fat arrow token `=>` (e.g., `FLATTEN(INPUT=>..., PATH=>'...')`).
+* [x] **VALUES in FROM & `$n` refs**
 
-  * [ ] Accept `FROM ( VALUES (expr[, ...])[, ...] ) [AS alias (col_alias[, ...])]`.
-  * [ ] Permit positional refs `$1`, `$2`, … as column identifiers **only** when the source is a `VALUES` table (or where Snowflake allows).
-* [ ] **PIVOT / UNPIVOT**
+  * [x] Accept `FROM ( VALUES (expr[, ...])[, ...] ) [AS alias (col_alias[, ...])]`.
+  * [x] Permit positional refs `$1`, `$2`, … as column identifiers **only** when the source is a `VALUES` table (or where Snowflake allows).
+* [x] **PIVOT / UNPIVOT**
 
-  * [ ] Implement both constructs as table operators following a table source; support aliasing and nested usage.
-* [ ] **QUALIFY**
+  * [x] Implement both constructs as table operators following a table source; support aliasing and nested usage.
+* [x] **QUALIFY**
 
-  * [ ] Add `QUALIFY <boolean_expr>` after `WHERE/GROUP BY/HAVING` & `WINDOW`/`ORDER BY` but before `LIMIT/TOP/FETCH`.
-* [ ] **SAMPLE / TABLESAMPLE**
+  * [x] Add `QUALIFY <boolean_expr>` after `WHERE/GROUP BY/HAVING` & `WINDOW`/`ORDER BY` but before `LIMIT/TOP/FETCH`.
+* [x] **SAMPLE / TABLESAMPLE**
 
-  * [ ] Support `SAMPLE` and `TABLESAMPLE` with `BERNOULLI|SYSTEM`, percentage/rows, and optional `REPEATABLE (seed)`.
-* [ ] **Time Travel / Change Tracking**
+  * [x] Support `SAMPLE` and `TABLESAMPLE` with `BERNOULLI|SYSTEM`, percentage/rows, and optional `REPEATABLE (seed)`.
+* [x] **Time Travel / Change Tracking**
 
-  * [ ] On table references, support `AT ( TIMESTAMP => <expr> | OFFSET => <num> | STATEMENT => <id> )`.
-  * [ ] Support `BEFORE ( TIMESTAMP => ... | STATEMENT => ... )`.
-  * [ ] Support `CHANGES ( INFORMATION => ... )` forms (table sampling of change data).
-* [ ] **LIMIT synonyms**
+  * [x] On table references, support `AT ( TIMESTAMP => <expr> | OFFSET => <num> | STATEMENT => <id> )`.
+  * [x] Support `BEFORE ( TIMESTAMP => ... | STATEMENT => ... )`.
+  * [x] Support `CHANGES ( INFORMATION => ... )` forms (table sampling of change data).
+* [x] **LIMIT synonyms**
 
-  * [ ] `TOP <n> [PERCENT] [WITH TIES]` (both in `SELECT` head and after `ORDER BY`).
-  * [ ] `FETCH { FIRST | NEXT } <n> { ROW | ROWS } { ONLY | WITH TIES }`.
-* [ ] **SELECT … FOR UPDATE**
+  * [x] `TOP <n> [PERCENT] [WITH TIES]` (both in `SELECT` head and after `ORDER BY`).
+  * [x] `FETCH { FIRST | NEXT } <n> { ROW | ROWS } { ONLY | WITH TIES }`.
+* [x] **SELECT … FOR UPDATE**
 
-  * [ ] Add trailing `FOR UPDATE` clause to `SELECT`.
-* [ ] **MATCH\_RECOGNIZE**
+  * [x] Add trailing `FOR UPDATE` clause to `SELECT`.
+* [x] **MATCH\_RECOGNIZE**
 
-  * [ ] Implement `MATCH_RECOGNIZE ( PARTITION BY ... ORDER BY ... MEASURES ... ONE|ALL ROWS PER MATCH AFTER MATCH SKIP ... PATTERN (...) DEFINE ... )`.
-* [ ] **GROUP BY extensions**
+  * [x] Implement `MATCH_RECOGNIZE ( PARTITION BY ... ORDER BY ... MEASURES ... ONE|ALL ROWS PER MATCH AFTER MATCH SKIP ... PATTERN (...) DEFINE ... )`.
+* [x] **GROUP BY extensions**
 
-  * [ ] Add `GROUPING SETS ( ... )`, `ROLLUP ( ... )`, `CUBE ( ... )`.
-  * [ ] Ensure `GROUPING()` and `GROUPING_ID()` are tokenized as functions.
-* [ ] **SEMANTIC VIEW**
+  * [x] Add `GROUPING SETS ( ... )`, `ROLLUP ( ... )`, `CUBE ( ... )`.
+  * [x] Ensure `GROUPING()` and `GROUPING_ID()` are tokenized as functions.
+* [x] **SEMANTIC VIEW**
 
-  * [ ] Add DDL: `CREATE SEMANTIC VIEW <name> ...`.
-  * [ ] Allow querying via `FROM SEMANTIC_VIEW(<identifier_or_fqn>)`.
-* [ ] **New data types**
+  * [x] Add DDL: `CREATE SEMANTIC VIEW <name> ...`.
+  * [x] Allow querying via `FROM SEMANTIC_VIEW(<identifier_or_fqn>)`.
+* [x] **New data types**
 
-  * [ ] Add `VECTOR(<elem_type>, <dimension>)`.
-  * [ ] Add `GEOGRAPHY` and `GEOMETRY`.
-* [ ] **Window frames**
+  * [x] Add `VECTOR(<elem_type>, <dimension>)`.
+  * [x] Add `GEOGRAPHY` and `GEOMETRY`.
+* [x] **Window frames**
 
-  * [ ] Ensure full frame grammar: `ROWS | RANGE | GROUPS` with `BETWEEN ... AND ...`, `UNBOUNDED PRECEDING|FOLLOWING`, `CURRENT ROW`, and exclusion clauses if applicable.
-* [ ] **Lexer: tokens & identifiers**
+  * [x] Ensure full frame grammar: `ROWS | RANGE | GROUPS` with `BETWEEN ... AND ...`, `UNBOUNDED PRECEDING|FOLLOWING`, `CURRENT ROW`, and exclusion clauses if applicable.
+* [x] **Lexer: tokens & identifiers**
 
-  * [ ] Add `=>` fat-arrow token (distinct from `=` and `->`).
-  * [ ] Ensure `$` + digits recognized as positional column *identifier* (scoped; see above).
-  * [ ] Confirm keywords added: `ASOF`, `DIRECTED`, `QUALIFY`, `PIVOT`, `UNPIVOT`, `MATCH_RECOGNIZE`, `ROLLUP`, `CUBE`, `GROUPING`, `VECTOR`, `GEOGRAPHY`, `GEOMETRY`, `SEMANTIC_VIEW`, `LEVEL`, `CONNECT_BY_ROOT`.
+  * [x] Add `=>` fat-arrow token (distinct from `=` and `->`).
+  * [x] Ensure `$` + digits recognized as positional column *identifier* (scoped; see above).
+  * [x] Confirm keywords added: `ASOF`, `DIRECTED`, `QUALIFY`, `PIVOT`, `UNPIVOT`, `MATCH_RECOGNIZE`, `ROLLUP`, `CUBE`, `GROUPING`, `VECTOR`, `GEOGRAPHY`, `GEOMETRY`, `SEMANTIC_VIEW`, `LEVEL`, `CONNECT_BY_ROOT`.
 
 ## B) Semantic checks (analyzer / lints)
 
