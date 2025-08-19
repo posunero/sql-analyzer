@@ -26,7 +26,6 @@ This project was almost entirely built using LLMs.
 *   Aggregates statistics across multiple files.
 *   Supports different output formats (Text, JSON, HTML). (CSV format is planned but not yet implemented.)
 *   Handles file and directory inputs.
-*   Implements the Snowflake feature gap plan, covering search optimization, external table columns, time-travel cloning, security policies, resource monitor triggers, and more (see [docs/snowflake_feature_gaps_implementation_plan.md](docs/snowflake_feature_gaps_implementation_plan.md)).
 
 ## Snowflake SQL Coverage
 
