@@ -48,6 +48,7 @@ class TestSnowflakePivotUnpivotGrammar:
             tree = parse_sql(sql)
             assert tree is not None
 
+
 class TestSnowflakeWindowFrameGrammar:
     def test_window_frame_rows_and_range(self):
         """Window frame with ROWS and RANGE using BETWEEN ... AND ... bounds."""
@@ -402,6 +403,82 @@ class TestSnowflakeTableFunctions:
             "SELECT OBJECT_KEYS(v) FROM t;",
             "SELECT ARRAY_SIZE(a) FROM t;",
             "SELECT * FROM RESULT_SCAN(LAST_QUERY_ID());",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+
+class TestSnowflakeFeatureGaps:
+    """Additional tests covering previously unsupported Snowflake features."""
+
+    def test_variant_path_and_constructs(self):
+        sqls = [
+            "SELECT v:details.addresses[0].street FROM t;",
+            "SELECT ARRAY_CONSTRUCT(1,2,3), OBJECT_CONSTRUCT('a',1) FROM t;",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_time_travel_and_clone(self):
+        sqls = [
+            "SELECT * FROM src AT (TIMESTAMP => '2024-01-01');",
+            "CREATE TABLE new_tbl CLONE old_tbl AT (TIMESTAMP => '2024-01-01');",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_stage_file_format_and_copy(self):
+        sqls = [
+            "CREATE STAGE stg URL = 's3://bucket' FILE_FORMAT = (TYPE = 'CSV');",
+            "CREATE FILE FORMAT fmt TYPE = 'CSV' FIELD_DELIMITER = ',';",
+            "COPY INTO tgt FROM @stg FILE_FORMAT = (TYPE = 'CSV');",
+            "CREATE STREAM s ON TABLE t APPEND_ONLY = TRUE SHOW_INITIAL_ROWS = FALSE;",
+            "CREATE TASK tk WAREHOUSE = wh SCHEDULE = '5 MINUTE' AS SELECT 1;",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_security_policies_and_share(self):
+        sqls = [
+            "CREATE ROW ACCESS POLICY rap AS (r STRING) RETURNS BOOLEAN -> r='admin';",
+            "CREATE MASKING POLICY mp AS (v STRING) RETURNS STRING -> v;",
+            "CREATE SHARE shr;",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_functions_sampling_and_system(self):
+        sqls = [
+            "CREATE FUNCTION f() RETURNS STRING LANGUAGE SQL AS $$ SELECT 'x'; $$;",
+            "SELECT * FROM t SAMPLE (10) REPEATABLE (1);",
+            "SELECT CURRENT_ACCOUNT();",
+            "SELECT GET_DDL('TABLE','t');",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_cloud_and_performance(self):
+        sqls = [
+            "CREATE WAREHOUSE wh WAREHOUSE_SIZE = 'SMALL' AUTO_SUSPEND = 10 AUTO_RESUME = TRUE;",
+            "CREATE RESOURCE MONITOR rm WITH CREDIT_QUOTA = 100 TRIGGERS ON 75 PERCENT DO SUSPEND;",
+            "CREATE TABLE t1 (id INT) CLUSTER BY (id);",
+        ]
+        for sql in sqls:
+            tree = parse_sql(sql)
+            assert tree is not None
+
+    def test_external_search_and_materialized(self):
+        sqls = [
+            "CREATE EXTERNAL TABLE ext (id INT AS (1)) LOCATION = @stg FILE_FORMAT = (TYPE = 'CSV') AUTO_REFRESH = TRUE;",
+            "ALTER TABLE t ADD SEARCH OPTIMIZATION ON EQUALITY(col);",
+            "ALTER TABLE t ADD SEARCH OPTIMIZATION ON SUBSTRING(col);",
+            "CREATE MATERIALIZED VIEW mv AS SELECT * FROM t;",
         ]
         for sql in sqls:
             tree = parse_sql(sql)

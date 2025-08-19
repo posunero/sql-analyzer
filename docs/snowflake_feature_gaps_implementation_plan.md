@@ -191,7 +191,7 @@ create_materialized_view = "CREATE" "MATERIALIZED" "VIEW" view_name
 ## Implementation priorities
 
 - **High**: VARIANT path expressions, time travel clauses, COPY INTO,
-  JSON path functions, dollar-quoted strings.
+ JSON path functions, dollar-quoted strings.
 - **Medium**: external tables, streams and tasks, multi-language UDFs,
   CLONE operations, stage & file format objects.
 - **Low**: row access and masking policies, data sharing, warehouse &
@@ -205,3 +205,22 @@ create_materialized_view = "CREATE" "MATERIALIZED" "VIEW" view_name
    document.
 3. Ensure the full test suite (`pytest`) remains green.
 
+## Progress
+
+- [x] 1.1 VARIANT path notation
+- [x] 1.2 OBJECT and ARRAY helpers
+- [x] 2.1 AT and BEFORE clause
+- [x] 2.2 CLONE operations
+- [x] 3.1 External tables
+- [x] 3.2 Streams and tasks
+- [x] 3.3 Stages and file formats
+- [x] 4. Data loading and unloading
+- [x] 5. Security and governance
+- [x] 6. User-defined functions and procedures
+- [x] 7. Unique syntax patterns
+- [x] 8. Cloud infrastructure management
+- [x] 9. Performance optimization features
+- [x] 10. System and metadata functions
+
+
+All listed Snowflake feature gaps have been implemented and tested.

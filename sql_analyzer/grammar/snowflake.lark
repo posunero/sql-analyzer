@@ -136,6 +136,8 @@ ENABLE: "ENABLE"i
 DISABLE: "DISABLE"i
 SEARCH: "SEARCH"i
 OPTIMIZATION: "OPTIMIZATION"i
+EQUALITY: "EQUALITY"i
+SUBSTRING: "SUBSTRING"i
 
 // Object types
 TABLE: "TABLE"i
@@ -385,6 +387,7 @@ INFER_SCHEMA: "INFER_SCHEMA"i
 TEMPLATE: "TEMPLATE"i
 ARRAY_AGG: "ARRAY_AGG"i
 OBJECT_CONSTRUCT: "OBJECT_CONSTRUCT"i
+ARRAY_CONSTRUCT: "ARRAY_CONSTRUCT"i
 LOCATION: "LOCATION"i
 DELTA: "DELTA"i
 LOAD_MODE: "LOAD_MODE"i
@@ -400,6 +403,8 @@ VALUE_LIST: "VALUE_LIST"i
 ALIAS: "ALIAS"i
 CURRENT_USER: "CURRENT_USER"i
 CURRENT_ROLE: "CURRENT_ROLE"i
+CURRENT_ACCOUNT: "CURRENT_ACCOUNT"i
+GET_DDL: "GET_DDL"i
 REGEXP_REPLACE: "REGEXP_REPLACE"i
 DEFAULT_VERSION: "DEFAULT_VERSION"i
 SYSTEM: "SYSTEM"i
@@ -860,6 +865,7 @@ table_property: CLASSIFICATION_PROFILE EQ SINGLE_QUOTED_STRING
               | STORAGE_SERIALIZATION_POLICY EQ (OPTIMIZED | COMPATIBLE)
               | MAX_DATA_EXTENSION_TIME_IN_DAYS EQ number
 column_def: qualified_name data_type autoincrement_clause? (column_constraint)* (WITH MASKING POLICY qualified_name)? (COMMENT SINGLE_QUOTED_STRING)?
+ext_column_def: qualified_name data_type AS LPAREN expr RPAREN
 data_type: IDENTIFIER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
          | PLACEHOLDER
          | NUMBER (LPAREN number ( COMMA number)? RPAREN)? null_constraint?
@@ -1126,6 +1132,7 @@ alter_table_action: ADD COLUMN (IF NOT EXISTS)? qualified_name data_type (DEFAUL
                   | RENAME COLUMN qualified_name TO qualified_name
                   | RENAME TO qualified_name
                   | CLUSTER BY LPAREN expr (COMMA expr)* RPAREN
+                  | ADD SEARCH OPTIMIZATION ON search_spec
                   | ADD ROW ACCESS POLICY qualified_name ON LPAREN qualified_name (COMMA qualified_name)* RPAREN
                   | DROP ROW ACCESS POLICY
                   | DROP ALL ROW ACCESS POLICIES
@@ -1134,6 +1141,9 @@ alter_table_action: ADD COLUMN (IF NOT EXISTS)? qualified_name data_type (DEFAUL
                   | MODIFY CONSTRAINT qualified_name constraint_properties
 
 constraint_properties: (NOT)? ENFORCED (NOVALIDATE | VALIDATE)? (NORELY | RELY)?
+
+search_spec: EQUALITY LPAREN qualified_name RPAREN
+           | SUBSTRING LPAREN qualified_name RPAREN
 
 alter_warehouse_stmt: ALTER WAREHOUSE qualified_name alter_warehouse_action
 alter_warehouse_action: SET warehouse_set_item+  // Allow one or more items
@@ -1314,7 +1324,7 @@ quantified_comparison: expr comparison_op (ANY | ALL | SOME) LPAREN select_stmt 
                     | expr IN LPAREN expr_list RPAREN
 
 // Function calls (Refactored)
-function_call: (qualified_name | system_function | COUNT | SUM | AVG | MAX | MIN | INFER_SCHEMA | ARRAY_AGG | OBJECT_CONSTRUCT | CURRENT_USER | CURRENT_ROLE | REGEXP_REPLACE | GROUPING | GROUPING_ID) LPAREN func_args? RPAREN
+function_call: (qualified_name | system_function | COUNT | SUM | AVG | MAX | MIN | INFER_SCHEMA | ARRAY_AGG | OBJECT_CONSTRUCT | ARRAY_CONSTRUCT | CURRENT_USER | CURRENT_ROLE | CURRENT_ACCOUNT | GET_DDL | REGEXP_REPLACE | GROUPING | GROUPING_ID) LPAREN func_args? RPAREN
 system_function: IDENTIFIER DOLLAR_SIGN IDENTIFIER
                 | SYSTEM DOLLAR_SIGN LIST_ICEBERG_TABLES_FROM_CATALOG
                 | SYSTEM DOLLAR_SIGN LIST_NAMESPACES_FROM_CATALOG
@@ -1358,7 +1368,7 @@ create_resource_monitor_stmt: CREATE (OR REPLACE)? RESOURCE MONITOR qualified_na
 alter_resource_monitor_stmt: ALTER RESOURCE MONITOR qualified_name (SUSPEND | RESUME)
 
 triggers_clause: TRIGGERS trigger_def+
-trigger_def: ON number PERCENT DO NOTIFY
+trigger_def: ON number PERCENT DO IDENTIFIER
 
 CREDIT_QUOTA: "CREDIT_QUOTA"i
 
@@ -1560,7 +1570,7 @@ SHARE: "SHARE"i
 UNSET: "UNSET"i
 
 // Helper for CLONE statements
-clone_clause: CLONE qualified_name
+clone_clause: CLONE qualified_name time_travel_clause?
 
 // INTEGRATION statements
 create_integration_stmt: CREATE (OR REPLACE)? (EXTERNAL ACCESS | STORAGE | NOTIFICATION)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
@@ -1583,7 +1593,7 @@ integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE |
                  | GCP_PUBSUB_SUBSCRIPTION_NAME EQ SINGLE_QUOTED_STRING
 
 // External Table statements
-create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name external_table_options
+create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name LPAREN ext_column_def (COMMA ext_column_def)* RPAREN external_table_options
 alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name (REFRESH)?
 drop_external_table_stmt: DROP EXTERNAL TABLE qualified_name
 
