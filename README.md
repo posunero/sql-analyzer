@@ -12,7 +12,7 @@ This project was almost entirely built using LLMs.
 
 *   Parses Snowflake SQL syntax using a Lark grammar. Key supported constructs include:
     *   **DDL**: `CREATE/ALTER/DROP/SHOW/DESCRIBE` for `TABLE`, `VIEW`, `WAREHOUSE`, `TASK`, `STREAM`, `STAGE`, `DATABASE`, `SCHEMA`, `PROCEDURE`, `FUNCTION`, `SEQUENCE`, `RESOURCE MONITOR`, `FILE FORMAT`, `ROLE`, `MASKING POLICY`, `TAG`, `ROW ACCESS POLICY`.
-    *   **Advanced DDL**: `CREATE OR REPLACE`, `IF [NOT] EXISTS`, `TRANSIENT` tables, `CLUSTER BY (expr...)`, `DATA_RETENTION_TIME_IN_DAYS`, table `WITH TAG (...)`, column `COMMENT '...'`, `CREATE TABLE AS SELECT` (CTAS), `ALTER TABLE` actions (including `ADD/DROP/RENAME ROW ACCESS POLICY`).
+    *   **Advanced DDL**: `CREATE OR REPLACE`, `IF [NOT] EXISTS`, `TRANSIENT` tables, `CLUSTER BY (expr...)`, `DATA_RETENTION_TIME_IN_DAYS`, table `WITH TAG (...)`, column `COMMENT '...'`, `CREATE TABLE AS SELECT` (CTAS), `CLONE` with optional time travel, `CREATE EXTERNAL TABLE` columns, `ALTER TABLE` actions (including `ADD/DROP/RENAME ROW ACCESS POLICY` and `ADD SEARCH OPTIMIZATION`), `CREATE MATERIALIZED VIEW`.
     *   **DML**: `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `INSERT ALL` (multi-table insert), `TRUNCATE`.
     *   **Query**: `SELECT`, `WITH` (CTEs), various `JOIN` types, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, window functions (`func() OVER (PARTITION BY ... ORDER BY ...)`), `LATERAL FLATTEN` table functions, `IN (...)` tuple syntax.
     *   **Transactions**: `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`.
@@ -26,16 +26,18 @@ This project was almost entirely built using LLMs.
 *   Aggregates statistics across multiple files.
 *   Supports different output formats (Text, JSON, HTML). (CSV format is planned but not yet implemented.)
 *   Handles file and directory inputs.
+*   Implements the Snowflake feature gap plan, covering search optimization, external table columns, time-travel cloning, security policies, resource monitor triggers, and more (see [docs/snowflake_feature_gaps_implementation_plan.md](docs/snowflake_feature_gaps_implementation_plan.md)).
 
 ## Snowflake SQL Coverage
 
-Current implementation covers approximately **70-75%** of the Snowflake SQL specification. The parser successfully handles:
+Current implementation covers approximately **80-85%** of the Snowflake SQL specification. The parser successfully handles:
 
 - Core SQL syntax (SELECT, INSERT, UPDATE, DELETE)
 - Most DDL operations for common Snowflake objects
 - Standard DML operations
 - Transaction control statements
-- Basic Snowflake-specific features (warehouses, tasks, streams)
+- Basic Snowflake-specific features (warehouses, tasks, streams, stages, shares, resource monitors)
+- Performance features such as search optimization and materialized views
 - Function and procedure definitions with various language options
 - Data sharing features
 
