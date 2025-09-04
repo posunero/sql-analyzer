@@ -161,6 +161,7 @@ ICEBERG: "ICEBERG"i
 PACKAGE: "PACKAGE"i
 INSTALL: "INSTALL"i
 ALERT: "ALERT"i
+ALERTS: "ALERTS"i
 AUTHENTICATION: "AUTHENTICATION"i
 
 // New object types for unsupported features
@@ -214,6 +215,8 @@ INITIALLY_SUSPENDED: "INITIALLY_SUSPENDED"i
 SCHEDULE: "SCHEDULE"i
 SUSPEND: "SUSPEND"i
 RESUME: "RESUME"i
+CONDITION: "CONDITION"i
+ACTION: "ACTION"i
 APPEND_ONLY: "APPEND_ONLY"i
 SHOW_INITIAL_ROWS: "SHOW_INITIAL_ROWS"i
 FILE_FORMAT: "FILE_FORMAT"i
@@ -499,6 +502,11 @@ STORAGE_BLOCKED_LOCATIONS: "STORAGE_BLOCKED_LOCATIONS"i
 NOTIFICATION_PROVIDER: "NOTIFICATION_PROVIDER"i
 GCP_PUBSUB: "GCP_PUBSUB"i
 GCP_PUBSUB_SUBSCRIPTION_NAME: "GCP_PUBSUB_SUBSCRIPTION_NAME"i
+EMAIL: "EMAIL"i
+WEBHOOK: "WEBHOOK"i
+DIRECTION: "DIRECTION"i
+INBOUND: "INBOUND"i
+OUTBOUND: "OUTBOUND"i
 QUEUE: "QUEUE"i
 IMAGE: "IMAGE"i
 REPOSITORIES: "REPOSITORIES"i
@@ -565,7 +573,7 @@ DIRECTORY: "DIRECTORY"i
 ENCRYPTION: "ENCRYPTION"i
 
 // Common Rules
-qualified_name: (IDENTIFIER | PLACEHOLDER | PARAMETER) ( DOT (IDENTIFIER | PLACEHOLDER | PARAMETER) )*
+qualified_name: (IDENTIFIER | DOUBLE_QUOTED_STRING | PLACEHOLDER | PARAMETER) ( DOT (IDENTIFIER | DOUBLE_QUOTED_STRING | PLACEHOLDER | PARAMETER) )*
 
 // Define simple literal types early
 string: SINGLE_QUOTED_STRING | DOUBLE_QUOTED_STRING 
@@ -593,6 +601,15 @@ statement: create_replication_group_stmt
          | copy_into_stmt
          | grant_role_stmt
          | revoke_role_stmt
+         | grant_application_role_stmt
+         | revoke_application_role_stmt
+         | grant_database_role_stmt
+         | revoke_database_role_stmt
+         | show_database_roles_stmt
+         | show_application_roles_stmt
+         | show_alerts_stmt
+         | describe_alert_stmt
+         | execute_alert_stmt
          | enable_search_optimization_stmt
          | disable_search_optimization_stmt
          | alter_search_optimization_stmt
@@ -822,6 +839,8 @@ create_stmt: create_table_stmt
            | create_sequence_stmt
            | create_file_format_stmt
            | create_role_stmt
+           | create_application_role_stmt
+           | create_database_role_stmt
            | create_masking_policy_stmt
            | create_tag_stmt
            | create_row_access_policy_stmt
@@ -836,7 +855,7 @@ create_stmt: create_table_stmt
            | create_materialized_view_stmt
            | create_external_function_stmt
            | create_network_policy_stmt
-           | create_network_rule_stmt
+          | create_network_rule_stmt
            | create_secret_stmt
            | create_security_integration_stmt
            | create_replication_stmt
@@ -1110,6 +1129,8 @@ alter_stmt: alter_table_stmt
           | alter_join_policy_stmt
           | alter_table_set_masking_policy_stmt
           | alter_authentication_policy_stmt
+          | alter_application_role_stmt
+          | alter_database_role_stmt
           | alter_share_stmt
           | alter_integration_stmt
           | alter_external_table_stmt
@@ -1181,6 +1202,8 @@ drop_stmt: drop_share_stmt
         | drop_network_policy_stmt
         | drop_join_policy_stmt
         | drop_iceberg_table_stmt
+        | drop_application_role_stmt
+        | drop_database_role_stmt
         | DROP object_type (IF EXISTS)? qualified_name
         | DROP (IF EXISTS)? ROW ACCESS POLICY qualified_name
         | DROP (IF EXISTS)? MASKING POLICY qualified_name
@@ -1386,7 +1409,31 @@ file_format_option_kv: FIELD_DELIMITER EQ string
 
 FIELD_DELIMITER: "FIELD_DELIMITER"i
 
-create_role_stmt: CREATE (OR REPLACE)? (APPLICATION)? ROLE (IF NOT EXISTS)? qualified_name (MANAGED ACCESS)?
+create_role_stmt: CREATE (OR REPLACE)? ROLE (IF NOT EXISTS)? qualified_name (MANAGED ACCESS)?
+
+create_application_role_stmt: CREATE (OR REPLACE|OR ALTER)? APPLICATION ROLE (IF NOT EXISTS)? qualified_name
+
+alter_application_role_stmt: ALTER APPLICATION ROLE qualified_name (RENAME TO qualified_name)?
+
+drop_application_role_stmt: DROP APPLICATION ROLE (IF EXISTS)? qualified_name
+
+grant_application_role_stmt: GRANT APPLICATION ROLE qualified_name TO ROLE qualified_name
+
+revoke_application_role_stmt: REVOKE APPLICATION ROLE qualified_name FROM ROLE qualified_name
+
+show_application_roles_stmt: SHOW APPLICATION ROLES
+
+create_database_role_stmt: CREATE (OR REPLACE|OR ALTER)? DATABASE ROLE (IF NOT EXISTS)? qualified_name
+
+alter_database_role_stmt: ALTER DATABASE ROLE qualified_name (RENAME TO qualified_name)?
+
+drop_database_role_stmt: DROP DATABASE ROLE (IF EXISTS)? qualified_name
+
+grant_database_role_stmt: GRANT DATABASE ROLE qualified_name TO ROLE qualified_name
+
+revoke_database_role_stmt: REVOKE DATABASE ROLE qualified_name FROM ROLE qualified_name
+
+show_database_roles_stmt: SHOW DATABASE ROLES
 
 ARROW: "->"
 
@@ -1528,9 +1575,14 @@ install_package_stmt: INSTALL PACKAGE qualified_name
 remove_package_stmt: REMOVE PACKAGE qualified_name
 
 // Alert statements
-create_alert_stmt: CREATE ALERT qualified_name
-alter_alert_stmt: ALTER ALERT qualified_name
-drop_alert_stmt: DROP ALERT qualified_name
+create_alert_stmt: CREATE (OR REPLACE)? ALERT qualified_name (clone_clause | alert_definition)
+alter_alert_stmt: ALTER ALERT qualified_name (RESUME | SUSPEND | SET WAREHOUSE EQ qualified_name | SET SCHEDULE EQ string | MODIFY CONDITION expr | MODIFY ACTION call_procedure_stmt)
+drop_alert_stmt: DROP ALERT (IF EXISTS)? qualified_name
+show_alerts_stmt: SHOW ALERTS
+describe_alert_stmt: (DESCRIBE | DESC) ALERT qualified_name
+execute_alert_stmt: EXECUTE ALERT qualified_name
+
+alert_definition: WAREHOUSE EQ qualified_name SCHEDULE EQ string IF expr THEN call_procedure_stmt
 
 // Row access policy enhancements
 alter_row_access_policy_stmt: ALTER ROW ACCESS POLICY qualified_name (SET BODY ARROW expr)?
@@ -1574,12 +1626,13 @@ clone_clause: CLONE qualified_name time_travel_clause?
 
 // INTEGRATION statements
 create_integration_stmt: CREATE (OR REPLACE)? (EXTERNAL ACCESS | STORAGE | NOTIFICATION)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
-alter_integration_stmt: ALTER INTEGRATION qualified_name integration_param*
+alter_integration_stmt: ALTER INTEGRATION qualified_name (SET integration_param+)?
 drop_integration_stmt: DROP INTEGRATION qualified_name
 
 // Parameters for INTEGRATION
-integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE | QUEUE)
+integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE | QUEUE | EMAIL | WEBHOOK)
                  | ENABLED EQ boolean
+                 | DIRECTION EQ (INBOUND | OUTBOUND)
                  | COMMENT EQ SINGLE_QUOTED_STRING
                  | SECRETS EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN
                  | ALLOWED_NETWORK_RULES EQ LPAREN SINGLE_QUOTED_STRING (COMMA SINGLE_QUOTED_STRING)* RPAREN

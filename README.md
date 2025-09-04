@@ -11,7 +11,7 @@ This project was almost entirely built using LLMs.
 ## Features
 
 *   Parses Snowflake SQL syntax using a Lark grammar. Key supported constructs include:
-    *   **DDL**: `CREATE/ALTER/DROP/SHOW/DESCRIBE` for `TABLE`, `VIEW`, `WAREHOUSE`, `TASK`, `STREAM`, `STAGE`, `DATABASE`, `SCHEMA`, `PROCEDURE`, `FUNCTION`, `SEQUENCE`, `RESOURCE MONITOR`, `FILE FORMAT`, `ROLE`, `MASKING POLICY`, `TAG`, `ROW ACCESS POLICY`.
+    *   **DDL**: `CREATE/ALTER/DROP/SHOW/DESCRIBE` for `TABLE`, `VIEW`, `WAREHOUSE`, `TASK`, `STREAM`, `STAGE`, `DATABASE`, `SCHEMA`, `PROCEDURE`, `FUNCTION`, `SEQUENCE`, `RESOURCE MONITOR`, `FILE FORMAT`, `ROLE`, `APPLICATION ROLE`, `DATABASE ROLE`, `ALERT`, `INTEGRATION`, `MASKING POLICY`, `TAG`, `ROW ACCESS POLICY`.
     *   **Advanced DDL**: `CREATE OR REPLACE`, `IF [NOT] EXISTS`, `TRANSIENT` tables, `CLUSTER BY (expr...)`, `DATA_RETENTION_TIME_IN_DAYS`, table `WITH TAG (...)`, column `COMMENT '...'`, `CREATE TABLE AS SELECT` (CTAS), `CLONE` with optional time travel, `CREATE EXTERNAL TABLE` columns, `ALTER TABLE` actions (including `ADD/DROP/RENAME ROW ACCESS POLICY` and `ADD SEARCH OPTIMIZATION`), `CREATE MATERIALIZED VIEW`.
     *   **DML**: `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `INSERT ALL` (multi-table insert), `TRUNCATE`.
     *   **Query**: `SELECT`, `WITH` (CTEs), various `JOIN` types, `WHERE`, `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT`, window functions (`func() OVER (PARTITION BY ... ORDER BY ...)`), `LATERAL FLATTEN` table functions, `IN (...)` tuple syntax.
@@ -45,7 +45,6 @@ Current implementation covers approximately **80-85%** of the Snowflake SQL spec
 - Advanced Snowflake features:
   - Complete LATERAL FLATTEN and semi-structured data operations
   - Full Cortex Search capabilities
-  - Database and application roles
   - Container Services and job features
 
 - Modern analytics features:
@@ -62,7 +61,6 @@ Current implementation covers approximately **80-85%** of the Snowflake SQL spec
 
 - Data pipeline features:
   - Complete Snowpipe and Snowpipe streaming
-  - Notification integrations
 
 - Newer features (post-2023):
   - Organization accounts

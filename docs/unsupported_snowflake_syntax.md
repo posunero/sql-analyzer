@@ -33,5 +33,9 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - `CREATE SEMANTIC VIEW` and `SEMANTIC_VIEW()` table references
 - New data types `VECTOR`, `GEOGRAPHY`, and `GEOMETRY`
 - Comprehensive window frame definitions with `ROWS`, `RANGE`, or `GROUPS` and `EXCLUDE` options
+- `CREATE/ALTER/DROP/GRANT/REVOKE DATABASE ROLE` (e.g., `CREATE DATABASE ROLE IF NOT EXISTS reporting_role`)
+- `CREATE/ALTER/DROP/GRANT/REVOKE APPLICATION ROLE` (e.g., `CREATE APPLICATION ROLE app_role`)
+- `CREATE/ALTER/DROP/SHOW/DESCRIBE/EXECUTE ALERT` (e.g., `CREATE ALERT my_alert WAREHOUSE = my_wh SCHEDULE = '1 minute' IF EXISTS (SELECT 1) THEN CALL my_proc();`)
+- Notification integrations (e.g., `CREATE NOTIFICATION INTEGRATION email_int TYPE = EMAIL DIRECTION = OUTBOUND ENABLED = TRUE`)
 
 These gaps represent opportunities for future enhancements. Contributions and issue reports are welcome to help extend coverage.

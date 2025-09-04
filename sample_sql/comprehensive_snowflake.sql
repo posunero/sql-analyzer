@@ -117,8 +117,23 @@ CREATE OR REPLACE STAGE my_internal_stage;
 
 GRANT SELECT ON VIEW production.recent_events_v TO ROLE analyst;
 
+-- Database role examples
+CREATE DATABASE ROLE IF NOT EXISTS reporting_role;
+GRANT DATABASE ROLE reporting_role TO ROLE analyst;
+
+-- Application role examples
+CREATE APPLICATION ROLE app_role;
+GRANT APPLICATION ROLE app_role TO ROLE analyst;
+
+-- Alert examples
+CREATE ALERT sales_alert WAREHOUSE = analytics_wh SCHEDULE = '5 minute' IF EXISTS (SELECT 1) THEN CALL process_sales();
+EXECUTE ALERT sales_alert;
+
+-- Notification integration examples
+CREATE NOTIFICATION INTEGRATION email_int TYPE = EMAIL DIRECTION = OUTBOUND ENABLED = TRUE NOTIFICATION_PROVIDER = AWS_SES;
+
 -- Dropping objects (commented out by default)
 -- DROP TABLE IF EXISTS staging.raw_events;
 -- DROP VIEW IF EXISTS production.recent_events_v;
 -- DROP SCHEMA IF EXISTS staging;
--- DROP DATABASE IF EXISTS my_sample_db; 
+-- DROP DATABASE IF EXISTS my_sample_db;
