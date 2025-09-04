@@ -263,6 +263,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             'CREATE_AUTHENTICATION_POLICY_STMT': 'CREATE_AUTHENTICATION_POLICY',
             'CREATE_RESOURCE_MONITOR_STMT': 'CREATE_RESOURCE_MONITOR',
             'CREATE_ROLE_STMT': 'CREATE_ROLE',
+            'CREATE_APPLICATION_ROLE_STMT': 'CREATE_APPLICATION_ROLE',
+            'CREATE_DATABASE_ROLE_STMT': 'CREATE_DATABASE_ROLE',
             'CREATE_SHARE_STMT': 'CREATE_SHARE',
             'CREATE_STREAM_STMT': 'CREATE_STREAM',
             'CREATE_PIPE_STMT': 'CREATE_PIPE',
@@ -294,6 +296,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             'ALTER_ALERT_STMT': 'ALTER_ALERT',
             'ALTER_ICEBERG_TABLE_STMT': 'ALTER_ICEBERG_TABLE',
             'ALTER_AUTHENTICATION_POLICY_STMT': 'ALTER_AUTHENTICATION_POLICY',
+            'ALTER_APPLICATION_ROLE_STMT': 'ALTER_APPLICATION_ROLE',
             'ALTER_SHARE_STMT': 'ALTER_SHARE',
             'ALTER_STREAM_STMT': 'ALTER_STREAM',
             'ALTER_PIPE_STMT': 'ALTER_PIPE',
@@ -312,10 +315,17 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             'DROP_ACCOUNT_STMT': 'DROP_ACCOUNT',
             'DROP_SHARE_STMT': 'DROP_SHARE',
             'DROP_STMT': 'DROP', # Generic DROP needs refinement in drop_stmt visitor
+            'DROP_APPLICATION_ROLE_STMT': 'DROP_APPLICATION_ROLE',
+            'DROP_DATABASE_ROLE_STMT': 'DROP_DATABASE_ROLE',
+            'DROP_ALERT_STMT': 'DROP_ALERT',
 
             # DCL
             'GRANT_ROLE_STMT': 'GRANT_ROLE',
             'REVOKE_ROLE_STMT': 'REVOKE_ROLE',
+            'GRANT_APPLICATION_ROLE_STMT': 'GRANT_APPLICATION_ROLE',
+            'REVOKE_APPLICATION_ROLE_STMT': 'REVOKE_APPLICATION_ROLE',
+            'GRANT_DATABASE_ROLE_STMT': 'GRANT_DATABASE_ROLE',
+            'REVOKE_DATABASE_ROLE_STMT': 'REVOKE_DATABASE_ROLE',
 
             # TCL
             'BEGIN_STMT': 'BEGIN',
@@ -332,6 +342,10 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             'EXECUTE_TASK_STMT': 'EXECUTE_TASK',
             'CALL_PROCEDURE_STMT': 'CALL',
 
+            'SHOW_ALERTS_STMT': 'SHOW_ALERTS',
+            'DESCRIBE_ALERT_STMT': 'DESCRIBE_ALERT',
+            'EXECUTE_ALERT_STMT': 'EXECUTE_ALERT',
+
             # Stage/File Ops
             'COPY_INTO_STMT': 'COPY_INTO', # Base type, specific types recorded elsewhere
             'PUT_STMT': 'PUT',
@@ -341,6 +355,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
 
             # Other
             'SHOW_STMT': 'SHOW', # Needs refinement based on object type shown
+            'SHOW_DATABASE_ROLES_STMT': 'SHOW_DATABASE_ROLES',
+            'SHOW_APPLICATION_ROLES_STMT': 'SHOW_APPLICATION_ROLES',
             'DESCRIBE_STMT': 'DESCRIBE', # Needs refinement
             'SHOW_ACCOUNTS_STMT': 'SHOW_ACCOUNTS',
             'SHOW_PARAMETERS_STMT': 'SHOW_PARAMETERS',
@@ -382,8 +398,12 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
             'ALTER_PIPE_STMT', 'ENABLE_SEARCH_OPTIMIZATION_STMT',
             'DISABLE_SEARCH_OPTIMIZATION_STMT', 'ALTER_SEARCH_OPTIMIZATION_STMT',
             'GRANT_ROLE_STMT', 'REVOKE_ROLE_STMT', 'CREATE_ROLE_STMT',
+            'GRANT_APPLICATION_ROLE_STMT', 'REVOKE_APPLICATION_ROLE_STMT', 'CREATE_APPLICATION_ROLE_STMT',
+            'GRANT_DATABASE_ROLE_STMT', 'REVOKE_DATABASE_ROLE_STMT', 'CREATE_DATABASE_ROLE_STMT',
+            'ALTER_APPLICATION_ROLE_STMT', 'DROP_APPLICATION_ROLE_STMT',
+            'ALTER_DATABASE_ROLE_STMT', 'DROP_DATABASE_ROLE_STMT',
             'CREATE_JOB_STMT', 'ALTER_JOB_STMT', 'CREATE_TASK_STMT',
-            'ALTER_TASK_STMT', 'MERGE_STMT', 
+            'ALTER_TASK_STMT', 'MERGE_STMT', 'EXECUTE_ALERT_STMT',
             'ALTER_TABLE_SET_MASKING_POLICY_STMT', # Explicit method name doesn't end in _stmt
             'EXECUTE_TASK_STMT', 'CALL_PROCEDURE_STMT', 'CREATE_SCHEMA_STMT',
             # Add nodes corresponding to SIMPLE_QN_METHODS
@@ -1590,6 +1610,136 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 self._record_object_reference(role_name, "ROLE", "CREATE_ROLE", first_token)
                 self.engine.record_statement("CREATE_ROLE", tree, self.current_file)
 
+    def create_application_role_stmt(self, tree: Tree):
+        """Visits `create_application_role_stmt` nodes."""
+        self._debug_tree(tree, "Create Application Role Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            role_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "APPLICATION_ROLE", "CREATE_APPLICATION_ROLE", first_token)
+                self.engine.record_statement("CREATE_APPLICATION_ROLE", tree, self.current_file)
+
+    def create_database_role_stmt(self, tree: Tree):
+        """Visits `create_database_role_stmt` nodes."""
+        self._debug_tree(tree, "Create Database Role Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            role_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "DATABASE_ROLE", "CREATE_DATABASE_ROLE", first_token)
+                self.engine.record_statement("CREATE_DATABASE_ROLE", tree, self.current_file)
+
+    def alter_application_role_stmt(self, tree: Tree):
+        """Visits `alter_application_role_stmt` nodes."""
+        self._debug_tree(tree, "Alter Application Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if qnames:
+            role_name = self._extract_qualified_name(qnames[0])
+            first_token = next((t for t in qnames[0].children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "APPLICATION_ROLE", "ALTER_APPLICATION_ROLE", first_token)
+                self.engine.record_statement("ALTER_APPLICATION_ROLE", tree, self.current_file)
+
+    def alter_database_role_stmt(self, tree: Tree):
+        """Visits `alter_database_role_stmt` nodes."""
+        self._debug_tree(tree, "Alter Database Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if qnames:
+            role_name = self._extract_qualified_name(qnames[0])
+            first_token = next((t for t in qnames[0].children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "DATABASE_ROLE", "ALTER_DATABASE_ROLE", first_token)
+                self.engine.record_statement("ALTER_DATABASE_ROLE", tree, self.current_file)
+
+    def drop_database_role_stmt(self, tree: Tree):
+        """Visits `drop_database_role_stmt` nodes."""
+        self._debug_tree(tree, "Drop Database Role Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            role_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "DATABASE_ROLE", "DROP_DATABASE_ROLE", first_token)
+                self.engine.record_statement("DROP_DATABASE_ROLE", tree, self.current_file)
+
+    def drop_application_role_stmt(self, tree: Tree):
+        """Visits `drop_application_role_stmt` nodes."""
+        self._debug_tree(tree, "Drop Application Role Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            role_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if role_name and first_token:
+                self._record_object_reference(role_name, "APPLICATION_ROLE", "DROP_APPLICATION_ROLE", first_token)
+                self.engine.record_statement("DROP_APPLICATION_ROLE", tree, self.current_file)
+
+    def grant_application_role_stmt(self, tree: Tree):
+        """Visits `grant_application_role_stmt` nodes."""
+        self._debug_tree(tree, "Grant Application Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            app_role_node, target_role_node = qnames[0], qnames[1]
+            app_role_name = self._extract_qualified_name(app_role_node)
+            target_role_name = self._extract_qualified_name(target_role_node)
+            app_role_token = next((t for t in app_role_node.children if isinstance(t, Token)), None)
+            target_role_token = next((t for t in target_role_node.children if isinstance(t, Token)), None)
+            if app_role_name and target_role_name and app_role_token and target_role_token:
+                self._record_object_reference(app_role_name, "APPLICATION_ROLE", "GRANT_APPLICATION_ROLE", app_role_token)
+                self._record_object_reference(target_role_name, "ROLE", "GRANT_APPLICATION_ROLE", target_role_token)
+                self.engine.record_statement("GRANT_APPLICATION_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_role_name, "APPLICATION_ROLE", app_role_name, "GRANT_APPLICATION_ROLE")
+
+    def revoke_application_role_stmt(self, tree: Tree):
+        """Visits `revoke_application_role_stmt` nodes."""
+        self._debug_tree(tree, "Revoke Application Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            app_role_node, target_role_node = qnames[0], qnames[1]
+            app_role_name = self._extract_qualified_name(app_role_node)
+            target_role_name = self._extract_qualified_name(target_role_node)
+            app_role_token = next((t for t in app_role_node.children if isinstance(t, Token)), None)
+            target_role_token = next((t for t in target_role_node.children if isinstance(t, Token)), None)
+            if app_role_name and target_role_name and app_role_token and target_role_token:
+                self._record_object_reference(app_role_name, "APPLICATION_ROLE", "REVOKE_APPLICATION_ROLE", app_role_token)
+                self._record_object_reference(target_role_name, "ROLE", "REVOKE_APPLICATION_ROLE", target_role_token)
+                self.engine.record_statement("REVOKE_APPLICATION_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_role_name, "APPLICATION_ROLE", app_role_name, "REVOKE_APPLICATION_ROLE")
+
+    def grant_database_role_stmt(self, tree: Tree):
+        """Visits `grant_database_role_stmt` nodes."""
+        self._debug_tree(tree, "Grant Database Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            db_role_node, target_role_node = qnames[0], qnames[1]
+            db_role_name = self._extract_qualified_name(db_role_node)
+            target_role_name = self._extract_qualified_name(target_role_node)
+            db_role_token = next((t for t in db_role_node.children if isinstance(t, Token)), None)
+            target_role_token = next((t for t in target_role_node.children if isinstance(t, Token)), None)
+            if db_role_name and target_role_name and db_role_token and target_role_token:
+                self._record_object_reference(db_role_name, "DATABASE_ROLE", "GRANT_DATABASE_ROLE", db_role_token)
+                self._record_object_reference(target_role_name, "ROLE", "GRANT_DATABASE_ROLE", target_role_token)
+                self.engine.record_statement("GRANT_DATABASE_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_role_name, "DATABASE_ROLE", db_role_name, "GRANT_DATABASE_ROLE")
+
+    def revoke_database_role_stmt(self, tree: Tree):
+        """Visits `revoke_database_role_stmt` nodes."""
+        self._debug_tree(tree, "Revoke Database Role Statement")
+        qnames = list(tree.find_data('qualified_name'))
+        if len(qnames) == 2:
+            db_role_node, target_role_node = qnames[0], qnames[1]
+            db_role_name = self._extract_qualified_name(db_role_node)
+            target_role_name = self._extract_qualified_name(target_role_node)
+            db_role_token = next((t for t in db_role_node.children if isinstance(t, Token)), None)
+            target_role_token = next((t for t in target_role_node.children if isinstance(t, Token)), None)
+            if db_role_name and target_role_name and db_role_token and target_role_token:
+                self._record_object_reference(db_role_name, "DATABASE_ROLE", "REVOKE_DATABASE_ROLE", db_role_token)
+                self._record_object_reference(target_role_name, "ROLE", "REVOKE_DATABASE_ROLE", target_role_token)
+                self.engine.record_statement("REVOKE_DATABASE_ROLE", tree, self.current_file)
+                self.engine.result.add_dependency("ROLE", target_role_name, "DATABASE_ROLE", db_role_name, "REVOKE_DATABASE_ROLE")
+
     def create_job_stmt(self, tree: Tree):
         """Visits `create_job_stmt` nodes. Records job creation statements."""
         logger.debug(f"VISITOR: Entering create_job_stmt: {tree.pretty()[:100]}")
@@ -1797,9 +1947,189 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
     for _name, _obj_type, _action, _label in SIMPLE_QN_METHODS:
         # Use locals() to define methods in class namespace without referencing SQLVisitor
         locals()[_name.lower()] = (
-            lambda obj_type, action, label: 
+            lambda obj_type, action, label:
                 (lambda self, tree: self._handle_simple_qn_stmt(tree, obj_type, action, f"{label} Statement"))
         )(_obj_type, _action, _label)
+
+    def create_integration_stmt(self, tree: Tree):
+        """Visits `create_integration_stmt` nodes to capture integration details."""
+        self._debug_tree(tree, "Create Integration Statement")
+
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        integ_name = None
+        first_token = None
+        if qual_name_node:
+            integ_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+        if integ_name and first_token:
+            self._record_object_reference(integ_name, "INTEGRATION", "CREATE_INTEGRATION", first_token)
+            self.engine.record_statement("CREATE_INTEGRATION", tree, self.current_file)
+
+        for param in tree.find_data('integration_param'):
+            children = param.children
+            if len(children) < 3 or not integ_name:
+                continue
+            key = children[0] if isinstance(children[0], Token) else None
+            value = children[2]
+            if isinstance(value, Tree):
+                value = next((t for t in value.children if isinstance(t, Token)), None)
+            if not key or not isinstance(value, Token):
+                continue
+            if key.type == 'TYPE':
+                self._record_object_reference(integ_name, "INTEGRATION", "TYPE", value)
+            elif key.type == 'DIRECTION':
+                self._record_object_reference(integ_name, "INTEGRATION", "DIRECTION", value)
+            elif key.type == 'NOTIFICATION_PROVIDER':
+                self._record_object_reference(integ_name, "INTEGRATION", "PROVIDER", value)
+            elif key.type == 'ENABLED':
+                self._record_object_reference(integ_name, "INTEGRATION", "ENABLED", value)
+
+    def alter_integration_stmt(self, tree: Tree):
+        """Visits `alter_integration_stmt` nodes to capture integration modifications."""
+        self._debug_tree(tree, "Alter Integration Statement")
+
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        integ_name = None
+        first_token = None
+        if qual_name_node:
+            integ_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+        if integ_name and first_token:
+            self._record_object_reference(integ_name, "INTEGRATION", "ALTER_INTEGRATION", first_token)
+            self.engine.record_statement("ALTER_INTEGRATION", tree, self.current_file)
+
+        for param in tree.find_data('integration_param'):
+            children = param.children
+            if len(children) < 3 or not integ_name:
+                continue
+            key = children[0] if isinstance(children[0], Token) else None
+            value = children[2]
+            if isinstance(value, Tree):
+                value = next((t for t in value.children if isinstance(t, Token)), None)
+            if not key or not isinstance(value, Token):
+                continue
+            if key.type == 'TYPE':
+                self._record_object_reference(integ_name, "INTEGRATION", "TYPE", value)
+            elif key.type == 'DIRECTION':
+                self._record_object_reference(integ_name, "INTEGRATION", "DIRECTION", value)
+            elif key.type == 'NOTIFICATION_PROVIDER':
+                self._record_object_reference(integ_name, "INTEGRATION", "PROVIDER", value)
+            elif key.type == 'ENABLED':
+                self._record_object_reference(integ_name, "INTEGRATION", "ENABLED", value)
+
+
+    def create_alert_stmt(self, tree: Tree):
+        """Visits `create_alert_stmt` nodes. Records alert creation details."""
+        self._debug_tree(tree, "Create Alert Statement")
+
+        # Extract alert name
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        alert_name = None
+        first_token = None
+        if qual_name_node:
+            alert_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+        if alert_name and first_token:
+            self._record_object_reference(alert_name, "ALERT", "CREATE_ALERT", first_token)
+            self.engine.record_statement("CREATE_ALERT", tree, self.current_file)
+
+        # Handle CLONE source
+        clone_node = self._find_first_child_by_name(tree, 'clone_clause')
+        if clone_node:
+            src_qn = self._find_first_child_by_name(clone_node, 'qualified_name')
+            if src_qn:
+                src_name = self._extract_qualified_name(src_qn)
+                src_tok = next((t for t in src_qn.children if isinstance(t, Token)), None)
+                if src_name and src_tok:
+                    self._record_object_reference(src_name, "ALERT", "CLONE", src_tok)
+            return
+
+        # Handle alert definition
+        def_node = self._find_first_child_by_name(tree, 'alert_definition')
+        if def_node and alert_name:
+            for idx, child in enumerate(def_node.children):
+                if isinstance(child, Token) and child.type == 'WAREHOUSE':
+                    if idx + 2 < len(def_node.children) and isinstance(def_node.children[idx + 2], Tree):
+                        wh_node = def_node.children[idx + 2]
+                        wh_name = self._extract_qualified_name(wh_node)
+                        wh_tok = next((t for t in wh_node.children if isinstance(t, Token)), None)
+                        if wh_name and wh_tok:
+                            self._record_object_reference(wh_name, "WAREHOUSE", "REFERENCE", wh_tok)
+                elif isinstance(child, Token) and child.type == 'SCHEDULE':
+                    if idx + 2 < len(def_node.children):
+                        sched_node = def_node.children[idx + 2]
+                        if isinstance(sched_node, Token):
+                            sched_tok = sched_node
+                        elif isinstance(sched_node, Tree):
+                            sched_tok = next((t for t in sched_node.children if isinstance(t, Token)), None)
+                        else:
+                            sched_tok = None
+                        if sched_tok:
+                            self._record_object_reference(alert_name, "ALERT", "SCHEDULE", sched_tok)
+
+            proc_node = self._find_first_child_by_name(def_node, 'call_procedure_stmt')
+            if proc_node:
+                proc_name_node = self._find_first_child_by_name(proc_node, 'qualified_name')
+                if proc_name_node:
+                    proc_name = self._extract_qualified_name(proc_name_node)
+                    proc_tok = next((t for t in proc_name_node.children if isinstance(t, Token)), None)
+                    if proc_name and proc_tok:
+                        self._record_object_reference(proc_name, "PROCEDURE", "CALL", proc_tok)
+
+    def alter_alert_stmt(self, tree: Tree):
+        """Visits `alter_alert_stmt` nodes. Records alert alterations."""
+        self._debug_tree(tree, "Alter Alert Statement")
+
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        alert_name = None
+        first_token = None
+        if qual_name_node:
+            alert_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+        if alert_name and first_token:
+            self._record_object_reference(alert_name, "ALERT", "ALTER_ALERT", first_token)
+            self.engine.record_statement("ALTER_ALERT", tree, self.current_file)
+
+        children = list(tree.children)
+        for idx, child in enumerate(children):
+            if isinstance(child, Token):
+                if child.type in ('RESUME', 'SUSPEND') and alert_name:
+                    self._record_object_reference(alert_name, "ALERT", child.type, child)
+                elif child.type == 'SET' and alert_name:
+                    if idx + 1 < len(children) and isinstance(children[idx + 1], Token):
+                        nxt = children[idx + 1]
+                        if nxt.type == 'WAREHOUSE' and idx + 3 < len(children) and isinstance(children[idx + 3], Tree):
+                            wh_node = children[idx + 3]
+                            wh_name = self._extract_qualified_name(wh_node)
+                            wh_tok = next((t for t in wh_node.children if isinstance(t, Token)), None)
+                            if wh_name and wh_tok:
+                                self._record_object_reference(wh_name, "WAREHOUSE", "REFERENCE", wh_tok)
+                        elif nxt.type == 'SCHEDULE' and idx + 3 < len(children) and isinstance(children[idx + 3], Token):
+                            sched_tok = children[idx + 3]
+                            self._record_object_reference(alert_name, "ALERT", "SCHEDULE", sched_tok)
+                elif child.type == 'MODIFY' and alert_name:
+                    if idx + 1 < len(children) and isinstance(children[idx + 1], Token):
+                        modtok = children[idx + 1]
+                        if modtok.type == 'ACTION':
+                            proc_node = next((c for c in children[idx + 2:] if isinstance(c, Tree) and c.data == 'call_procedure_stmt'), None)
+                            if proc_node:
+                                proc_name_node = self._find_first_child_by_name(proc_node, 'qualified_name')
+                                if proc_name_node:
+                                    proc_name = self._extract_qualified_name(proc_name_node)
+                                    proc_tok = next((t for t in proc_name_node.children if isinstance(t, Token)), None)
+                                    if proc_name and proc_tok:
+                                        self._record_object_reference(proc_name, "PROCEDURE", "CALL", proc_tok)
+
+    def execute_alert_stmt(self, tree: Tree):
+        """Visits `execute_alert_stmt` nodes. Records alert execution."""
+        self._debug_tree(tree, "Execute Alert Statement")
+        qual_name_node = self._find_first_child_by_name(tree, 'qualified_name')
+        if qual_name_node:
+            alert_name = self._extract_qualified_name(qual_name_node)
+            first_token = next((t for t in qual_name_node.children if isinstance(t, Token)), None)
+            if alert_name and first_token:
+                self._record_object_reference(alert_name, "ALERT", "EXECUTE_ALERT", first_token)
+                self.engine.record_statement("EXECUTE_ALERT", tree, self.current_file)
 
     def create_task_stmt(self, tree: Tree):
         """Visits `create_task_stmt` nodes. Extracts task name, warehouse, dependencies, and visits AS clause."""
