@@ -539,6 +539,38 @@ def test_parse_stage_fileformat_copyinto_invalid_fixture():
     with pytest.raises(LarkError):
         parse_sql(sql)
 
+
+def test_parse_copy_into_with_load_mode():
+    sql = (
+        "COPY INTO customer_iceberg_ingest "
+        "FROM @my_parquet_stage "
+        "FILE_FORMAT = 'my_parquet_format' "
+        "LOAD_MODE = ADD_FILES_COPY PURGE = TRUE "
+        "MATCH_BY_COLUMN_NAME = CASE_SENSITIVE;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "COPY INTO with LOAD_MODE should parse"
+
+
+def test_parse_select_star_modifiers():
+    sql = (
+        "SELECT * EXCLUDE (sensitive_col) "
+        "REPLACE (UPPER(name) AS name) "
+        "RENAME (old_col AS new_col) FROM my_table;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "SELECT * with EXCLUDE/REPLACE/RENAME should parse"
+
+
+def test_create_external_table_without_columns():
+    sql = (
+        "CREATE OR REPLACE EXTERNAL TABLE ext_table "
+        "INTEGRATION = 'MY_NOTIFICATION_INT' WITH LOCATION = @mystage/path1/ "
+        "FILE_FORMAT = (TYPE = JSON);"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "CREATE EXTERNAL TABLE without columns should parse"
+
 def test_parse_drop_task():
     """Test parsing DROP TASK statement specifically."""
     sql = "DROP TASK IF EXISTS my_task;"

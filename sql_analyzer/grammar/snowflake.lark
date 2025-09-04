@@ -1575,8 +1575,8 @@ install_package_stmt: INSTALL PACKAGE qualified_name
 remove_package_stmt: REMOVE PACKAGE qualified_name
 
 // Alert statements
-create_alert_stmt: CREATE (OR REPLACE)? ALERT qualified_name (clone_clause | alert_definition)
-alter_alert_stmt: ALTER ALERT qualified_name (RESUME | SUSPEND | SET WAREHOUSE EQ qualified_name | SET SCHEDULE EQ string | MODIFY CONDITION expr | MODIFY ACTION call_procedure_stmt)
+create_alert_stmt: CREATE (OR REPLACE)? ALERT qualified_name (clone_clause | alert_definition)?
+alter_alert_stmt: ALTER ALERT qualified_name (RESUME | SUSPEND | SET WAREHOUSE EQ qualified_name | SET SCHEDULE EQ string | MODIFY CONDITION expr | MODIFY ACTION call_procedure_stmt)?
 drop_alert_stmt: DROP ALERT (IF EXISTS)? qualified_name
 show_alerts_stmt: SHOW ALERTS
 describe_alert_stmt: (DESCRIBE | DESC) ALERT qualified_name
@@ -1626,7 +1626,7 @@ clone_clause: CLONE qualified_name time_travel_clause?
 
 // INTEGRATION statements
 create_integration_stmt: CREATE (OR REPLACE)? (EXTERNAL ACCESS | STORAGE | NOTIFICATION)? INTEGRATION (IF NOT EXISTS)? qualified_name integration_param*
-alter_integration_stmt: ALTER INTEGRATION qualified_name (SET integration_param+)?
+alter_integration_stmt: ALTER INTEGRATION qualified_name (SET? integration_param+)?
 drop_integration_stmt: DROP INTEGRATION qualified_name
 
 // Parameters for INTEGRATION
@@ -1646,7 +1646,11 @@ integration_param: TYPE EQ (IDENTIFIER | SINGLE_QUOTED_STRING | EXTERNAL_STAGE |
                  | GCP_PUBSUB_SUBSCRIPTION_NAME EQ SINGLE_QUOTED_STRING
 
 // External Table statements
-create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name LPAREN ext_column_def (COMMA ext_column_def)* RPAREN external_table_options
+// Column definitions are optional for CREATE EXTERNAL TABLE so that minimal
+// forms like `CREATE EXTERNAL TABLE t WITH LOCATION = @stage` are accepted.
+// This also enables examples that specify options such as INTEGRATION without
+// declaring columns.
+create_external_table_stmt: CREATE (OR REPLACE)? EXTERNAL TABLE (IF NOT EXISTS)? qualified_name (LPAREN ext_column_def (COMMA ext_column_def)* RPAREN)? external_table_options
 alter_external_table_stmt: ALTER EXTERNAL TABLE qualified_name (REFRESH)?
 drop_external_table_stmt: DROP EXTERNAL TABLE qualified_name
 

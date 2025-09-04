@@ -3,8 +3,7 @@
 The SQL Analyzer currently parses a large portion of Snowflake SQL, but several syntax areas remain unsupported or only partially implemented. This document summarizes the main gaps.
 
 ## Core SQL Features
-- Stage queries using `SELECT * EXCLUDE/REPLACE/RENAME`
-- `COPY INTO` options such as `LOAD_MODE`
+- (none currently identified)
 
 ## DDL and Data Types
 - Streamlit apps, dynamic tables, hybrid tables, datasets, and snapshots
@@ -39,6 +38,9 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - `CREATE/ALTER/DROP/SHOW/DESCRIBE/EXECUTE ALERT` (e.g., `CREATE ALERT my_alert WAREHOUSE = my_wh SCHEDULE = '1 minute' IF EXISTS (SELECT 1) THEN CALL my_proc();`)
 - Notification integrations (e.g., `CREATE NOTIFICATION INTEGRATION email_int TYPE = EMAIL DIRECTION = OUTBOUND ENABLED = TRUE`)
 - `ML.PREDICT` and `ML.TRAIN` function calls
+- Star modifiers `EXCLUDE`, `REPLACE`, and `RENAME` in `SELECT *` lists
+- Enhanced `COPY INTO` options including `LOAD_MODE`
+- `CREATE EXTERNAL TABLE` without column definitions and with `INTEGRATION`/`WITH LOCATION` clauses
 - Apache Iceberg table DDL
 - Snowpark package management (`CREATE/INSTALL/REMOVE PACKAGE`)
 - Row access and masking policies
