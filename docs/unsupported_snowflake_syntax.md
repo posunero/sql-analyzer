@@ -3,19 +3,20 @@
 The SQL Analyzer currently parses a large portion of Snowflake SQL, but several syntax areas remain unsupported or only partially implemented. This document summarizes the main gaps.
 
 ## Core SQL Features
-- Advanced built-in functions such as `DATEADD` and `DATEDIFF`
+- Stage queries using `SELECT * EXCLUDE/REPLACE/RENAME`
+- `COPY INTO` options such as `LOAD_MODE`
 
 ## DDL and Data Types
-- `ALTER TABLE` variants like `PIVOT`/`UNPIVOT` and advanced clustering options
-
-## Semi-Structured Data and Table Functions
-- User-defined table functions (UDTFs)
+- Streamlit apps, dynamic tables, hybrid tables, datasets, and snapshots
+- Snowpark Container Services such as compute pools and services
+- Application packages, listings, and connections
+- Secrets, password policies, and network rules
+- Advanced table and schema options (classification profiles, storage serialization policy, compute pool defaults)
+- Creation of user-defined table functions (UDTFs)
 
 ## Ecosystem and Advanced Services
-- Snowpipe and Snowpipe Streaming commands
-- Snowpark Container Services and Python UDF features
-- Machine learning operations (`CREATE MODEL`, `PREDICT`)
-- Organization-wide features such as privacy policies and external access integrations
+- Machine learning model DDL and management (`CREATE MODEL`, `ALTER MODEL`, versioning)
+- Advanced function options like `SERVICE` and `CONTEXT_HEADERS`
 
 ## Recently Implemented Features
 
@@ -37,5 +38,11 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - `CREATE/ALTER/DROP/GRANT/REVOKE APPLICATION ROLE` (e.g., `CREATE APPLICATION ROLE app_role`)
 - `CREATE/ALTER/DROP/SHOW/DESCRIBE/EXECUTE ALERT` (e.g., `CREATE ALERT my_alert WAREHOUSE = my_wh SCHEDULE = '1 minute' IF EXISTS (SELECT 1) THEN CALL my_proc();`)
 - Notification integrations (e.g., `CREATE NOTIFICATION INTEGRATION email_int TYPE = EMAIL DIRECTION = OUTBOUND ENABLED = TRUE`)
+- `ML.PREDICT` and `ML.TRAIN` function calls
+- Apache Iceberg table DDL
+- Snowpark package management (`CREATE/INSTALL/REMOVE PACKAGE`)
+- Row access and masking policies
+- Authentication policy statements
+- Resource monitor statements
 
 These gaps represent opportunities for future enhancements. Contributions and issue reports are welcome to help extend coverage.
