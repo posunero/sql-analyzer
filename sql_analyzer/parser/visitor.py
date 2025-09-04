@@ -864,7 +864,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                         obj_type_tokens.append(type_token.type)
                 
                 # Check for single token types first
-                if len(obj_type_tokens) == 1 and obj_type_tokens[0] in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                if len(obj_type_tokens) == 1 and obj_type_tokens[0] in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE', 'MODEL'):
                     obj_type = obj_type_tokens[0]
                     logger.debug(f"Found object type token: {obj_type}")
                     break
@@ -894,7 +894,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         if not obj_type:
             # Check for direct object type tokens like TABLE, VIEW, etc. as direct children
             for i, child in enumerate(children):
-                if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE', 'ROW'):
+                if isinstance(child, Token) and child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE', 'ROW', 'MODEL'):
                     obj_type = child.type
                     logger.debug(f"Found direct object type token: {obj_type}")
                     break
@@ -913,7 +913,7 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                             obj_type_tokens.append(child.type)
                             
                             # Try to determine the type based on collected tokens
-                            if child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE'):
+                            if child.type in ('TABLE', 'VIEW', 'TASK', 'WAREHOUSE', 'DATABASE', 'SCHEMA', 'FUNCTION', 'SHARE', 'INTEGRATION', 'PIPE', 'MODEL'):
                                 if len(obj_type_tokens) == 1:
                                     # Simple case: DROP followed by single type
                                     obj_type = child.type
@@ -978,6 +978,8 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
                 action = "DROP_INTEGRATION"
             elif obj_type == "PIPE":
                 action = "DROP_PIPE"
+            elif obj_type == "MODEL":
+                action = "DROP_MODEL"
             else:
                 action = "DROP"
                 
@@ -1903,6 +1905,9 @@ class SQLVisitor(Visitor[Token]): # Inherit from Visitor[Token] for better type 
         ('create_alert_stmt', 'ALERT', 'CREATE_ALERT', 'Create Alert'),
         ('alter_alert_stmt', 'ALERT', 'ALTER_ALERT', 'Alter Alert'),
         ('drop_alert_stmt', 'ALERT', 'DROP_ALERT', 'Drop Alert'),
+        ('create_model_stmt', 'MODEL', 'CREATE_MODEL', 'Create Model'),
+        ('alter_model_stmt', 'MODEL', 'ALTER_MODEL', 'Alter Model'),
+        ('drop_model_stmt', 'MODEL', 'DROP_MODEL', 'Drop Model'),
         ('create_iceberg_table_stmt', 'ICEBERG_TABLE', 'CREATE_ICEBERG_TABLE', 'Create Iceberg Table'),
         ('alter_iceberg_table_stmt', 'ICEBERG_TABLE', 'ALTER_ICEBERG_TABLE', 'Alter Iceberg Table'),
         ('drop_iceberg_table_stmt', 'ICEBERG_TABLE', 'DROP_ICEBERG_TABLE', 'Drop Iceberg Table'),
