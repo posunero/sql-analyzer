@@ -40,6 +40,33 @@ def test_analyze_ml_train():
     assert any(o.name == 'new_model' for o in objs)
     assert any(o.name == 'training_data' for o in objs)
 
+def test_parse_create_model():
+    sql = (
+        "CREATE MODEL prod_db.prod_schema.prod_model WITH VERSION V1 FROM MODEL dev_db.dev_sch.dev_model VERSION V12;"
+    )
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing CREATE MODEL should return a Tree."
+
+
+def test_parse_drop_model():
+    sql = "DROP MODEL prod_db.prod_schema.prod_model;"
+    tree = parse_sql(sql)
+    assert isinstance(tree, Tree), "Parsing DROP MODEL should return a Tree."
+
+
+def test_analyze_model_statements():
+    res = analyze_sql(
+        "CREATE MODEL m1 WITH VERSION V1 FROM MODEL m0 VERSION V0;"
+    )
+    assert res.statement_counts.get('CREATE_MODEL', 0) == 1
+    assert any(o.action == 'CREATE_MODEL' and o.name == 'm1' for o in res.objects_found)
+    res = analyze_sql("ALTER MODEL m1 DROP VERSION V0;")
+    assert res.statement_counts.get('ALTER_MODEL', 0) == 1
+    assert any(o.action == 'ALTER_MODEL' and o.name == 'm1' for o in res.objects_found)
+    res = analyze_sql("DROP MODEL m1;")
+    assert res.statement_counts.get('DROP_MODEL', 0) == 1
+    assert any(o.action == 'DROP_MODEL' and o.name == 'm1' for o in res.objects_found)
+
 # Apache Iceberg Table Support
 
 def test_parse_create_iceberg_table():

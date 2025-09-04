@@ -14,7 +14,6 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - Creation of user-defined table functions (UDTFs)
 
 ## Ecosystem and Advanced Services
-- Machine learning model DDL and management (`CREATE MODEL`, `ALTER MODEL`, versioning)
 - Advanced function options like `SERVICE` and `CONTEXT_HEADERS`
 
 ## Recently Implemented Features
@@ -38,6 +37,7 @@ The SQL Analyzer currently parses a large portion of Snowflake SQL, but several 
 - `CREATE/ALTER/DROP/SHOW/DESCRIBE/EXECUTE ALERT` (e.g., `CREATE ALERT my_alert WAREHOUSE = my_wh SCHEDULE = '1 minute' IF EXISTS (SELECT 1) THEN CALL my_proc();`)
 - Notification integrations (e.g., `CREATE NOTIFICATION INTEGRATION email_int TYPE = EMAIL DIRECTION = OUTBOUND ENABLED = TRUE`)
 - `ML.PREDICT` and `ML.TRAIN` function calls
+- Machine learning model DDL (`CREATE MODEL`, `ALTER MODEL`, `DROP MODEL`) with versioning
 - Star modifiers `EXCLUDE`, `REPLACE`, and `RENAME` in `SELECT *` lists
 - Enhanced `COPY INTO` options including `LOAD_MODE`
 - `CREATE EXTERNAL TABLE` without column definitions and with `INTEGRATION`/`WITH LOCATION` clauses

@@ -675,7 +675,9 @@ statement: create_replication_group_stmt
          | create_hybrid_table_stmt
          | create_dataset_stmt
          | alter_dataset_stmt
+         | create_model_stmt
          | alter_model_stmt
+         | drop_model_stmt
          | drop_snapshot_stmt
          | create_external_volume_stmt
          | drop_external_volume_stmt
@@ -1812,7 +1814,12 @@ create_dataset_stmt: CREATE (OR REPLACE)? DATASET qualified_name
 alter_dataset_stmt: ALTER DATASET qualified_name DROP VERSION SINGLE_QUOTED_STRING
 
 // ========== MODEL STATEMENTS ==========
+create_model_stmt: CREATE (OR REPLACE)? MODEL qualified_name create_model_clause?
 alter_model_stmt: ALTER MODEL qualified_name alter_model_action
+drop_model_stmt: DROP MODEL qualified_name
+
+create_model_clause: WITH VERSION IDENTIFIER from_model_clause?
+from_model_clause: FROM MODEL qualified_name (VERSION IDENTIFIER)?
 
 alter_model_action: DROP VERSION IDENTIFIER
                   | SET COMMENT EQ SINGLE_QUOTED_STRING
